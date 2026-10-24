@@ -10,6 +10,24 @@
       "source": "./",
       "description": "Full-spectrum SEO for Claude Code: technical, on-page, content & copywriting, keywords, schema, local, international, e-commerce, media, links, migrations, AI search (AEO/GEO), analytics, competitors and strategy \u2014 with standard-library Python auditors, code-computed prioritisation, beginner and expert guides, and cost-aware use of Semrush/Ahrefs/Screaming Frog/DataForSEO.",
       "version": "0.1.0"
+    },
+    {
+      "name": "seo-suite-semrush",
+      "source": "./connectors/semrush",
+      "description": "Optional connector: the official Semrush MCP server (OAuth, read-only) for seo-suite. Spends Semrush API units under the seo-suite credit guard.",
+      "version": "0.1.0"
+    },
+    {
+      "name": "seo-suite-ahrefs",
+      "source": "./connectors/ahrefs",
+      "description": "Optional connector: the official Ahrefs MCP server (OAuth, Lite plan or higher) for seo-suite, limited to the SEO tool groups. Spends Ahrefs API units under the seo-suite credit guard.",
+      "version": "0.1.0"
+    },
+    {
+      "name": "seo-suite-dataforseo",
+      "source": "./connectors/dataforseo",
+      "description": "Optional connector: the official DataForSEO MCP server (local stdio, API login and password) for seo-suite. Pay-as-you-go spend under the seo-suite credit guard.",
+      "version": "0.1.0"
     }
   ],
   "description": "seo-suite: a full-spectrum, evidence-first SEO plugin for Claude Code."

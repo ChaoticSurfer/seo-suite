@@ -22,5 +22,81 @@
   ],
   "repository": "https://github.com/ChaoticSurfer/seo-suite",
   "homepage": "https://chaoticsurfer.github.io/seo-suite/",
-  "license": "MIT"
+  "license": "MIT",
+  "userConfig": {
+    "autonomy_level": {
+      "type": "number",
+      "title": "Autonomy level (1-4)",
+      "description": "1 Analyse (default): reads only. 2 Fix in code: edits, commits and PRs on a branch. 3 Ship: also merges PRs that pass CI and submits sitemaps/IndexNow. 4 Operate: also CMS and Search Console changes through an authorised connector. Outreach, disavows, DNS/CDN, GBP and over-budget spend are always gated. See references/autonomy.md.",
+      "default": 1,
+      "min": 1,
+      "max": 4
+    },
+    "semrush_monthly_units": {
+      "type": "number",
+      "title": "Semrush monthly budget (units)",
+      "description": "Monthly budget for paid Semrush calls, in API units. 0 (default) denies paid Semrush calls; free tools and cached results still work. Counted per UTC calendar month by the credit guard.",
+      "default": 0,
+      "min": 0
+    },
+    "ahrefs_monthly_units": {
+      "type": "number",
+      "title": "Ahrefs monthly budget (units)",
+      "description": "Monthly budget for paid Ahrefs calls, in API units. 0 (default) denies paid Ahrefs calls; free tools and cached results still work. Counted per UTC calendar month by the credit guard.",
+      "default": 0,
+      "min": 0
+    },
+    "dataforseo_monthly_usd": {
+      "type": "number",
+      "title": "DataForSEO monthly budget (USD)",
+      "description": "Monthly budget for paid DataForSEO calls, in US dollars. 0 (default) denies paid DataForSEO calls; free tools and cached results still work. Counted per UTC calendar month by the credit guard.",
+      "default": 0,
+      "min": 0
+    },
+    "other_monthly_usd": {
+      "type": "number",
+      "title": "Other paid SEO tools monthly budget (USD)",
+      "description": "One shared monthly budget, in US dollars, for Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly and Lumar crawls. Their per-call prices aren't in the guard's table, so each call is budgeted at the per-call threshold. 0 (default) denies their paid calls.",
+      "default": 0,
+      "min": 0
+    },
+    "per_run_cap_pct": {
+      "type": "number",
+      "title": "Per-run cap (% of monthly budget)",
+      "description": "The most one session may spend from each monthly budget, as a percentage of it. Default 25. 0 denies paid calls.",
+      "default": 25,
+      "min": 0,
+      "max": 100
+    },
+    "ask_above_pct": {
+      "type": "number",
+      "title": "Defer above (% of monthly budget per call)",
+      "description": "A single call estimated above this percentage of its monthly budget is not run: the guard records it in requests.jsonl and Claude lists it in the end-of-run questions, so runs never stop to ask. Cheaper calls inside the budget run on their own. Default 5. 0 defers every paid call.",
+      "default": 5,
+      "min": 0,
+      "max": 100
+    },
+    "max_rows": {
+      "type": "number",
+      "title": "Max rows per paid call",
+      "description": "Row limit the guard enforces on every paid call (Semrush display_limit, Ahrefs limit, DataForSEO limit/depth/max_crawl_pages). A missing or larger limit is lowered to this. Default 50.",
+      "default": 50,
+      "min": 1,
+      "max": 1000
+    },
+    "cache_ttl_days": {
+      "type": "number",
+      "title": "Cache freshness override (days)",
+      "description": "0 (default) uses per-data-type freshness: 30 days for keyword volumes, 7 for SERPs, rankings, domain data and backlinks, 1 for site audits. Any other value applies to every cached result. Semrush results are never reused after 30 days (Semrush terms).",
+      "default": 0,
+      "min": 0,
+      "max": 365
+    },
+    "psi_api_key": {
+      "type": "string",
+      "title": "PageSpeed Insights API key",
+      "description": "Optional Google API key for PageSpeed Insights, which raises the quota for scripts/psi.py. It is stored in the system keychain and exported to Bash as PSI_API_KEY at session start. Never paste it into chat.",
+      "sensitive": true
+    }
+  }
 }

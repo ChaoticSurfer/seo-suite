@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "ahrefs": {
+      "type": "http",
+      "url": "https://api.ahrefs.com/mcp/mcp?tools=site-explorer-overview,site-explorer-reports,keywords-explorer,serp-overview,rank-tracker,site-audit,gsc,batch-analysis,public,subscription-info",
+      "timeout": 120000
+    }
+  }
+}

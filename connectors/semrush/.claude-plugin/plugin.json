@@ -1,0 +1,16 @@
+{
+  "name": "seo-suite-semrush",
+  "version": "0.1.0",
+  "description": "Official Semrush MCP server (https://mcp.semrush.com/v2/mcp, read-only, OAuth) for seo-suite. Calls spend Semrush API units; the seo-suite credit guard caches, clamps and budgets them.",
+  "author": {
+    "name": "ChaoticSurfer",
+    "url": "https://github.com/ChaoticSurfer"
+  },
+  "repository": "https://github.com/ChaoticSurfer/seo-suite",
+  "license": "MIT",
+  "keywords": [
+    "seo",
+    "semrush",
+    "mcp"
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "seo-suite-ahrefs",
+  "version": "0.1.0",
+  "description": "Official Ahrefs MCP server (https://api.ahrefs.com/mcp/mcp, OAuth, Lite plan or higher) for seo-suite, limited to the SEO tool groups. Calls spend Ahrefs API units; the seo-suite credit guard caches, clamps and budgets them.",
+  "author": {
+    "name": "ChaoticSurfer",
+    "url": "https://github.com/ChaoticSurfer"
+  },
+  "repository": "https://github.com/ChaoticSurfer/seo-suite",
+  "license": "MIT",
+  "keywords": [
+    "seo",
+    "ahrefs",
+    "mcp"
+  ]
+}

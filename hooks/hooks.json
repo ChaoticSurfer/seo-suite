@@ -1,0 +1,88 @@
+{
+  "description": "seo-suite credit guard for paid SEO MCP tools (Semrush, Ahrefs, DataForSEO, Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly, Screaming Frog, Sitebulb, Lumar) under every naming variant: mcp__<server>__*, mcp__plugin_<plugin>_<server>__* and mcp__claude_ai_<name>__*. The matcher is case-insensitive by character classes because hook matchers are case-sensitive JavaScript regexes. PreToolUse fails closed (onFailure block); PostToolBatch has no matcher and runs after every batch in every session, so its failure must not stop unrelated work (onFailure continue); paid calls stay blocked anyway because PreToolUse fails closed. SessionStart exports the psi_api_key option as PSI_API_KEY for scripts/psi.py.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "-c",
+              "import os, shlex\nkey = os.environ.get('CLAUDE_PLUGIN_OPTION_PSI_API_KEY', '')\nenv_file = os.environ.get('CLAUDE_ENV_FILE', '')\nif key and env_file:\n    with open(env_file, 'a') as handle:\n        handle.write('export PSI_API_KEY=' + shlex.quote(key) + '\\n')\n"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^mcp_.*(?:[Ss][Ee][Mm][Rr][Uu][Ss][Hh]|[Aa][Hh][Rr][Ee][Ff][Ss]|[Dd][Aa][Tt][Aa][-_]?[Ff][Oo][Rr][-_]?[Ss][Ee][Oo]|[Ss][Ii][Mm][Ii][Ll][Aa][Rr][-_]?[Ww][Ee][Bb]|[Ss][Ee][-_]?[Rr][Aa][Nn][Kk][Ii][Nn][Gg]|[Kk][Ee][Yy][Ww][Oo][Rr][Dd][Ss]?[-_]?[Ee][Vv][Ee][Rr][Yy][Ww][Hh][Ee][Rr][Ee]|[Aa][Ll][Ss][Oo][-_]?[Aa][Ss][Kk][Ee][Dd]|[Oo][Tt][Tt][Ee][Rr][Ll][Yy]|[Ss][Cc][Rr][Ee][Aa][Mm][Ii][Nn][Gg][-_]?[Ff][Rr][Oo][Gg]|[Ss][Ii][Tt][Ee][Bb][Uu][Ll][Bb]|[Ll][Uu][Mm][Aa][Rr]|_[Dd][Ff][Ss][-_])",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/scripts/credit_guard.py",
+              "pre"
+            ],
+            "timeout": 15,
+            "onFailure": "block",
+            "statusMessage": "credit-guard: checking the SEO API budget"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "^mcp_.*(?:[Ss][Ee][Mm][Rr][Uu][Ss][Hh]|[Aa][Hh][Rr][Ee][Ff][Ss]|[Dd][Aa][Tt][Aa][-_]?[Ff][Oo][Rr][-_]?[Ss][Ee][Oo]|[Ss][Ii][Mm][Ii][Ll][Aa][Rr][-_]?[Ww][Ee][Bb]|[Ss][Ee][-_]?[Rr][Aa][Nn][Kk][Ii][Nn][Gg]|[Kk][Ee][Yy][Ww][Oo][Rr][Dd][Ss]?[-_]?[Ee][Vv][Ee][Rr][Yy][Ww][Hh][Ee][Rr][Ee]|[Aa][Ll][Ss][Oo][-_]?[Aa][Ss][Kk][Ee][Dd]|[Oo][Tt][Tt][Ee][Rr][Ll][Yy]|[Ss][Cc][Rr][Ee][Aa][Mm][Ii][Nn][Gg][-_]?[Ff][Rr][Oo][Gg]|[Ss][Ii][Tt][Ee][Bb][Uu][Ll][Bb]|[Ll][Uu][Mm][Aa][Rr]|_[Dd][Ff][Ss][-_])",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/scripts/credit_guard.py",
+              "post"
+            ],
+            "timeout": 20,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "^mcp_.*(?:[Ss][Ee][Mm][Rr][Uu][Ss][Hh]|[Aa][Hh][Rr][Ee][Ff][Ss]|[Dd][Aa][Tt][Aa][-_]?[Ff][Oo][Rr][-_]?[Ss][Ee][Oo]|[Ss][Ii][Mm][Ii][Ll][Aa][Rr][-_]?[Ww][Ee][Bb]|[Ss][Ee][-_]?[Rr][Aa][Nn][Kk][Ii][Nn][Gg]|[Kk][Ee][Yy][Ww][Oo][Rr][Dd][Ss]?[-_]?[Ee][Vv][Ee][Rr][Yy][Ww][Hh][Ee][Rr][Ee]|[Aa][Ll][Ss][Oo][-_]?[Aa][Ss][Kk][Ee][Dd]|[Oo][Tt][Tt][Ee][Rr][Ll][Yy]|[Ss][Cc][Rr][Ee][Aa][Mm][Ii][Nn][Gg][-_]?[Ff][Rr][Oo][Gg]|[Ss][Ii][Tt][Ee][Bb][Uu][Ll][Bb]|[Ll][Uu][Mm][Aa][Rr]|_[Dd][Ff][Ss][-_])",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/scripts/credit_guard.py",
+              "post-failure"
+            ],
+            "timeout": 20,
+            "onFailure": "block"
+          }
+        ]
+      }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/scripts/credit_guard.py",
+              "batch"
+            ],
+            "timeout": 10,
+            "onFailure": "continue"
+          }
+        ]
+      }
+    ]
+  }
+}
