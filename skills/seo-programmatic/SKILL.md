@@ -17,12 +17,18 @@ Generate many pages only when each one carries unique, useful data for a real qu
   - product listing pages and facets → `seo-ecommerce`;
   - GBP or location citations → `seo-local`.
 
-## Inputs to gather (ask only for what's missing)
-1. The query pattern(s) and example queries.
-2. **The dataset:** source, fields per record, record count, update frequency, licence or ownership.
-3. **The template:** an existing page or design. Tech stack and how pages are rendered (SSR/SSG is preferred).
-4. **Business value:** what a visitor can do on the page (book, compare, sign up).
-5. **For existing sets:** URL patterns, sitemap, GSC Pages export, indexing report counts.
+## Inputs: decide, don't ask
+Decide each input from evidence, record the choice under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Query pattern(s) and example queries | The dataset's entity types, existing URL patterns (sitemap, crawl CSV), competitors' template folders in the SERPs | The pattern the existing pages already follow |
+| **The dataset:** source, fields per record, record count, update frequency | The file, table or repo in the request; else the fields visible on existing pages | Count only the fields you can see. Repo or database access you lack: **ask — batched at the end** |
+| Dataset licence or ownership | Terms, source attribution, the repo | Treat it as not first-party, and weigh the go/no-go that way. **Ask — batched at the end** |
+| **The template** and tech stack: how pages are rendered (SSR/SSG is preferred) | The repo's framework files; else the live page and `render_diff.py` | The live page as served |
+| **Business value:** what a visitor can do on the page (book, compare, sign up) | Calls to action on existing template pages and money pages | The site's main conversion |
+| **Existing sets:** URL patterns, sitemap | Crawl CSV, `sitemap_check.py` | Run both |
+| **Existing sets:** GSC Pages export, indexing report counts | A connector, or exports in `seo-work/` | **Ask — batched at the end.** Carry on with the crawl and sitemap |
 
 ## Workflow
 1. **Go/no-go**, before building anything. Answer each with evidence:
@@ -50,18 +56,27 @@ Generate many pages only when each one carries unique, useful data for a real qu
      - each page reachable within 3 clicks [heuristic].
    - Head: a unique title and description from fields, a self-referencing canonical, and schema matching visible data (hand off to `seo-schema`).
    - Render server-side; check with `render_diff.py` if JS fills content.
-3. **Build a sample of 50–200 pages** on staging (noindex or auth-protected) or a small production batch.
+3. **Build a sample of 50–200 pages** (code changes and deploys per autonomy level, references/autonomy.md) on an indexable build the public can't find (e.g. an IP-allowlisted staging host with no noindex and no auth), or a small production batch. Set this build's canonical base URL to the host you crawl (the staging host), so every page's canonical points to its own URL there. crawl.py skips noindex pages in its duplicate, near-duplicate and depth checks, skips pages whose canonical points to another URL in its duplicate and near-duplicate checks, and it can't log in.
 4. **Run the quality gates in parallel:**
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/crawl.py" "$STAGING_HUB" --max-pages 300 --csv seo-work/pseo.csv > seo-work/pseo-crawl.json
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/page_audit.py" "$SAMPLE_URL" --fail-on high > seo-work/pseo-page.json
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/content_score.py" "$SAMPLE_URL" --keyword "$PATTERN_INSTANCE" > seo-work/pseo-content.json
    ```
-   - `crawl.json` `duplicate-content`, `duplicate-titles` and `duplicate-descriptions` must be empty.
+   - In `seo-work/pseo-crawl.json`, `duplicate-content`, `near-duplicate-content`, `duplicate-titles` and `duplicate-descriptions` must be empty.
+   - Before trusting those gates, check that the crawl saw every generated page: `hit_page_limit` in `seo-work/pseo-crawl.json` must be false, and every URL in the sample's sitemap must have a row in `seo-work/pseo.csv`. This writes the URL list and prints the URLs with no row:
+     ```bash
+     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sitemap_check.py" "$SAMPLE_SITEMAP" --sample 0 --urls-out seo-work/pseo-urls.txt > seo-work/pseo-sitemap.json
+     PYTHONPATH="${CLAUDE_PLUGIN_ROOT}/scripts" python3 -c "import csv; from seo_lib import normalize_url; rows = {r['url'].rstrip('/') for r in csv.DictReader(open('seo-work/pseo.csv'))}; print([u for u in open('seo-work/pseo-urls.txt').read().split() if normalize_url(u).rstrip('/') not in rows])"
+     ```
+   - Every row must also have `indexable` True and a `canonical` equal to its own `url`. Pages that fail this are left out of the duplicate gates, so an empty duplicate list doesn't count as a pass. This lists the rows that fail:
+     ```bash
+     python3 -c "import csv; print([r['url'] for r in csv.DictReader(open('seo-work/pseo.csv')) if r['indexable'] != 'True' or r['canonical'].rstrip('/') != r['url'].rstrip('/')])"
+     ```
    - Exact-hash duplicates mean the template varies nothing.
    - Then do a human/LLM review of 20 random pages against the checklist in Checks.
    - **Halt the rollout if more than 5% of sampled pages fail a gate** [heuristic].
-5. **Roll out in batches:**
+5. **Roll out in batches** (each release per autonomy level, references/autonomy.md):
    - release about 5–10% of pages or one high-demand segment first;
    - put them in their own sitemap file (`sitemap-<pattern>-1.xml`) so indexing per batch is measurable in Search Console;
    - validate with `sitemap_check.py <sitemap> --sample 50`;
@@ -104,7 +119,7 @@ Generate many pages only when each one carries unique, useful data for a real qu
 - empty-data combinations return 404, not thin pages (google-rules §8, faceted navigation guidance).
 
 **Crawl budget:**
-- it only matters at roughly 1M+ pages, or 10k+ pages changing daily (google-rules §1);
+- it only matters at roughly 1M+ pages changing weekly, or 10k+ pages changing daily, or a large "Discovered – currently not indexed" backlog (google-rules §1);
 - consolidate duplicates;
 - don't rely on noindex to save budget.
 
@@ -130,7 +145,8 @@ Size and traffic estimates without data stay `[needs data]`.
   - the template spec (sections ↔ data fields, conditional rules, internal-link rules, head template);
   - QA gate results on the sample (pass/fail counts, failing URLs);
   - the batch rollout plan (segments, sitemap files, dates, success criteria: indexed %, impressions per page);
-  - pruning rules.
+  - pruning rules;
+  - **Assumptions:** the pattern, dataset fields, licence, rendering and business value assumed, with the evidence for each. Then the requests batched at the end, each with a recommendation: missing access (repo, database, GSC) and business decisions (whether to build at all, how many pages).
 - For code: the template/component and sitemap generator changes, as diffs.
 
 ## Pitfalls & myths

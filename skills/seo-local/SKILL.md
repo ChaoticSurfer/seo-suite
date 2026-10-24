@@ -19,21 +19,18 @@ Win local-pack and maps visibility through accurate, verified business data, a r
   - Online-only businesses with no physical contact. They're ineligible for a Business Profile, so send them to seo-content and seo-links.
   - International targeting (seo-international).
 
-## Inputs to gather
-- **Ground-truth details** from the owner:
-  - Legal or real-world business name exactly as on signage.
-  - Each location's address, or service areas.
-  - A local phone number the business controls.
-  - Hours, including special hours.
-  - Primary service list.
-  - Website URL per location.
-- **Business Profile access.** Ask for screenshots or exports. Never request passwords.
-- **Facts read from the profile, not invented:**
-  - Current categories.
-  - Review count and rating.
-  - Performance (searches, calls, directions, website clicks).
-- Target services × areas, and competitors who appear in the map pack.
-- Country or market. Citation sources differ by country.
+## Inputs: decide, don't ask
+Decide each input from evidence, record the choice under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| **Ground-truth details:** legal or real-world name exactly as on signage; each location's address, or service areas; a local phone number the business controls; hours, including special hours; primary services; website URL per location | Location and contact pages, the footer, LocalBusiness schema, the public Business Profile and maps listings (WebSearch) | The location page's own details, marked provisional. Where sources disagree, which string is real is the owner's call: **ask — batched at the end** |
+| **Business Profile access** | An authorised connector, or screenshots or exports from the owner. Never request passwords | **Ask — batched at the end.** Meanwhile read the public listing |
+| **Facts read from the profile, not invented:** current categories, review count and rating | The public listing (WebSearch, maps) | `[needs data]` |
+| Profile performance (searches, calls, directions, website clicks) | Owner access only | **Ask — batched at the end.** `[needs data]` until then |
+| Target services × areas | Service and location pages, `areaServed` in schema, navigation | The services and areas the site already names |
+| Competitors who appear in the map pack | WebSearch `"<primary service> <city>"` per area (indicative only, see step 7) | The businesses that recur across those results |
+| Country or market (citation sources differ by country) | ccTLD, addresses, phone country code, `<html lang>` | The country of the business address |
 
 ## Workflow
 1. **Eligibility and risk** (google-rules §7) [Google doc]:
@@ -49,16 +46,18 @@ Win local-pack and maps visibility through accurate, verified business data, a r
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/page_audit.py" "$u" > "seo-work/local-audit-$i.json" &
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/content_score.py" "$u" --keyword "<service> <city>" > "seo-work/local-content-$i.json" &
    done; wait
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/compare_pages.py" https://site/locations/tbilisi https://site/locations/batumi
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/compare_pages.py" https://site/locations/tbilisi https://site/locations/batumi --no-own-page > seo-work/local-cityswap.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/compare_pages.py" https://site/locations/tbilisi https://site/about --no-own-page > seo-work/local-template.json
+   python3 -c "import json; t = set(json.load(open('seo-work/local-template.json'))['shared_competitor_phrases']); print([p for p in json.load(open('seo-work/local-cityswap.json'))['shared_competitor_phrases'] if p not in t])"
    ```
-   - The last command is a **city-swap test.** If two location pages share most of their phrases and would still be true with the city name swapped, they are doorway-like (heuristic; doorway abuse, google-rules §4).
+   - The last three commands are a **city-swap test** (heuristic). With `--no-own-page`, `shared_competitor_phrases` is the complete list, in a stable order, of phrases found on both pages (among each page's most frequent two- and three-word phrases). It includes header, nav and footer text, so two location pages on one template always share many phrases. So run it twice: location vs location (`local-cityswap.json`), and location vs a non-location page such as `/about` (`local-template.json`), whose shared phrases are template text. The one-liner subtracts the second list from the first; judge only the remainder. If most of the remaining phrases would still be true with the city names swapped, the pages are doorway-like (doorway abuse, google-rules §4).
    - Check that the page shows the address, phone and hours exactly as on the profile, plus a map embed, directions, parking or transport, photos of the actual location, the staff or practitioners there, services offered there, and reviews or testimonials from that location.
 3. **LocalBusiness schema** (see seo-schema):
    - The most specific subtype, `name`, `address` and `telephone` with country code.
    - `geo` to at least 5 decimals, `openingHoursSpecification`, `url` of the location page.
    - `parentOrganization` → `@id` of the Organization.
    - **No `aggregateRating` for your own business on your own site.** Self-serving reviews are ineligible.
-4. **Business Profile checklist.** Draft the changes and let the owner apply them; never edit the profile yourself.
+4. **Business Profile checklist.** Draft the changes and let the owner apply them. Profile edits are always gated at every autonomy level (references/autonomy.md): edit the profile yourself only with the user's approval for that run.
    - **Name:** the real-world name only. No taglines, cities, keywords or phone numbers.
    - **Categories:** as few and as specific as possible, describing what the business *is*. Check which primary category the competitors in the map pack use.
    - **Hours:** regular and special hours. Omit them for appointment-only businesses.
@@ -71,15 +70,15 @@ Win local-pack and maps visibility through accurate, verified business data, a r
    - **No gating** (asking only happy customers), no incentives, no employee or fake reviews.
    - Reply to every review, negative ones especially: factual, polite, no customer personal data.
    - Report clearly fake reviews through the profile tools.
-   - Draft request templates only. **Never send review requests or contact real customers yourself.** Any test sends use only the user's approved test numbers and invalid fake emails.
+   - Draft request templates only; messages to real people are always gated at every autonomy level (references/autonomy.md), and these go to the business's own customers, so the owner sends them. **Never send review requests or contact real customers yourself.** Any test sends use only the user's approved test numbers and invalid fake emails.
 6. **Citations and NAP:**
-   - List where the business already appears and fix mismatches against the ground truth (name, address format, phone, URL).
+   - List where the business already appears and draft the corrections against the ground truth (name, address format, phone, URL) for the owner to apply. These listings are external accounts, and Business Profile edits are always gated at every autonomy level (references/autonomy.md): edit a listing yourself only with the user's approval for that run.
    - Core everywhere: Google Business Profile, Apple Business Connect, Bing Places, Facebook, and the main maps app in that country.
    - Country-specific directories: find them by running WebSearch for "<category> <city>". List those that actually rank or that the competitors in the map pack use, rather than assuming. For Georgia (.ge), verify which local directories and maps apps rank for the category before recommending any.
    - NAP consistency is an industry convention, not a stated Google rule (google-rules §7).
 7. **Local rank and visibility checks:**
    - WebSearch can't emulate a searcher's location, so treat its results as indicative only.
-   - For real local positions, ask the user for searches made at the location (incognito, location on), or use a paid geo-grid tracker (see Data).
+   - For real local positions, use a paid geo-grid tracker within the configured budget (see Data). Without one, report the WebSearch results as indicative and add searches made at each location (incognito, location on) to the requests batched at the end.
 8. **Local links and mentions:**
    - Local press, associations and chambers of commerce, sponsorships, partner businesses, event listings, local "best of" lists.
    - Hand outreach off to seo-links.
@@ -150,6 +149,7 @@ Win local-pack and maps visibility through accurate, verified business data, a r
 6. **Review plan**, with templates only.
 7. **Citation targets** with evidence that they rank.
 8. **Measurement baseline** (profile and Search Console numbers as given by the user, tagged [measured]).
+9. **Assumptions:** the ground-truth details, services × areas, competitors and market assumed, with the evidence for each. Then the requests batched at the end, each with a recommendation: missing access (Business Profile, Search Console, on-location searches) and the owner's calls (which NAP string is real).
 
 ## Pitfalls & myths
 - **Keyword-stuffing the profile name** may help briefly, but it is a guideline violation and a common cause of suspension.

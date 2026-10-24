@@ -15,24 +15,17 @@ Move URLs so that every old URL with value lands on its single best new equivale
   - Post-migration traffic loss.
 - **Not for:** a redesign that keeps every URL. Run seo-audit on staging and production instead, but still use the staging-protection and launch checks below.
 
-## Inputs to gather
+## Inputs: decide, don't ask
 
-1. **Move type:**
-   - Domain change.
-   - Path change.
-   - Platform change.
-   - Protocol change.
-   - Merge.
-   - Combinations. Change one thing at a time where possible (§9).
-2. The old and new hosts, the staging URL, and its access method. Never put credentials into pages; the user logs in themselves.
-3. **Launch date**, and whether the old host stays under the team's control. The old domain must stay owned and redirecting for at least a year (§9).
-4. **Exports.** Ask for these early; Search Console only keeps 16 months:
-   - Search Console top pages (16 months).
-   - Analytics landing pages.
-   - Server logs.
-   - The CMS URL list.
-   - Old sitemaps.
-   - Pages with backlinks (Ahrefs Webmaster Tools free for the verified site, or Search Console → Links → Top linked pages).
+Decide each input from evidence, record it under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Move type: domain, path, platform, protocol, merge, or a combination. Change one thing at a time where possible (§9) | Compare old and new: host, scheme, URL patterns, and the platform behind each | The type the brief describes |
+| Old and new hosts, the staging URL | The brief, and the repo's deploy config if there is one | Staging access (credentials, allowlist): ask — batched at the end. Never put credentials into pages; the user logs in themselves |
+| Launch date | The brief | Plan relative to launch day (day 0) |
+| Whether the old host stays under the team's control. The old domain must stay owned and redirecting for at least a year (§9) | The brief | Assume it stays owned and redirecting. A business decision: ask — batched at the end |
+| Exports: Search Console top pages (16 months), analytics landing pages, server logs, the CMS URL list, old sitemaps, pages with backlinks (Ahrefs Webmaster Tools free for the verified site, or Search Console → Links → Top linked pages) | Fetch what's reachable (sitemaps, crawl, Wayback CDX); use APIs and files already configured or in the workspace | Ask for the rest — batched at the end of the first run, not later: Search Console only keeps 16 months |
 
 ## Workflow
 
@@ -45,10 +38,11 @@ Move URLs so that every old URL with value lands on its single best new equivale
    python3 "$S/sitemap_check.py" https://old.example.com --sample 0 --urls-out seo-work/migration/old-sitemap-urls.txt > seo-work/migration/old-sitemap.json
    python3 "$S/crawl.py" https://old.example.com --max-pages 5000 --csv seo-work/migration/old-pages.csv > seo-work/migration/old-crawl.json
    python3 "$S/log_analyze.py" access.log* > seo-work/migration/old-logs.json
+   zgrep -h Googlebot access.log* | awk '{print $7}' | sort -u > seo-work/migration/old-log-paths.txt
    ```
-   Then merge in the Search Console pages export, analytics landing pages and top-linked pages. De-duplicate after normalising scheme, host case and trailing slash consistently.
+   `old-logs.json` shows only each bot's top 15 paths, so use it for bot hits and status codes. `old-log-paths.txt` holds every path Googlebot requested (zgrep reads plain and `.gz` logs; `$7` is the request path in combined log format). Then merge in `old-log-paths.txt` (prefixed with the old host), the Search Console pages export, analytics landing pages and top-linked pages. De-duplicate after normalising scheme, host case and trailing slash consistently.
 2. **Rank URLs by value:** clicks (GSC), conversions (analytics), referring links, bot hits (logs). The top ~20% of URLs usually carry most of the value. Map those by hand; the long tail can be mapped by pattern.
-3. **Baseline:** keep `old-crawl.json`, `pages.csv` and a GSC export of the last 28 days plus the previous 28 days. They're needed for `gsc_analyze --compare` after launch.
+3. **Baseline:** keep `old-crawl.json`, `old-pages.csv` and a GSC export of the last 28 days plus the previous 28 days. They're needed for `gsc_analyze --compare` after launch.
 
 ### Phase 2: Redirect map
 
@@ -86,14 +80,14 @@ Move URLs so that every old URL with value lands on its single best new equivale
 ### Phase 4: Launch day
 
 8. **Checklist, in order:**
-   1. Deploy the new site.
-   2. Switch on the redirects.
+   1. Deploy the new site (per autonomy level, references/autonomy.md; DNS changes and CDN/edge redirect rules are always gated).
+   2. Switch on the redirects (per autonomy level, references/autonomy.md; DNS changes and CDN/edge redirect rules are always gated).
    3. Run `redirect_check.py` on the full map against **production**.
    4. Run `robots_check.py` on the new host. Googlebot must be allowed on `/`.
    5. Run `page_audit.py` on the homepage plus one URL per template. There must be no `noindex`, and canonicals must be self-referencing.
    6. Run `sitemap_check.py` on the new host.
-   7. The user submits the new sitemap in Search Console and keeps the old sitemap available for a while so Google re-crawls the redirects.
-   8. For a domain change only, the user runs the **Change of Address** tool. Never submit it yourself; only with explicit approval, and preferably the user does it. Its rules:
+   7. Submit the new sitemap in Search Console per autonomy level (references/autonomy.md): at level 4 through an authorised connector, otherwise the user submits it. Keep the old sitemap available for a while so Google re-crawls the redirects.
+   8. For a domain change only, the user runs the **Change of Address** tool. It's always gated at every autonomy level (references/autonomy.md): submit it yourself only with the user's approval for this run, and preferably let the user do it. Its rules:
       - Domain-level properties.
       - The same owner on both properties.
       - A 301 on the homepage.
@@ -101,8 +95,8 @@ Move URLs so that every old URL with value lands on its single best new equivale
       - Signals forward for 180 days (§9).
 
       Not used for http→https, www, or path-only changes.
-   9. Optionally use IndexNow for Bing and Yandex. Only with the user's approval, since it submits URLs to third parties.
-   10. Prepare a change list for the external links the user controls (social profiles, Business Profile, directories) for the owner to apply — never edit those accounts yourself. Draft outreach for the most valuable backlinks; send nothing unless the user approves each message.
+   9. Optionally use IndexNow for Bing and Yandex, per autonomy level (references/autonomy.md), since it submits URLs to third parties.
+   10. Prepare a change list for the external links the user controls (social profiles, Business Profile, directories) for the owner to apply. These are external accounts, and Business Profile edits are always gated at every autonomy level (references/autonomy.md): edit one yourself only with the user's approval for this run. Draft outreach for the most valuable backlinks; sending it is always gated at every autonomy level (references/autonomy.md), so send nothing unless the user approves each message for this run.
 
 ### Phase 5: Monitoring
 
@@ -115,7 +109,7 @@ Move URLs so that every old URL with value lands on its single best new equivale
      ```
      Map query-level losses back to their old URL and check its redirect.
    - Expect weeks of fluctuation for a medium site (§9).
-10. **Rollback and escalation triggers** (heuristics; agree them with the user before launch):
+10. **Rollback and escalation triggers** (heuristics; list them under *Assumptions* so the team can adjust them before launch):
     - **Fix immediately:** sitewide 5xx, accidental noindex or robots disallow, redirects failing above 2% of the top 20% of URLs.
     - **Escalate:** non-brand clicks down >30% at day 14 with positions dropping (not just impressions).
     - **Investigate per URL** (not a rollback): losses concentrated on specific URLs. They're usually mapping errors.
@@ -160,8 +154,10 @@ Type: … · Launch: … · URLs inventoried: N (sources: …) · Value-ranked t
 ## Readiness (pass/fail per check, [measured])
 ## Redirect map validation: checked N · passed N · failed N (table of failures with reason)
 ## P0–P3 issues (triage.py on crawl/page/robots/sitemap JSONs + redirect failures as P0/P1)
-## Launch-day runbook (who does what; items requiring the user's approval are marked)
+## Launch-day runbook (who does what; items gated per autonomy level are marked)
+1. Deploy [per autonomy level; DNS changes always gated] · 2. Redirects on [per autonomy level; CDN/edge redirect rules always gated] · 3.–10. …
 ## Monitoring schedule + rollback triggers
+## Assumptions (move type, launch date, URL value ranking, rollback triggers: each decision and its evidence)
 ## Not verified [needs data]
 ```
 

@@ -19,7 +19,7 @@ from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
 from page_audit import audit_page
-from robots_check import group_for, is_allowed, parse_robots
+from robots_check import google_visible_robots, group_for, halts_crawling, is_allowed, parse_robots
 from schema_rules import validate_json_ld
 from seo_lib import (
     SEVERITY_ORDER, USER_AGENT, Finding, PageFacts, extract_page, fetch, is_indexable, normalize_url, print_json, registrable_host,
@@ -33,20 +33,23 @@ NEAR_DUPLICATE_MAX_PAGES = 600  # pairwise comparison cost grows with the square
 SHINGLE_WORDS = 5
 
 
+def robots_path(url: str) -> str:
+    """Path plus query string: the part of a URL robots.txt rules are matched against."""
+    parts = urllib.parse.urlsplit(url)
+    return (parts.path or "/") + (f"?{parts.query}" if parts.query else "")
+
+
 def crawlable(url: str, start_host: str, robots_group: dict | None, path_prefix: str = "/") -> bool:
     parts = urllib.parse.urlsplit(url)
     if parts.scheme not in ("http", "https") or registrable_host(url) != start_host or ASSET_EXT.search(parts.path):
         return False
     if not (parts.path or "/").startswith(path_prefix):
         return False
-    path = parts.path or "/"
-    return is_allowed(robots_group, path + (f"?{parts.query}" if parts.query else ""))[0]
+    return is_allowed(robots_group, robots_path(url))[0]
 
 
-def crawl(start: str, max_pages: int, workers: int, delay: float, path_prefix: str = "/",
+def crawl(start: str, robots_group: dict | None, max_pages: int, workers: int, delay: float, path_prefix: str = "/",
           user_agent: str = USER_AGENT) -> tuple[dict[str, PageFacts], dict[str, int], dict[str, set[str]], list[str]]:
-    robots = fetch(urllib.parse.urljoin(site_root(start), "/robots.txt"))
-    group = group_for(parse_robots(robots.text if robots.status == 200 else ""), "Googlebot")
     host = registrable_host(start)
     pages: dict[str, PageFacts] = {}
     depth = {start: 0}
@@ -61,26 +64,32 @@ def crawl(start: str, max_pages: int, workers: int, delay: float, path_prefix: s
                 pages[url] = facts
                 for link in facts.internal_links:
                     target = link["href"]
+                    if target == url:
+                        continue  # a self-link is not an inlink
                     inlinks[target].add(url)
                     if target in depth:
                         continue
                     depth[target] = depth[url] + 1
-                    if crawlable(target, host, group, path_prefix):
+                    if crawlable(target, host, robots_group, path_prefix):
                         frontier.append(target)
-                    elif registrable_host(target) == host and not ASSET_EXT.search(urllib.parse.urlsplit(target).path):
+                    elif (registrable_host(target) == host and not ASSET_EXT.search(urllib.parse.urlsplit(target).path)
+                          and not is_allowed(robots_group, robots_path(target))[0]):
                         blocked.append(target)
             time.sleep(delay)
     return pages, depth, inlinks, blocked
 
 
 def soft_404_probe(start: str) -> Finding | None:
-    """Request a URL that cannot exist; anything but 404/410 means missing pages look like real ones."""
+    """Request a URL that cannot exist. Google treats every 4xx but 429 alike; a 2xx (even after redirects) is a soft 404."""
     probe = urllib.parse.urljoin(site_root(start), f"/seo-suite-404-probe-{int(time.time())}")
     result = fetch(probe)
-    if result.status in (404, 410) or result.status is None:
+    if result.status is None or (400 <= result.status < 500 and result.status != 429):
         return None
     landing = result.final_url if result.redirect_chain else probe
-    return Finding("soft-404", "high", f"A non-existent URL answered {result.status} (via {len(result.redirect_chain)} redirects) instead of 404/410", landing)
+    answered = f"A non-existent URL answered {result.status} (via {len(result.redirect_chain)} redirects)"
+    if 200 <= result.status < 300:
+        return Finding("soft-404", "high", f"{answered}; missing URLs should return a 4xx such as 404/410", landing)
+    return Finding("missing-url-server-error", "medium", f"{answered} instead of 404/410", landing)
 
 
 def _content_hash(facts: PageFacts) -> str:
@@ -125,14 +134,17 @@ def site_findings(pages: dict[str, PageFacts], depth: dict[str, int], inlinks: d
     if broken:
         refs = [f"{u} [{s}] ← {next(iter(inlinks[u]), 'start')}" for u, s in list(broken.items())[:5]]
         out.append(Finding("broken-internal-links", "high", f"{len(broken)} internally linked URLs return errors", "; ".join(refs)))
-    redirected = [u for u, f in pages.items() if f.redirect_chain]
+    redirected = [u for u, f in pages.items() if f.redirect_chain and inlinks.get(u)]  # not the start URL unless linked
     if redirected:
         out.append(Finding("links-to-redirects", "medium", f"{len(redirected)} internally linked URLs redirect; update links to the final URL", sample(redirected)))
 
     indexable = {u: f for u, f in pages.items() if is_indexable(f) and not f.redirect_chain}
+    # Variants with one canonical pointing elsewhere are already consolidated (same test as page_audit's canonical-elsewhere).
+    dedupe_pool = {u: f for u, f in indexable.items()
+                   if f.canonical_count != 1 or f.canonical.rstrip("/") == f.final_url.rstrip("/")}
     for label, key in DUPLICATE_CHECKS:
         groups = defaultdict(list)
-        for url, facts in indexable.items():
+        for url, facts in dedupe_pool.items():
             value = key(facts)
             if value:
                 groups[value].append(url)
@@ -143,7 +155,7 @@ def site_findings(pages: dict[str, PageFacts], depth: dict[str, int], inlinks: d
                                f"{sum(len(d) for d in dupes)} indexable pages share {label} in {len(dupes)} groups",
                                " | ".join(sample(d) for d in dupes[:3])))
 
-    near = near_duplicates(indexable)
+    near = near_duplicates(dedupe_pool)
     if near:
         out.append(Finding("near-duplicate-content", "medium", f"{len(near)} pairs of indexable pages are ≥{NEAR_DUPLICATE_JACCARD:.0%} identical",
                            "; ".join(f"{a} ≈ {b} ({s})" for a, b, s in near[:5])))
@@ -197,8 +209,18 @@ def main() -> int:
     ap.add_argument("--user-agent", default=USER_AGENT, help="User-Agent header (e.g. to compare what bots are served)")
     args = ap.parse_args()
 
-    pages, depth, inlinks, blocked = crawl(normalize_url(args.start), args.max_pages, args.workers, args.delay,
-                                           args.path_prefix, args.user_agent)
+    start = normalize_url(args.start)
+    robots = fetch(urllib.parse.urljoin(site_root(start), "/robots.txt"))
+    # Google treats a robots.txt it cannot reach through redirects as a 404 (no rules); only 5xx/429/network errors stop it.
+    if (robots.status is None and not robots.redirect_failed) or halts_crawling(robots.status):
+        stop = Finding("robots-5xx", "critical", f"robots.txt returned {robots.status or robots.error}: Google stops crawling the site, so this crawl did not start")
+        print_json({"start": args.start, "pages_crawled": 0, "site_findings": [stop]})
+        return 0
+    robots_group = group_for(parse_robots(google_visible_robots(robots.text) if robots.status == 200 else ""), "Googlebot")
+    # The frontier holds normalize_url() forms, so /café/, /caf%c3%a9/ and /caf%C3%A9/ must all become /caf%C3%A9/.
+    path_prefix = urllib.parse.urlsplit(normalize_url(urllib.parse.urljoin(start, args.path_prefix))).path
+    pages, depth, inlinks, blocked = crawl(start, robots_group, args.max_pages, args.workers, args.delay,
+                                           path_prefix, args.user_agent)
     sitemap_urls = []
     if args.sitemap_urls:
         with open(args.sitemap_urls, encoding="utf-8") as fh:

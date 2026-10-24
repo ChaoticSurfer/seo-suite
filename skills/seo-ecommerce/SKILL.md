@@ -19,20 +19,25 @@ Get the right category and product URLs crawled, indexed and shown in rich, Shop
   - A one-off schema fix (seo-schema).
   - A move to a new platform (seo-migration, which then hands back here for the new templates).
 
-## Inputs to gather
-- Platform and theme or headless stack. Catalogue size (SKUs, categories). Languages and currencies.
-- URL patterns: product, category, filter (parameters or paths), sort, internal search, pagination, cart/account, tracking parameters.
-- How stock status, discontinued products and variants are handled today.
-- **Merchant Center (read-only):** diagnostics and the feed source. Ask for a feed sample of about 20 top SKUs.
-- **Search Console:** Pages and Merchant listings / Product snippets reports, plus a query+page performance export.
-- Top-revenue categories and SKUs. Optimise those first.
+## Inputs: decide, don't ask
+Decide each input from evidence, record the choice under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Platform and theme or headless stack | Page source and headers (e.g. `cdn.shopify.com`, `/collections/`, `wp-content`, `?add-to-cart=`), the generator meta tag, the repo | Unknown: skip the platform specifics and check rendering with `render_diff.py` |
+| Catalogue size (SKUs, categories); languages and currencies | Product and category sitemap counts; `<html lang>`, hreflang, `priceCurrency` and visible prices | The sitemap counts |
+| URL patterns: product, category, filter (parameters or paths), sort, internal search, pagination, cart/account, tracking parameters | Crawl CSV and sitemap; links on category templates | The patterns the crawl finds |
+| How stock status, discontinued products and variants are handled today | Sampled out-of-stock and variant pages (`availability` in JSON-LD, `?variant=` URLs); sitemap URLs that 404 or redirect | The behaviour the samples show |
+| Top-revenue categories and SKUs (optimise those first) | GA4 e-commerce data if connected; else main-nav and mega-menu categories, "top sellers" blocks, GSC clicks, crawl inlinks | Main-nav categories and their top-seller SKUs |
+| **Merchant Center (read-only):** diagnostics, the feed source, a feed sample of about 20 top SKUs | A connector or an export | **Ask — batched at the end.** Run the parity check on page vs markup and leave the feed column `[needs data]` |
+| **Search Console:** Pages and Merchant listings / Product snippets reports, plus a query+page performance export | A connector or exports in `seo-work/` | **Ask — batched at the end.** Carry on with the crawl |
 
 ## Workflow
 1. **Inventory, all three in parallel:**
    ```bash
    mkdir -p seo-work
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sitemap_check.py" https://shop --sample 50 --urls-out seo-work/shop-sitemap-urls.txt > seo-work/shop-sitemap.json &
-   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/robots_check.py" https://shop --path "/collections/shoes?sort_by=price" --path "/search?q=x" --path "/shoes?color=red&size=9" > seo-work/shop-robots.json &
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/robots_check.py" https://shop --path / --path "/collections/shoes?sort_by=price" --path "/search?q=x" --path "/shoes?color=red&size=9" > seo-work/shop-robots.json &
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/crawl.py" https://shop --max-pages 1500 --csv seo-work/shop-pages.csv > seo-work/shop-crawl.json &
    wait
    ```
@@ -45,8 +50,8 @@ Get the right category and product URLs crawled, indexed and shown in rich, Shop
    - Run `content_score.py URL --keyword "<category term>"`.
    - On headless or JS themes, run `render_diff.py` to confirm that price, links, product grid and JSON-LD are in the raw HTML.
 4. **Parity check for about 20 top SKUs.** For each, compare the visible price, currency, availability, GTIN and image against the JSON-LD `offers` and the feed row. Any mismatch causes listing disapprovals. Write the result as a table.
-5. **Set index rules.** Make a pattern table (see Checks) and implement it in robots.txt, meta robots, canonicals and internal links.
-6. **Fix the lifecycle** for out-of-stock, discontinued and seasonal products (see Checks).
+5. **Set index rules.** Make a pattern table (see Checks) and implement it in robots.txt, meta robots, canonicals and internal links, per autonomy level (references/autonomy.md).
+6. **Fix the lifecycle** for out-of-stock, discontinued and seasonal products (see Checks), implemented the same way.
 7. **Internal linking:**
    - Category hierarchy with breadcrumbs (BreadcrumbList).
    - Links from the home page and mega-menu to money categories.
@@ -144,6 +149,7 @@ Get the right category and product URLs crawled, indexed and shown in rich, Shop
 6. **Internal-link plan.**
 7. **Content priorities** by revenue.
 8. **The `triage.py` plan.**
+9. **Assumptions:** the platform, catalogue size, patterns and top-revenue pages assumed, with the evidence for each. Then the requests batched at the end, each with a recommendation: missing access (Merchant Center, Search Console, GA4, logs).
 
 ## Pitfalls & myths
 - **Canonicalising every filter to the category while linking to filters sitewide:** Google may ignore those canonicals, and you still pay the crawl cost.

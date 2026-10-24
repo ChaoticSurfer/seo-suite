@@ -14,7 +14,7 @@ import csv
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
-from seo_lib import Finding, extract_page, fetch, is_indexable, print_json
+from seo_lib import Finding, extract_page, fetch, is_indexable, print_json, to_uri
 
 OLD_HEADERS = {"old", "source", "from", "old_url", "source_url"}
 NEW_HEADERS = {"new", "target", "to", "new_url", "target_url", "destination"}
@@ -28,7 +28,9 @@ def load_map(path: str) -> list[tuple[str, str]]:
         new_col = next((headers[h] for h in headers if h in NEW_HEADERS), None)
         if not old_col or not new_col:
             raise SystemExit(f"need old/new columns, got {reader.fieldnames}")
-        return [(row[old_col].strip(), row[new_col].strip()) for row in reader if row[old_col].strip()]
+        # DictReader fills the cells of a short row with None.
+        pairs = [((row[old_col] or "").strip(), (row[new_col] or "").strip()) for row in reader]
+        return [(old, new) for old, new in pairs if old]
 
 
 def check(pair: tuple[str, str]) -> dict:
@@ -44,7 +46,9 @@ def check(pair: tuple[str, str]) -> dict:
         temporary = [s for _, s in facts.redirect_chain if s in (302, 303, 307)]
         if temporary:
             problems.append(f"temporary redirect {temporary}")
-    if facts.final_url.rstrip("/") != expected.rstrip("/"):
+    if not expected:
+        problems.append("no new URL in the map")
+    elif facts.final_url.rstrip("/") != to_uri(expected).rstrip("/"):  # fetch() returns final_url in to_uri() form
         problems.append(f"lands on {facts.final_url}")
     if facts.status != 200:
         problems.append(f"target HTTP {facts.status}")

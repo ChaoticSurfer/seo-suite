@@ -20,11 +20,15 @@ Make every template carry valid, truthful JSON-LD for the Google features it is 
   - Video watch-page eligibility (seo-media).
   - Getting cited by AI. Structured data is **not required** for Google's AI features (google-rules §10).
 
-## Inputs to gather
-- One URL per template: home, about, article, category, product, location, event, job, video page, profile, forum thread.
-- The visible facts each template shows, such as name, price, currency, availability, author, dates, address, hours and ratings. **Markup may only repeat what the page shows.**
-- Stack and how markup is emitted: server-rendered, client-injected, Google Tag Manager, or an SEO plugin. Note any duplicate emitters.
-- Search Console exports if available: Enhancements (per type), Merchant listings, Product snippets, and URL Inspection results.
+## Inputs: decide, don't ask
+Decide each input from evidence, record it under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| One URL per template: home, about, article, category, product, location, event, job, video page, profile, forum thread | The URLs given; URL patterns in the sitemap or a crawl | Home plus the URLs given |
+| The visible facts each template shows, such as name, price, currency, availability, author, dates, address, hours and ratings. **Markup may only repeat what the page shows.** | The page itself: `page_audit.py --facts`, or the rendered DOM | Not visible: leave the property out |
+| Stack and how markup is emitted: server-rendered, client-injected, Google Tag Manager, or an SEO plugin. Note any duplicate emitters | The repo; raw vs rendered HTML (step 2); several blocks with the same `@type` | No markup yet: plan server-rendered JSON-LD (step 2) |
+| Search Console exports: Enhancements (per type), Merchant listings, Product snippets, and URL Inspection results | Exports already in the workspace; the URL Inspection API when Search Console access is configured | Run without them. Ask — batched at the end, naming what each adds |
 
 ## Workflow
 1. **Inventory every template, in parallel.**
@@ -48,24 +52,23 @@ Make every template carry valid, truthful JSON-LD for the Google features it is 
 5. **Generate missing markup from the templates below.**
    - Use one `@graph` per page.
    - Give every entity a stable `@id` (`https://site/#organization`, `{{url}}#article`) and reference it rather than repeating it.
-6. **Place the markup for the stack** (see Placement). Remove duplicate emitters, e.g. a theme and a plugin both emitting Product.
+6. **Place the markup for the stack** (see Placement), per autonomy level (references/autonomy.md). Remove duplicate emitters, e.g. a theme and a plugin both emitting Product.
 7. **Validate:**
    - Re-run `page_audit.py` on staging or production, or with `--file` on the rendered HTML.
-   - The user then checks the [Rich Results Test](https://search.google.com/test/rich-results) (Google eligibility) and the [Schema Markup Validator](https://validator.schema.org/) (vocabulary). Both are manual. There is no confirmed public Rich Results API (google-rules §12).
+   - List the [Rich Results Test](https://search.google.com/test/rich-results) (Google eligibility) and the [Schema Markup Validator](https://validator.schema.org/) (vocabulary) in the report for the user to run. Both are manual. There is no confirmed public Rich Results API (google-rules §11).
    - The URL Inspection API (free, 2,000 calls/day/site) reports detected rich results for indexed URLs.
 8. **Prioritise:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/triage.py" seo-work/schema-*.json`.
 9. **Monitor:** Search Console → Enhancements (one report per type), Merchant listings and Product snippets. Counts update over days to weeks after recrawl.
 
 ## Checks
 **What `schema_rules.py` checks, and what it doesn't.**
-- **Checked:** top-level presence of required and recommended properties per `@type` (including `@graph`, nested typed nodes and LocalBusiness subtypes), retired types, and missing `@context`.
+- **Checked:** top-level presence of required and recommended properties per `@type` (including `@graph`, nested typed nodes such as ProductGroup, OfferShippingDetails and MerchantReturnPolicy, LocalBusiness subtypes, and the presence of Event `location.address`), retired types, and missing `@context`.
 - **Not checked, so read the JSON yourself:**
-  - Nested values: `offers.price` > 0, `location.address`, `shippingDetails` / `hasMerchantReturnPolicy` contents, `reviewRating.ratingValue`.
+  - Nested values: `offers.price` > 0, `reviewRating.ratingValue`, the contents of `location.address` (only its presence is checked), and any nested object without an `@type` (e.g. an untyped `shippingDetails` or `hasMerchantReturnPolicy` isn't checked against the OfferShippingDetails/MerchantReturnPolicy rules).
   - Image size and aspect ratio.
   - Date formats.
   - Parity with visible content.
   - Microdata and RDFa (only their item types are listed).
-  - `ProductGroup`, `OfferShippingDetails`, `MerchantReturnPolicy`.
 - Note that it flags `Course` as retired. That refers to Course *info*. The Course **list** carousel (an ItemList of Course) still exists.
 
 **Current Google Search Gallery** (25 features, google-rules §5) [Google doc]:
@@ -91,7 +94,7 @@ Make every template carry valid, truthful JSON-LD for the Google features it is 
 | BreadcrumbList | `itemListElement` with **≥2** ListItems | Each has `position`, `name`, `item`. `item` may be omitted only on the last crumb |
 | Product (snippet) | `name` + one of `review` / `aggregateRating` / `offers` | Offer: `price`. AggregateOffer: `lowPrice` + `priceCurrency`. A past `priceValidUntil` can suppress the result. Pros and cons (`positiveNotes`/`negativeNotes`, ≥2) on **editorial** review pages only |
 | Product (merchant listing) | `name`, `image`, `offers` as **Offer** (not AggregateOffer) with `price` > 0 + `priceCurrency` | `shippingDetails` → OfferShippingDetails: `deliveryTime` (`handlingTime`/`transitTime` with min/max and unitCode `DAY`), `shippingDestination.addressCountry`, `shippingRate` (value + currency; 0 = free). `hasMerchantReturnPolicy`: `applicableCountry`, `returnPolicyCategory`, `merchantReturnDays` if the window is finite. GTINs are numeric, never URLs. A Merchant Center feed overrides the markup |
-| ProductGroup (variants) | `name`, `productGroupID` | `variesBy` (schema.org color/size/material/pattern/suggestedAge/suggestedGender). `hasVariant` ⇄ `isVariantOf`. Single-page: one canonical plus a preselect URL per variant. Multi-page: no group `url`, full group repeated on each page |
+| ProductGroup (variants) | `name` | `productGroupID` on the group, or `inProductGroupWithID` on every variant. `variesBy` (schema.org color/size/material/pattern/suggestedAge/suggestedGender). `hasVariant` ⇄ `isVariantOf`. Single-page: one canonical plus a preselect URL per variant. Multi-page: no group `url`, full group repeated on each page |
 | Review / AggregateRating | Review: `author` (name <100 chars), `itemReviewed` (unless nested), `reviewRating.ratingValue`. Aggregate: `ratingValue` + `ratingCount` or `reviewCount` | **Self-serving** reviews of your own LocalBusiness/Organization on your own site are ineligible. No fake or undisclosed incentivised reviews |
 | Organization | none | `logo` ≥112×112 px, crawlable, readable on white. Put it on the home or about page. Use the most specific subtype (`OnlineStore`, `EducationalOrganization`…). `sameAs` lists official profiles |
 | LocalBusiness | `name`, `address` | `telephone` with country code, `geo` ≥5 decimals, `openingHoursSpecification` (hh:mm:ss), `priceRange` <100 chars |
@@ -130,7 +133,7 @@ Replace every `{{…}}` with a value visible on the page. If there's no value, d
 ```
 ```json
 {"@context":"https://schema.org","@type":"Product","@id":"{{url}}#product","name":"{{name}}","image":["{{img}}"],"description":"{{desc}}",
- "sku":"{{sku}}","gtin13":"{{gtin}}","brand":{"@type":"Brand","name":"{{brand}}"},
+ "sku":"{{sku}}","gtin":"{{gtin}}","brand":{"@type":"Brand","name":"{{brand}}"},
  "offers":{"@type":"Offer","url":"{{url}}","price":"{{price}}","priceCurrency":"{{ISO4217}}","availability":"https://schema.org/InStock",
   "itemCondition":"https://schema.org/NewCondition",
   "shippingDetails":{"@type":"OfferShippingDetails","shippingRate":{"@type":"MonetaryAmount","value":"{{ship_cost}}","currency":"{{ISO4217}}"},
@@ -183,6 +186,7 @@ For each template:
 - Parity issues, each naming the visible element vs the markup value.
 - The proposed JSON-LD as a diff in the right file.
 - The validation step and the Search Console report to watch.
+- Assumptions: the templates, stack and emitters decided from evidence, and the evidence for each.
 - End with the `triage.py` plan.
 
 ## Pitfalls & myths

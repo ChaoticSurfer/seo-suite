@@ -20,64 +20,70 @@ Make sure every page that should rank can be crawled, rendered, indexed and serv
   - Adding an SEO regression gate to CI.
 - **Not for:** prioritising across all areas (seo-audit), redirect maps for a move (seo-migration), hreflang clusters (seo-international), or structured data authoring (seo-schema).
 
-## Inputs to gather
+## Inputs: decide, don't ask
 
-1. The affected URLs or URL patterns, plus the Search Console "Pages" report reason if the user has it (e.g. "Crawled – currently not indexed").
-2. Is the site built from a repo in this workspace? If so, which framework and version? Check `package.json`, `composer.json`, `requirements.txt` and `Gemfile`.
-3. Hosting and CDN: Cloudflare, Vercel, Netlify, nginx. This decides where headers, redirects and bot rules live.
-4. Optional:
-   - Access logs (the last 7–30 days).
-   - A `PSI_API_KEY`.
-   - The Search Console Crawl Stats screenshot or export.
+Decide each input from evidence, record it under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Affected URLs or URL patterns | The URLs given; otherwise the crawl's non-200, noindex, canonical and robots-blocked findings | Home plus one URL per template |
+| Search Console "Pages" report reason (e.g. "Crawled – currently not indexed") | Search Console, when access is configured | `[needs data]`. Access: ask — batched at the end |
+| Repo, framework and version | `package.json`, `composer.json`, `requirements.txt` and `Gemfile` in this workspace | No repo: no codebase mode. Repo access: ask — batched at the end |
+| Hosting and CDN (Cloudflare, Vercel, Netlify, nginx): decides where headers, redirects and bot rules live | `facts.response_headers` from `page_audit.py --facts`; config files in the repo | Unknown: give each fix as the header, redirect or bot rule it needs, not a host-specific file |
+| Access logs (the last 7–30 days), a `PSI_API_KEY`, the Search Console Crawl Stats export | What's configured or already in the workspace | Run without them. Ask — batched at the end, naming what each adds |
 
 ## Workflow
 
-`S="${CLAUDE_PLUGIN_ROOT}/scripts"`. Run independent checks in parallel.
+`S="${CLAUDE_PLUGIN_ROOT}/scripts"`. Run independent checks in parallel. Write this skill's outputs to `seo-work/technical/`, so the triage in step 7 doesn't pick up other skills' JSON from `seo-work/`.
 
 1. **Access and directives:**
    ```bash
-   python3 "$S/robots_check.py" https://example.com --path /affected/path --path "/search?q=x"
-   python3 "$S/page_audit.py" https://example.com/affected/path --facts
+   mkdir -p seo-work/technical
+   python3 "$S/robots_check.py" https://example.com --path / --path /affected/path --path "/search?q=x" > seo-work/technical/robots.json
+   python3 "$S/page_audit.py" https://example.com/affected/path --facts > seo-work/technical/page.json
    ```
-   Read the robots verdict for Googlebot, the meta robots and `X-Robots-Tag`, the canonical, the status code and the redirect chain. To test a draft robots.txt before deploying it, use `robots_check.py --file draft-robots.txt --path …`.
+   Read the robots verdict for Googlebot, the meta robots and `X-Robots-Tag`, the canonical, the status code and the redirect chain. Keep `--path /`: the site-wide Googlebot and answer-engine block findings are only raised for `/`. To test a draft robots.txt before deploying it, use `robots_check.py --file draft-robots.txt --path / --path …`.
 2. **Sitemaps:**
    ```bash
-   python3 "$S/sitemap_check.py" https://example.com --sample 50 --urls-out seo-work/sitemap-urls.txt
+   python3 "$S/sitemap_check.py" https://example.com --sample 50 --urls-out seo-work/technical/sitemap-urls.txt > seo-work/technical/sitemap.json
    ```
 3. **Site-wide crawl:**
    ```bash
-   python3 "$S/crawl.py" https://example.com --max-pages 500 --sitemap-urls seo-work/sitemap-urls.txt --csv seo-work/pages.csv
+   python3 "$S/crawl.py" https://example.com --max-pages 500 --sitemap-urls seo-work/technical/sitemap-urls.txt --csv seo-work/technical/pages.csv > seo-work/technical/crawl.json
    ```
    This finds broken links, redirects, duplicates, depth, orphans, canonical targets, the soft-404 probe and URLs blocked by robots.txt.
 4. **Rendering:**
    1. Load the page in the built-in browser.
    2. Save `document.documentElement.outerHTML` to a file.
-   3. Run `render_diff.py URL --rendered file.html`.
+   3. Run `render_diff.py URL --rendered file.html > seo-work/technical/render.json`.
    4. If the title, canonical or robots tags change after JS, or the content and links only appear after JS, the page needs SSR/SSG or pre-rendering (§1).
-5. **Performance:** run `psi.py URL --strategy mobile` (then desktop) per template.
+5. **Performance:** run `psi.py URL --strategy mobile > seo-work/technical/psi-<template>-mobile.json` per template, then the same with `desktop`.
    - Field `p75` is the truth. Lab opportunities explain why.
    - For INP, use the field number and find long tasks with DevTools in the built-in browser.
 6. **Logs, if provided.** This shows Googlebot's real crawl:
    ```bash
-   python3 "$S/log_analyze.py" access.log* --verify-dns --sitemap-urls seo-work/sitemap-urls.txt
+   python3 "$S/log_analyze.py" access.log* --verify-dns --sitemap-urls seo-work/technical/sitemap-urls.txt > seo-work/technical/logs.json
    ```
    Look at:
    - The share of crawl spent on parameter URLs.
    - Errors served to bots.
    - Sections bots ignore.
-   - Fake "Googlebot" IPs (`unverified_ips`).
+   - Fake "Googlebot" IPs (`unverified_ips`: the reverse DNS name is missing or outside Google's domains, or doesn't resolve back to the IP). `unverifiable_ips` are IPs where the forward lookup failed or the log's host field isn't an IP; they aren't proof of a fake. Check them against Google's published IP ranges before blocking.
    - Sitemap URLs that were never crawled.
 7. **Triage:**
    ```bash
-   python3 "$S/triage.py" seo-work/*.json
+   python3 "$S/triage.py" seo-work/technical/*.json
    ```
    Explain the cause of each P0/P1 and give the exact fix: header, config line, template file.
-8. **Codebase mode** (see below): implement fixes as diffs, then re-run step 1 or page_audit to verify.
-9. **CI mode.** Add a job that runs:
+8. **Codebase mode** (see below): implement fixes as diffs per autonomy level (references/autonomy.md), then re-run step 1 or page_audit to verify.
+9. **CI mode.** Add a job that audits the preview's HTML as a file, with the production URL as the base:
    ```bash
-   python3 scripts/page_audit.py "$PREVIEW_URL/<path>" --fail-on high
+   curl -sf "$PREVIEW_URL/<path>" -o page.html && python3 scripts/page_audit.py --file page.html --base-url "https://<production-host>/<path>" --fail-on high
    ```
-   Run it per key template. It exits 1 on any high or critical finding. Copy the scripts into the repo or pin the plugin path. Pair it with a robots.txt test using `robots_check.py --file public/robots.txt --path /`.
+   If the preview is protected, add `-H "x-vercel-protection-bypass: $BYPASS_SECRET"` to the curl call, with the project's Protection Bypass for Automation secret stored as a CI secret. A live audit of a preview always fails: preview deployments (Vercel, Netlify) send `X-Robots-Tag: noindex`, and preview builds keep the production canonical (`noindex` / `canonical-elsewhere`). File mode skips header checks (X-Robots-Tag, HSTS, compression), so check those with a live `page_audit.py` run against production. Run it per key template. It exits 1 on any high or critical finding. Copy the scripts into the repo or pin the plugin path. Pair it with a robots.txt test. `robots_check.py` has no `--fail-on` and exits 0 even on a critical finding, so fail the job on its findings:
+   ```bash
+   python3 scripts/robots_check.py --file public/robots.txt --path / | python3 -c "import json, sys; sys.exit(any(f['severity'] in ('critical', 'high') for f in json.load(sys.stdin)['findings']))"
+   ```
 
 ## Checks
 
@@ -139,18 +145,18 @@ Make sure every page that should rank can be crawled, rendered, indexed and serv
   - Don't canonicalize page 2+ to page 1.
   - `rel=next/prev` is unused by Google.
   - Infinite scroll needs paginated fallback links.
-- **Crawl budget** (§1): only matters for sites with ~1M+ pages, or 10k+ pages changing daily, or a large "Discovered – not indexed" count.
+- **Crawl budget** (§1): only matters for sites with ~1M+ pages changing weekly, or 10k+ pages changing daily, or a large "Discovered – not indexed" count.
   - **Levers:** consolidate duplicates, 404 removed pages, fix soft 404s, avoid chains, support 304/ETag, keep the servers fast.
   - **Not levers:** noindex and temporary robots.txt blocks.
 
 ## Codebase mode (framework fixes)
 
-Read the existing files first and match their style. Show a diff before writing anything.
+Read the existing files first and match their style. Show a diff, and write it per autonomy level (references/autonomy.md).
 
 - **Next.js App Router:**
   - Use `export const metadata` / `generateMetadata()` with `title.template`, `alternates.canonical` (absolute; set `metadataBase`), `robots`, `openGraph`.
   - Add `app/sitemap.ts` (use `generateSitemaps` for >50k URLs) and `app/robots.ts`.
-  - Use `next/image` with `priority` on the LCP image.
+  - Use `next/image` with `fetchPriority="high"` (or `loading="eager"`) on the LCP image; use `preload` only when you need a `<link>` in `<head>` (Next.js 16+; on ≤15 the equivalent is `priority`).
   - Return `notFound()` for missing data so the status is 404, not a soft 404.
   - Avoid `'use client'` on content-bearing pages.
   - Check the `__NEXT_DATA__`/RSC payload size against the 2 MB HTML limit.
@@ -175,7 +181,7 @@ Read the existing files first and match their style. Show a diff before writing 
   - Put the `<title>`, meta description, canonical and robots in the base template, with per-view blocks that override them.
   - Return 404 from views for missing records, not a 200 "not found" page.
   - Generate sitemaps from the ORM (Django `sitemaps` framework, Rails `sitemap_generator`; for Frappe, a `www/sitemap.xml` page or a hook).
-- **CDN / edge** (Cloudflare, Vercel, Netlify): redirects and headers live in config (`vercel.ts`/`vercel.json` redirects, `_redirects`, Cloudflare rules). Check that bot management doesn't challenge verified crawlers. **Changing CDN or bot settings needs the user's explicit approval.**
+- **CDN / edge** (Cloudflare, Vercel, Netlify): redirects and headers live in config (`vercel.ts`/`vercel.json` redirects, `_redirects`, Cloudflare rules). Check that bot management doesn't challenge verified crawlers. **Changing CDN or bot settings is always gated at every autonomy level (references/autonomy.md): change them only with the user's approval for that run.**
 
 ## Data: free vs paid
 
@@ -201,6 +207,7 @@ Read the existing files first and match their style. Show a diff before writing 
 - **Close with:**
   - A P0–P3 table.
   - "Verified after fix", with before/after script output for anything changed.
+  - Assumptions: the URLs, framework and host decided from evidence, and the evidence for each.
   - The open `[needs data]` items.
 
 ## Pitfalls & myths

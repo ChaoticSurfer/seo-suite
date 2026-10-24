@@ -19,12 +19,16 @@ Make media indexable, eligible for its own surfaces (Images, Video, Discover, To
   - Core Web Vitals beyond the LCP image (seo-technical).
   - Generic article schema (seo-schema).
 
-## Inputs to gather
-- **Templates that carry media:** article, product, gallery, video watch page, category with video.
-- **Where media is hosted.** An image or CDN host's own robots.txt governs those files.
-- **Video:** platform (YouTube, Vimeo, Wistia, self-hosted), whether each video has its own watch page, transcripts and chapters.
-- **Publishers:** whether the site appears in Google News, publishing volume, bylines, dates.
-- **Search Console:** Performance by search type (Image, Video, News, Discover), the Video indexing report and the Discover report. The Discover report only appears once the site reaches a minimum number of impressions.
+## Inputs: decide, don't ask
+Decide each input from evidence, record it under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| **Templates that carry media:** article, product, gallery, video watch page, category with video | URL patterns in the sitemap or a crawl; `summary.images` and `facts.iframes` in the page audits | The URLs given, plus the home page |
+| **Where media is hosted.** An image or CDN host's own robots.txt governs those files | The hosts in `facts.images` | The page's own host |
+| **Video:** platform (YouTube, Vimeo, Wistia, self-hosted), whether each video has its own watch page, transcripts and chapters | `facts.iframes` and `<video>` tags in the page HTML; the page layout (step 3); the page text | No video found: skip the video steps |
+| **Publishers:** whether the site appears in Google News, publishing volume, bylines, dates | `news_entries` in the sitemap check; Article schema; dated, bylined articles | Not a publisher unless that evidence exists |
+| **Search Console:** Performance by search type (Image, Video, News, Discover), the Video indexing report and the Discover report. The Discover report only appears once the site reaches a minimum number of impressions | The Search Console API or exports in the workspace, when available | Run without them. Ask — batched at the end, naming what each adds |
 
 ## Workflow
 1. **Inventory, all in parallel:**
@@ -42,7 +46,7 @@ Make media indexable, eligible for its own surfaces (Images, Video, Discover, To
    - **Page audits:** `img-alt-missing`, `img-no-dimensions`, `lcp-lazy`, `img-legacy-formats`, `og-missing`, `snippet-blocked`.
    - **Sitemap check:** `files[].image_entries`, `video_entries`, `news_entries`.
    - **PSI:** `lcp_element` and `top_opportunities`.
-   - **CDN robots:** whether Googlebot is allowed on the CDN host. The matrix has no Googlebot-Image row. Googlebot-Image follows the Googlebot group unless robots.txt has a `User-agent: Googlebot-Image` group, so check the file for one.
+   - **CDN robots:** whether Googlebot is allowed on the CDN host. Read `matrix['Googlebot-Image']`: it uses a `User-agent: Googlebot-Image` group if one exists, otherwise the Googlebot group (or `*` if there is no Googlebot group).
 2. **Images:** fix in this order. First indexability: `<img src>`, not CSS backgrounds, and not blocked. Then the LCP image. Then alt text and filenames. Then formats and sizes. Then sitemaps.
 3. **Video:**
    - List every page with a video and label it a **watch page** (the video is the page's main purpose) or **embedded supporting video**. Only watch pages get video results.
@@ -149,11 +153,12 @@ Make media indexable, eligible for its own surfaces (Images, Video, Discover, To
 
 ## Output
 1. **Media inventory by template** [measured].
-2. **Image fix list:** the LCP image first, then indexability, alt text, formats and the sitemap.
+2. **Image fix list:** indexability first, then the LCP image, alt text, formats and the sitemap.
 3. **Video classification:** watch page vs embedded, with schema and sitemap entries proposed per watch page.
 4. **Discover and News eligibility checklist** with pass/fail per item.
 5. **The `triage.py` plan.**
 6. The Search Console reports to watch.
+7. **Assumptions:** the templates, hosts, video platforms and publisher status decided from evidence, and the evidence for each.
 
 ## Pitfalls & myths
 - **Product or hero images set as CSS backgrounds** never appear in Image search.

@@ -102,8 +102,8 @@ say they're experienced.
     interstitials.
   - Mobile parity: the same content, structured data, meta and alt text as desktop. §2.
 - **Crawl budget**
-  - Only matters at roughly 1M+ pages, or 10k+ pages changing daily, or a large "Discovered – currently not
-    indexed" backlog.
+  - Only matters at roughly 1M+ pages changing weekly, or 10k+ pages changing daily, or a large "Discovered –
+    currently not indexed" backlog.
   - Check with log files.
   - noindex doesn't save budget.
 - **Environments**
@@ -129,8 +129,17 @@ say they're experienced.
   reverse+forward DNS verification of claimed Googlebots.
 - **Render diffs** at the template level. Capture the DOM per template via the browser, then run
   `render_diff.py`.
-- **CI gate.** `page_audit.py <preview-url> --fail-on high` in pull-request checks, run against preview
-  deployments.
+- **CI gate.** In pull-request checks, audit the preview's HTML as a file, with the production URL as the base:
+  ```bash
+  curl -sf "$PREVIEW_URL/<path>" -o page.html && python3 scripts/page_audit.py --file page.html --base-url "https://<production-host>/<path>" --fail-on high
+  ```
+  If the preview is protected, add `-H "x-vercel-protection-bypass: $BYPASS_SECRET"` to the curl call, with
+  the project's Protection Bypass for Automation secret stored as a CI secret.
+  A live audit of a preview always fails: Vercel and Netlify send `X-Robots-Tag: noindex` on preview
+  deployments, and preview builds usually carry the production canonical (`noindex` / `canonical-elsewhere`).
+  A local `next start` server fails on `not-https`.
+  File mode skips header checks (X-Robots-Tag, HSTS, compression), so check those with a live `page_audit.py`
+  run against production.
 - **Use Search Console's URL Inspection API** (2,000/day per site) to see Google's chosen canonical for a
   sample.
 
@@ -150,9 +159,9 @@ say they're experienced.
 - **Free path:** `robots_check.py`, `sitemap_check.py --urls-out`, `crawl.py --sitemap-urls --csv`,
   `page_audit.py`, `render_diff.py`, `psi.py` (free `PSI_API_KEY`), `log_analyze.py --verify-dns`,
   `redirect_check.py`, then `triage.py` over all the JSON outputs.
-- **Screaming Frog** (see `## Screaming Frog` in `references/tools.md`) is justified for sites over 500 URLs
-  where you need JS-rendered crawling at scale, custom extraction, or scheduled crawls with GSC/PSI joins.
-  Its free tier is capped at 500 URLs.
+- **Screaming Frog** (see `## Screaming Frog` in `references/tools.md`) is justified for sites over ~2,000 URLs
+  or sites that rely on JavaScript. It adds JS-rendered crawling at scale, custom extraction, and scheduled
+  crawls with GSC/PSI joins. Its free tier is capped at 500 URLs.
 - **Skills:** seo-audit, seo-technical, seo-migration, seo-international, seo-ecommerce.
 
 ---
@@ -314,8 +323,10 @@ say they're experienced.
 - **Ranking factors:** relevance, distance, prominence. You cannot pay for a better local ranking.
 - **Business Profile eligibility:** no virtual offices or PO boxes. The name is the real-world name only.
   Use the fewest, most specific categories. §7.
-- **Reviews:** self-serving review markup is ineligible. Fake or undisclosed incentivised reviews are
-  prohibited. §5.
+- **Reviews:** on-site review markup: self-serving reviews are ineligible, and fake or undisclosed
+  incentivised reviews are not allowed (§5). Google Business Profile reviews: no incentives of any kind
+  (payment, discounts, free goods), disclosed or not, and no gating or selective solicitation (Maps
+  user-contributed content policy, support.google.com/contributionpolicy/answer/7400114).
 - **NAP consistency** is an industry convention, not a stated Google rule.
 - **Geo-grid rank tracking** needs paid data (DataForSEO or Local Falcon).
 
@@ -329,7 +340,7 @@ say they're experienced.
     setting. §10.
   - The Search Generative AI performance report shows impressions only.
 - **ChatGPT search** tracks Bing closely (vendor study). Ensure Bing indexing (Bing Webmaster Tools;
-  IndexNow with approval).
+  IndexNow per autonomy level, `references/autonomy.md`).
 - **Bot policy by purpose**
   - Allow the search bots (OAI-SearchBot, Claude-SearchBot, PerplexityBot, Bingbot).
   - Decide separately on the training bots (GPTBot, ClaudeBot, CCBot, Google-Extended, Applebot-Extended).

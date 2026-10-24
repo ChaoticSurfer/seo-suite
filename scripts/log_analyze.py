@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import gzip
+import ipaddress
 import re
 import socket
 import sys
@@ -40,12 +41,25 @@ def open_log(path: str):
     return gzip.open(path, "rt", errors="replace") if path.endswith(".gz") else open(path, errors="replace")
 
 
-def verify_ip(ip: str, domains: tuple[str, ...]) -> bool:
+def verify_ip(ip: str, domains: tuple[str, ...]) -> bool | None:
+    """Reverse DNS must land in the bot's domain and resolve back to the IP. None: no proof either way, because the
+    forward lookup failed or the log's host field is a hostname (Apache HostnameLookups On), not an IP."""
+    try:
+        address = ipaddress.ip_address(ip)
+    except ValueError:
+        return None
     try:
         host = socket.gethostbyaddr(ip)[0]
-        return host.endswith(domains) and ip in socket.gethostbyname_ex(host)[2]
     except (socket.herror, socket.gaierror):
         return False
+    if not host.endswith(domains):
+        return False
+    try:
+        # Without AI_ALL|AI_V4MAPPED macOS drops the AAAA record of IPv6-only hosts, e.g. Googlebot's crawl-2001-4860-….
+        infos = socket.getaddrinfo(host, None, flags=socket.AI_ALL | socket.AI_V4MAPPED)
+    except socket.gaierror:
+        return None
+    return address in {ipaddress.ip_address(info[4][0]) for info in infos}
 
 
 def main() -> int:
@@ -89,8 +103,10 @@ def main() -> int:
         }
         if args.verify_dns and bot in VERIFIED_DOMAINS:
             ips = [ip for ip, _ in b["ips"].most_common(30)]
-            fake = [ip for ip in ips if not verify_ip(ip, VERIFIED_DOMAINS[bot])]
-            entry["unverified_ips"] = fake
+            checks = {ip: verify_ip(ip, VERIFIED_DOMAINS[bot]) for ip in ips}
+            entry["unverified_ips"] = [ip for ip, ok in checks.items() if ok is False]
+            # no proof either way: forward DNS failed, or the host field is not an IP
+            entry["unverifiable_ips"] = [ip for ip, ok in checks.items() if ok is None]
         report["bots"][bot] = entry
     if args.sitemap_urls:
         with open(args.sitemap_urls, encoding="utf-8") as fh:

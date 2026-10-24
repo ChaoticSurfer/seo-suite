@@ -46,8 +46,9 @@ def field_metrics(experience: dict | None) -> dict | None:
             value = experience["metrics"][key]["percentile"] / divisor
             metrics[name] = {"p75": value, "rating": rate(value, good, poor)}
     core = [metrics[CWV_THRESHOLDS[k][0]]["rating"] for k in CORE_METRICS if CWV_THRESHOLDS[k][0] in metrics]
-    return {"passes_core_web_vitals": len(core) == 3 and all(r == "good" for r in core), "metrics": metrics,
-            "api_overall_category": experience.get("overall_category")}
+    # PSI's rules: without LCP or CLS data there is no assessment (None); with too little INP data, LCP and CLS decide.
+    passes = all(r == "good" for r in core) if "LCP ms" in metrics and "CLS" in metrics else None
+    return {"passes_core_web_vitals": passes, "metrics": metrics, "api_overall_category": experience.get("overall_category")}
 
 
 def opportunities(lighthouse: dict, limit: int = 8) -> list[dict]:
@@ -65,6 +66,12 @@ def failed_seo_audits(lighthouse: dict) -> list[str]:
     refs = lighthouse.get("categories", {}).get("seo", {}).get("auditRefs", [])
     audits = lighthouse.get("audits", {})
     return [audits[r["id"]]["title"] for r in refs if r["id"] in audits and audits[r["id"]].get("score") == 0]
+
+
+def lcp_element(lighthouse: dict) -> dict:
+    # Lighthouse 13 (PSI since Oct 2025) replaced the largest-contentful-paint-element audit with this insight.
+    details = lighthouse.get("audits", {}).get("lcp-breakdown-insight", {}).get("details") or {}
+    return next((item for item in details.get("items", []) if item.get("type") == "node"), {})
 
 
 def main() -> int:
@@ -86,7 +93,7 @@ def main() -> int:
     lighthouse = data.get("lighthouseResult", {})
     field = field_metrics(data.get("originLoadingExperience"))
     findings = []
-    if field and not field["passes_core_web_vitals"]:
+    if field and field["passes_core_web_vitals"] is False:
         poor = [f"{name} p75={m['p75']} ({m['rating']})" for name, m in field["metrics"].items() if m["rating"] != "good"
                 and name in ("LCP ms", "INP ms", "CLS")]
         findings.append(Finding("cwv-fail", "medium", f"Origin fails Core Web Vitals ({args.strategy}, CrUX p75)", "; ".join(poor)))
@@ -102,8 +109,7 @@ def main() -> int:
         "lab_metrics": {a: lighthouse.get("audits", {}).get(a, {}).get("displayValue")
                         for a in ("largest-contentful-paint", "total-blocking-time", "cumulative-layout-shift", "speed-index",
                                   "server-response-time")},
-        "lcp_element": ((lighthouse.get("audits", {}).get("largest-contentful-paint-element", {}).get("details") or {})
-                        .get("items") or [{}])[0],
+        "lcp_element": lcp_element(lighthouse),
         "top_opportunities": opportunities(lighthouse),
         "failed_lighthouse_seo_audits": failed_seo_audits(lighthouse),
     })

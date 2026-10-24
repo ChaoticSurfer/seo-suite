@@ -12,7 +12,7 @@ vendor's pricing page before quoting a number to a client.
 | Tool | Gives you | Limits / notes |
 |---|---|---|
 | **Google Search Console** | Your clicks, impressions, CTR, position by query/page/country/device · indexing (Pages report, URL Inspection) · sitemaps · Core Web Vitals · links (sample) · manual actions · "Search generative AI" setting and report (impressions only) | 16 months of data · UI export 1,000 rows · API 25k rows/request, 2,000 URL inspections/day/site |
-| **Bing Webmaster Tools** | Same for Bing, which also feeds Copilot and much of ChatGPT search · backlinks (own site) · IndexNow · AI Performance report (citations; public preview) [3rd-party] | API key in BWT |
+| **Bing Webmaster Tools** | Same for Bing, which powers Copilot and is reported to supply ChatGPT search (directional vendor data) · backlinks (own site) · IndexNow · AI Performance report (citations; public preview) [3rd-party] | API key in BWT |
 | **Google Analytics 4** | Conversions and engagement from organic traffic · landing pages | Organic queries come from GSC, not GA4 |
 | **PageSpeed Insights / CrUX** | Real-user Core Web Vitals (p75, 28 days) and Lighthouse lab audits | Free API key raises the quota (`psi.py`) · CrUX API 150 QPM · History API up to 40 weeks |
 | **Rich Results Test · Schema Markup Validator** | Google rich-result eligibility · full schema.org validation | Manual (no public API found) |
@@ -256,8 +256,8 @@ to *start*, and to decide whether a tracker is worth paying for.
 
 4. **Limit every call:** row limits, single country/database, only needed fields, no historical data unless asked.
 5. **Estimate before running.** Ahrefs free test targets show the unit cost in headers; Semrush has the free
-   `countapiunits` balance check; DataForSEO lists prices per task. Tell the user the expected spend for anything
-   over ~$5 or 10k units, and get a yes first.
+   `countapiunits` balance check; DataForSEO lists prices per task. State the expected spend in the report. The credit guard defers any call
+   above `ask_above_pct` to the end-of-run questions, so never stop mid-run to ask (`references/autonomy.md`).
 6. **Cache and snapshot.** Store results in the project's `seo-work/` folder with the date; reuse within 30 days
    (volumes) or 7 days (SERPs) instead of re-pulling.
 7. **Use what's included:** plan MCP allowances (Semrush 50k units, Ahrefs plan units, included Brand Radar checks),

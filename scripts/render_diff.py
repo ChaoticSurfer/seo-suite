@@ -51,9 +51,19 @@ def main() -> int:
     ap.add_argument("--rendered", required=True, help="saved rendered DOM HTML")
     ap.add_argument("--base-url", default="https://localhost/")
     args = ap.parse_args()
+    if not args.url and not args.raw:
+        ap.error("give a URL or --raw")
     base = args.url or args.base_url
-    raw = extract_page(load_local(args.raw, base) if args.raw else fetch(args.url))
-    rendered = extract_page(load_local(args.rendered, base))
+    raw_result = load_local(args.raw, base) if args.raw else fetch(args.url)
+    if raw_result.error:
+        print_json({"url": base, "error": raw_result.error})
+        return 2
+    if raw_result.status >= 400:
+        print_json({"url": raw_result.final_url, "status": raw_result.status,
+                    "error": f"HTTP {raw_result.status} — raw fetch failed, not diffing an error/challenge page (check page_audit for bot challenges)"})
+        return 2
+    raw = extract_page(raw_result)
+    rendered = extract_page(load_local(args.rendered, raw_result.final_url))  # same base as the raw side, after redirects
     raw_snap, rendered_snap = snapshot(raw), snapshot(rendered)
     result = diff(raw_snap, rendered_snap)
     findings = [Finding("js-dependent-seo", "high", w) for w in result["warnings"]]

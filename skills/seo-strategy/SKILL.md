@@ -26,26 +26,22 @@ Not for:
 
 This skill orchestrates those and consumes their outputs.
 
-## Inputs to gather
+## Inputs: decide, don't ask
 
-Ask; never assume:
+Decide each input from evidence, record the choice under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
 
-- **Business model:**
-  - What a conversion is (lead / sale / signup / booking) and its value.
-  - Target customers and markets (countries/languages).
-  - Seasonality.
-- **Current state:**
-  - Site, CMS/framework.
-  - GSC access (16 months of data).
-  - GA4.
-  - Past SEO work.
-  - Known penalties/migrations.
-- **Constraints:**
-  - Team: writers, devs, hours per week.
-  - Budget for tools and content.
-  - Deadline.
-  - Brand/legal limits (YMYL: health, finance, legal → higher E-E-A-T bar; google-rules §4).
-- **Competitors** the business cares about.
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| What a conversion is (lead / sale / signup / booking) and its value | Forms, cart, checkout, booking and pricing pages; GA4 key events and revenue | Size in conversions; value `[needs data]` |
+| Target customers and markets (countries/languages) | `<html lang>`, ccTLD, hreflang, currency, addresses, GSC country split | The markets the site already serves. Entering new markets or languages is a business decision: **ask — batched at the end** |
+| Seasonality | GSC YoY (16 months), Google Trends for the head terms | None assumed, noted |
+| Site, CMS/framework | The request; page source (generator meta, asset paths) or the repo | "Unknown CMS", noted |
+| GSC access (16 months of data), GA4 | A connector or exports in `seo-work/` | **Ask — batched at the end.** Baseline from the crawl and SERPs meanwhile |
+| Past SEO work, known penalties/migrations | `SEO-WORKLOG.md`, git history; Search Console Manual actions when accessible | None known, noted |
+| Team (writers, devs, hours per week) and deadline | The request or earlier worklog entries | A 12-week roadmap with effort in person-days, ordered so it holds at any capacity. Capacity: **ask — batched at the end** |
+| Budget for tools and content | The configured paid-data budget (`references/autonomy.md`) | Budget 0: the $0/mo tier. More spend is a business decision: **ask — batched at the end** |
+| Brand/legal limits (YMYL: health, finance, legal → higher E-E-A-T bar; google-rules §4) | The site's topics | YMYL when any money page gives health, finance or legal advice |
+| Competitors the business cares about | Domains winning the core keywords' SERPs (seo-competitors), plus any rivals the user named | The SERP competitors |
 
 ## Workflow
 
@@ -65,7 +61,7 @@ Ask; never assume:
 
    Set baselines from measured data and targets as ranges.
 3. **Opportunity sizing** (honest ranges):
-   - **With GSC data:** impressions for target queries × the CTR gain from moving to a target position. gsc_analyze's `est_extra_clicks_at_pos3` gives a per-query `[estimate]`. Sum for an upper bound; use 30–50% of it as a realistic case (heuristic).
+   - **With GSC data:** impressions for target queries × the CTR gain from moving to a target position. gsc_analyze's `est_extra_clicks_at_pos3` gives a per-query `[estimate]`. Summing gives the case where every query reaches position 3. It is not an upper bound: for rows at positions 11–20, current impressions only count searchers who reached page 2, so their estimate is too low. Report those rows separately, marked as understated. Use 30–50% of the sum as a realistic case (heuristic), because not every query will reach position 3.
    - **For new topics:** volume is `[needs data]` without Keyword Planner (active Ads spend for exact numbers) or a paid tool. Give relative demand (autocomplete presence, Google Trends) or vendor volumes tagged `[vendor data]`.
    - Convert to conversions with the site's own organic conversion rate (GA4).
    - Never promise rankings or dates.
@@ -109,10 +105,11 @@ Ask; never assume:
    - **~$150/mo:**
      - ONE all-in-one suite at its entry tier: **Semrush** *or* **Ahrefs**, never both.
      - Pick Semrush if keyword research, local/position tracking and content tools matter most. Pick Ahrefs if links and competitor top pages matter most.
-     - Plus a Screaming Frog licence if the site is >500 URLs.
+     - Plus a $50 DataForSEO wallet for bulk volumes and SERPs.
      - Justification: competitor keyword lists, keyword difficulty/volume, backlink gap. Things free tools cannot see.
    - **~$500+/mo:**
      - The suite's higher tier (more projects, history, API access), or DataForSEO pay-as-you-go for scripted SERP/volume/backlink pulls.
+     - A Screaming Frog licence if the site is larger than ~2,000 URLs or relies on JavaScript.
      - An AI-visibility tracker if AI answers are a key channel.
      - Optionally Similarweb for market sizing.
      - Justify each line by the decision it enables. Cancel anything not used monthly.
@@ -167,7 +164,7 @@ Buy them when the plan depends on *competitor* or *market* data. See the tier li
 4. Prioritised backlog (P0–P3 + content + links) and the 12-week roadmap table.
 5. Tool stack and monthly budget with a justification per paid line.
 6. Risk register and review cadence.
-7. Open questions / `[needs data]` items.
+7. **Assumptions:** each input you decided, with its evidence. Then the open questions batched for the user (access, business decisions), each with a recommendation, and the `[needs data]` items.
 
 ## Pitfalls & myths
 

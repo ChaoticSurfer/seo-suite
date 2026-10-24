@@ -18,14 +18,19 @@ Decide what each page should become and write content that earns the click.
   - choosing topics → `seo-keywords`;
   - thousands of templated pages → `seo-programmatic`.
 
-## Inputs to gather (ask only for what's missing)
-1. Site URL, and sections in or out of scope.
-2. **GSC exports, last 3 months and the same period a year earlier:**
-   - Pages report;
-   - Queries report;
-   - a query+page export (API or Looker Studio), which is needed for cannibalisation.
-3. Optional: GA4 landing-page sessions and conversions; a list of business-critical pages.
-4. For briefs or articles: the target query and locale, the audience, the author and their real credentials or experience, the brand voice, and facts or data the business owns.
+## Inputs: decide, don't ask
+Decide each input from evidence, record the choice under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Sections in scope | Sitemap URL count and path prefixes. Up to 2,000 URLs: all of them. Above that: section crawls (`--path-prefix`) in parallel subagents | Every indexable content section |
+| Business-critical pages | Navigation; pages with forms, cart, checkout, booking or pricing; Product/Service schema | Treat those as Keep until the data says otherwise |
+| GSC exports, last 3 months and the same period a year earlier: Pages, Queries, and a query+page export (API or Looker Studio, needed for cannibalisation) | A connector, or exports in `seo-work/` | **Ask — batched at the end.** Meanwhile build the inventory from the crawl, leave traffic columns `[needs data]`, and mark traffic-based decisions provisional |
+| GA4 landing-page sessions and conversions | A connector or an export | **Ask — batched at the end.** Conversions `[needs data]` |
+| Brief/article: target query and locale | The request, `seo-work/keywords.csv`, GSC; locale from `<html lang>`, ccTLD, hreflang, currency | The copy's language and its main country |
+| Brief/article: audience and brand voice | The site's top pages and About page; the SERP's dominant angle | Match the site's highest-traffic pages |
+| Brief/article: author and their real credentials or experience | Bylines, author pages and the About page | **Ask — batched at the end.** Recommend the most relevant existing author; until then the byline is `[needs data]`. Never invent one |
+| Brief/article: facts or data the business owns | Case studies, pricing, stats and product pages on the site | `[needs data]`, listed in the end-of-run requests |
 
 ## Workflow
 ### A. Content audit and inventory
@@ -38,7 +43,7 @@ Decide what each page should become and write content that earns the click.
    ```
 2. **Build the inventory** `seo-work/content-inventory.csv` by joining `pages.csv` with the GSC Pages rows on URL.
    - Columns: `url, title, word_count, inlinks, depth, indexable, issues, clicks, impressions, position, clicks_prev, last_updated, decision, reason`.
-   - The join is a few lines of Python. Get `last_updated` from visible or schema dates via `content_score.py` on a sample.
+   - The join is a few lines of Python. Get `last_updated` from `dateModified` in `page_audit.py URL --facts` (`facts.json_ld`) on a sample, or from the CMS export.
 3. **Apply the decision tree** (Checks), then review edge cases by hand: high-converting pages, legal pages, brand pages.
 4. **Cannibalisation:** use `gsc_qp.json → cannibalization`. For each query where two or more of your URLs each hold at least 10% of impressions, choose one owner page and one action: merge+301, differentiate intent, or re-link.
 5. **Decay:** use `period_comparison.losers` and `likely_cause`. "rankings dropped" means refresh or upgrade the content. "fewer impressions at similar rank" means demand or the SERP changed, so don't rewrite. "CTR fell" means work on the snippet, title or SERP features.
@@ -82,7 +87,7 @@ Decide what each page should become and write content that earns the click.
    - add the missing subtopics;
    - change `dateModified` only for substantive edits.
 5. Score the draft with `content_score.py --file draft.html --base-url https://site/<planned-slug> --keyword "$KW"` and fix the placement and structure gaps.
-6. Deliver as a file or diff. **Never publish to the CMS without explicit approval.**
+6. Deliver as a file or diff. **Commit to the repo or publish to the CMS only per autonomy level (references/autonomy.md).**
 
 ## Checks
 **Decision tree** (thresholds are heuristics; adjust to the site's scale):
@@ -151,6 +156,7 @@ Volumes and difficulty without data are always `[needs data]`.
   - risks.
 - Briefs: `brief-<slug>.md`.
 - Drafts: `draft-<slug>.md` or HTML, as a diff for repo content.
+- **Assumptions** (in `content-audit.md` or the brief): the scope, critical pages, locale, audience and voice chosen, with the evidence for each. Then the requests batched at the end, each with a recommendation: missing access (GSC, GA4, backlinks) and business decisions (merging or deleting pages that earn traffic or revenue, the byline).
 
 ## Pitfalls & myths
 - Deleting low-traffic pages en masse "to boost quality": prune only with evidence. Some low-traffic pages convert or attract links.
@@ -166,6 +172,6 @@ Append an entry to `SEO-WORKLOG.md` per `${CLAUDE_PLUGIN_ROOT}/references/worklo
 - the scripts run;
 - any paid units spent;
 - the counts per decision;
-- what was changed or published (with approval);
+- what was changed or published, and at which autonomy level;
 - unverified items (e.g. backlinks unknown);
 - a re-check date (6–8 weeks after merges or refreshes).

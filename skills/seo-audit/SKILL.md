@@ -20,20 +20,18 @@ A site-wide audit built on measured evidence that ends in a P0–P3 fix plan. Ea
   - A planned domain or URL change: use **seo-migration**.
   - Writing or rewriting copy: use **seo-onpage** or **seo-content**.
 
-## Inputs to gather
+## Inputs: decide, don't ask
 
-Ask only for what's missing.
+Decide each input from evidence, record it under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
 
-1. **Start URL.** Note the canonical host (www vs non-www, https).
-2. **Business goal** and the 3–5 money pages or templates (home, category, product/service, article, location).
-3. **Site size estimate.** This sets `--max-pages`. Default to 300; above 2,000, crawl in sections.
-4. **Repo access?** If the site is built from code in this workspace, offer fixes as diffs.
-5. **Optional data the user can export for free:**
-   - Search Console Performance (Queries.csv and Pages.csv, last 3 months plus the previous period).
-   - Bing Webmaster export.
-   - Server logs.
-   - A `PSI_API_KEY`.
-6. **Paid tool access** (Semrush, Ahrefs, Screaming Frog licence). Only use what they already have; never require it.
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Start URL and canonical host (www vs non-www, https) | The URL given; the final URL after redirects in `home.json` | The URL as given |
+| Business goal and the 3–5 money pages or templates (home, category, product/service, article, location) | Navigation; pages with forms, cart, checkout, booking or pricing; Product/Service/LocalBusiness schema; GSC top pages | Home plus one page per template |
+| Site size (sets `--max-pages`) | `total_urls` in `sitemap.json` | 300; above 2,000, crawl in sections |
+| Repo | The site's code in this workspace: fixes become diffs | No repo: fixes as instructions. Repo access: ask — batched at the end |
+| Free exports: Search Console Performance (Queries.csv and Pages.csv, last 3 months plus the previous period), Bing Webmaster, server logs, a `PSI_API_KEY` | What's configured or already in the workspace | Run without them. Ask — batched at the end, naming what each adds |
+| Paid tools (Semrush, Ahrefs, Screaming Frog licence) | Only what's already configured, within the paid-data budget | None; never required |
 
 ## Workflow
 
@@ -45,23 +43,25 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    python3 "$S/sitemap_check.py" https://example.com --sample 50 --urls-out seo-work/sitemap-urls.txt > seo-work/sitemap.json
    python3 "$S/page_audit.py" https://example.com/ > seo-work/home.json
    ```
-   **Stop on a bot challenge.** If `home.json` contains `bot-challenge` or `fetch-failed`, stop. Report it as P0: the CDN/WAF is challenging automated clients. Ask the user to either:
+   **Stop if the homepage can't be fetched.** If `page_audit.py` exits 2 (`home.json` has an `error` key, or a `fetch-failed` finding), stop. Report it as P0: the site is unreachable (DNS/TLS/timeout/redirect loop), quoting the `error` text.
+
+   **Stop fetching on a bot challenge.** If `home.json` contains `bot-challenge`, skip the crawl and page checks on that host and finish the report from what came back. Report it as P0: the CDN/WAF is challenging automated clients. Add an access request, batched at the end, to either:
    - allow verified bots and the answer-engine crawlers they want, or
-   - save the rendered page from the built-in browser and continue with `--file`.
+   - save the rendered page from the built-in browser so the audit can continue with `--file`.
 
    Never try to bypass a challenge or CAPTCHA.
 2. **Crawl.** Note `hit_page_limit` in the results. If it's true, the orphan and depth findings are partial; say so.
    ```bash
    python3 "$S/crawl.py" https://example.com --max-pages 300 --sitemap-urls seo-work/sitemap-urls.txt --csv seo-work/pages.csv > seo-work/crawl.json
    ```
-   For sites over 2,000 URLs, offer subagents. Give each one a section start URL (`/blog/`, `/products/`) with its own `--max-pages`, then merge their findings.
+   For sites over 2,000 URLs, crawl in sections with parallel subagents. Give each one a section start URL with the matching `--path-prefix`, e.g. `crawl.py https://example.com/blog/ --path-prefix /blog/ --max-pages N`, then merge their findings.
 3. **Find the templates.** Group `pages.csv` rows by URL pattern (first path segment plus depth). Pick one representative per template, plus the money pages.
 4. **Per-template evidence** (run in parallel, one process per URL):
    ```bash
    python3 "$S/page_audit.py" URL > seo-work/page-<template>.json
    python3 "$S/psi.py" URL --strategy mobile > seo-work/psi-<template>.json
    ```
-   **PSI quota:** if PSI returns 429, tell the user how to get a free key (in the `hint` field) and continue without it. Field data is `field_url` / `field_origin`; `null` means CrUX has too little traffic, so fall back to lab data.
+   **PSI quota:** if PSI returns 429, continue without it and add a free key (how to get one is in the `hint` field) to the access requests batched at the end. Field data is `field_url` / `field_origin`; `null` means CrUX has too little traffic, so fall back to lab data.
 5. **JavaScript sites.** This step applies if a page has `likely-client-rendered`, an SPA framework, or very few links.
    1. Open the URL in the built-in browser.
    2. Run `document.documentElement.outerHTML` and save the result as `seo-work/rendered-<template>.html`.
@@ -77,8 +77,9 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    Add `--compare previous.csv` when they gave two periods.
 7. **Triage.** `triage.py` ranks findings from every script that emits them: crawl, robots, sitemap, page audit, PSI (`cwv-fail`), render_diff (`js-dependent-seo`) and redirect_check (`redirect-map-failure`).
    ```bash
-   python3 "$S/triage.py" seo-work/crawl.json seo-work/robots.json seo-work/sitemap.json seo-work/page-*.json seo-work/psi-*.json seo-work/render-*.json > seo-work/triage.json
+   python3 "$S/triage.py" seo-work/crawl.json seo-work/robots.json seo-work/sitemap.json seo-work/page-*.json seo-work/psi-*.json > seo-work/triage.json
    ```
+   If step 5 ran, append `seo-work/render-*.json`.
    - Check `unmapped_findings`; rank any by hand with the same impact rules and say so.
    - Raise `cwv-fail` on a money template one level (P2 → P1): the table can't know which templates earn revenue.
 8. **Judgement pass.** Scripts can't measure these, so judge them yourself and tag each one `[estimate]`:
@@ -89,11 +90,11 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    - Structured data matches the visible content.
 9. **Fix in the template, not the page.** Use `page_issue_summary` (finding → page count) to say "1 template fix = N pages". In a repo:
    - Locate the template or layout file.
-   - Show a diff first, and apply it only after the user agrees.
+   - Show a diff, and apply it per autonomy level (references/autonomy.md).
    - Re-run `page_audit.py` afterwards to prove the fix.
 10. **Write the report and the work log** (see below).
 
-**Quick audit mode (one URL, about 5 minutes).** Run `page_audit.py`, `psi.py` and `robots_check.py` on that URL in parallel. Add `render_diff` if it's a JS site. Then run `triage.py` on the JSONs and report the top 10 issues with fixes. State clearly that site-wide issues (duplicates, orphans, depth, sitemap) were not checked.
+**Quick audit mode (one URL, about 5 minutes).** Run `page_audit.py`, `psi.py` and `robots_check.py` on that URL in parallel. Add `render_diff` if it's a JS site. Apply the step 1 stop checks to the `page_audit.py` output. Then run `triage.py` on the JSONs and report the top 10 issues with fixes. State clearly that site-wide issues (duplicates, orphans, depth, sitemap) were not checked.
 
 ## Checks
 
@@ -110,7 +111,7 @@ Thresholds follow google-rules. Anything not from Google is labelled.
 - **Redirects:** one hop, 301/308. Google follows at most 10 hops; aim for ≤3 in a move (§1, §9).
 - **Error pages:**
   - Missing URLs return 404 or 410. Google treats them the same (§1).
-  - The soft-404 probe in `crawl.py` must get a real 404.
+  - The soft-404 probe in `crawl.py` must get a 4xx (404/410 preferred; not 429).
 - **Sitemaps:**
   - Only final, 200, canonical, indexable URLs.
   - ≤50k URLs and ≤50 MB per file.
@@ -158,6 +159,7 @@ P0 = blocks indexing/revenue now · P1 = large visibility loss · P2 = meaningfu
 ## Quick wins (≤1 day each, P1–P2, effort 1)
 ## Template fixes (one fix → N pages)
 ## Performance (CWV per template: field vs lab)
+## Assumptions (scope, templates, money pages, market: each decision and the evidence behind it)
 ## What could not be verified [needs data] — and the cheapest source for each
 ## Next re-check date
 ```
@@ -172,7 +174,7 @@ Tag every row with `[measured]`, `[Google doc]`, `[vendor data]`, `[estimate]` o
 - **Lighthouse "SEO 100" ≠ good SEO.** Lab performance ≠ CWV. Use field data when it exists.
 - **llms.txt** is not used by Google (§10). FAQ/HowTo markup earns no Google rich result (§5).
 - **Fixing 400 pages one by one** when 1 template causes them is wasted work. Always map issues to templates.
-- **A crawl from your machine ≠ Googlebot's view.** Bot challenges, geo-redirects and A/B tests differ. Confirm critical findings with Search Console URL Inspection; the user runs it, or you run it only with their approval.
+- **A crawl from your machine ≠ Googlebot's view.** Bot challenges, geo-redirects and A/B tests differ. Confirm critical findings with Search Console URL Inspection: through the API when Search Console access is configured, otherwise as an access request batched at the end.
 
 ## Log the work
 

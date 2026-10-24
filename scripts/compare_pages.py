@@ -54,12 +54,13 @@ def main() -> int:
             phrase_sites[phrase] = phrase_sites.get(phrase, 0) + 1
     needed = min(MIN_COMPETITORS_SHARING_PHRASE, len(rivals))
     gap = sorted((p for p, n in phrase_sites.items() if n >= needed and p not in mine),
-                 key=lambda p: -phrase_sites[p])
+                 key=lambda p: (-phrase_sites[p], p))  # ties by phrase: set order changes with each run's hash seed
     rival_words = [r["word_count"] for r in rival_rows if r["status"] == 200]
     print_json({
         "keyword": args.keyword, "yours": None if args.no_own_page else rows[0], "competitors": rival_rows,
         "median_competitor_words": statistics.median(rival_words) if rival_words else None,
-        "content_gap_phrases" if own_pages else "shared_competitor_phrases": gap[:60],
+        # A brief keeps every shared phrase, so a template list from another run can be subtracted from it in full.
+        "content_gap_phrases" if own_pages else "shared_competitor_phrases": gap[:60] if own_pages else gap,
         "note": "Gap phrases are subtopics rivals cover and you don't. Add only those that serve the searcher; length is not a ranking factor.",
     })
     return 0

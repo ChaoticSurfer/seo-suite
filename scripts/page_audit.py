@@ -16,11 +16,13 @@ import urllib.parse
 
 from schema_rules import validate_json_ld
 from seo_lib import (
-    GOOGLEBOT_HTML_INDEX_BYTES, SEVERITY_ORDER, TITLE_MAX_PX, Finding, PageFacts, extract_page, fetch, is_indexable, load_local, print_json,
-    registrable_host, sort_findings, title_pixel_width,
+    GOOGLEBOT_HTML_INDEX_BYTES, SEVERITY_ORDER, TITLE_MAX_PX, Finding, PageFacts, extract_page, fetch, googlebot_robots_directives,
+    is_indexable, load_local, print_json, registrable_host, robots_noindex, sort_findings, title_pixel_width,
 )
 
-HREFLANG_PATTERN = re.compile(r"^(x-default|[a-z]{2,3}(-[a-z]{4})?(-([a-z]{2}|\d{3}))?)$", re.I)
+# Google supports ISO 639-1 (2-letter) languages and ISO 3166-1 alpha-2 regions only: not es-419, fil or a region alone.
+# A region-only code that looks like a language (gb, us) still passes; it needs a check by hand.
+HREFLANG_PATTERN = re.compile(r"^(x-default|[a-z]{2}(-[a-z]{4})?(-[a-z]{2})?)$", re.I)
 INVALID_HREFLANG_REGIONS = {"uk": "GB", "eu": None, "un": None}  # reserved codes Google ignores
 GENERIC_ANCHORS = {"click here", "here", "read more", "more", "learn more", "this", "link", "continue"}
 MODERN_IMAGE_EXT = (".webp", ".avif", ".svg")
@@ -31,7 +33,8 @@ def bot_challenge(headers: dict[str, str]) -> str:
     return "Cloudflare" if headers.get("cf-mitigated") == "challenge" else ""
 
 
-def audit_page(f: PageFacts) -> list[Finding]:
+def audit_page(f: PageFacts, from_file: bool = False) -> list[Finding]:
+    """`from_file`: the page came from a saved file, so it has no real response headers to judge."""
     out: list[Finding] = []
     add = lambda *args: out.append(Finding(*args))
 
@@ -55,8 +58,8 @@ def audit_page(f: PageFacts) -> list[Finding]:
             " -> ".join(f"{u} [{s}]" for u, s in f.redirect_chain))
     if any(s in (302, 307) for _, s in f.redirect_chain):
         add("temporary-redirect", "low", "Chain contains a 302/307; use 301/308 if the move is permanent")
-    directives = f"{f.meta_robots}, {f.x_robots_tag}".lower()
-    if "noindex" in directives or re.search(r"\bnone\b", directives):
+    directives = googlebot_robots_directives(f.meta_robots, f.x_robots_tag)
+    if robots_noindex(directives):
         add("noindex", "high", "Page is noindex — confirm this is intentional", f"meta='{f.meta_robots}' header='{f.x_robots_tag}'")
     if "max-image-preview:large" not in directives.replace(" ", "") and "noindex" not in directives:
         add("no-large-image-preview", "info", "No max-image-preview:large — Google Discover shows large images only with it")
@@ -89,7 +92,7 @@ def audit_page(f: PageFacts) -> list[Finding]:
     if f.canonical_count == 0:
         add("canonical-missing", "medium", "No rel=canonical")
     elif f.canonical_count > 1:
-        add("canonical-multiple", "high", f"{f.canonical_count} canonical tags — Google may ignore all of them")
+        add("canonical-multiple", "high", f"{f.canonical_count} different canonical URLs — Google may ignore all of them")
     elif f.canonical.rstrip("/") != f.final_url.rstrip("/"):
         severity = "high" if registrable_host(f.canonical) != registrable_host(f.final_url) else "info"
         add("canonical-elsewhere", severity, "Canonical points to another URL — page will not be indexed itself", f.canonical)
@@ -147,7 +150,7 @@ def audit_page(f: PageFacts) -> list[Finding]:
     if f.images and f.images[0].get("loading", "").lower() == "lazy":
         add("lcp-lazy", "medium", "First image is loading=lazy — if it is the LCP element this delays LCP", f.images[0]["src"])
     legacy = [i["src"] for i in f.images if i["src"] and not urllib.parse.urlsplit(i["src"]).path.lower().endswith(MODERN_IMAGE_EXT)
-              and not i.get("srcset")]
+              and not i.get("srcset") and not i.get("_picture_source")]
     if len(legacy) > 3:
         add("img-legacy-formats", "info", f"{len(legacy)} images without srcset or WebP/AVIF")
 
@@ -167,10 +170,11 @@ def audit_page(f: PageFacts) -> list[Finding]:
     # --- performance & transport hints
     if f.head_blocking_scripts:
         add("render-blocking-js", "low", f"{len(f.head_blocking_scripts)} synchronous <script src> in <head>", ", ".join(f.head_blocking_scripts[:5]))
-    if f.response_headers.get("content-encoding", "") not in ("gzip", "br", "deflate", "zstd") and f.html_bytes > 10_000:
-        add("no-compression", "medium", "HTML served without gzip/brotli compression")
-    if f.final_url.startswith("https://") and "strict-transport-security" not in f.response_headers:
-        add("no-hsts", "low", "No Strict-Transport-Security header")
+    if not from_file:
+        if f.response_headers.get("content-encoding", "") not in ("gzip", "br", "deflate", "zstd") and f.html_bytes > 10_000:
+            add("no-compression", "medium", "HTML served without gzip/brotli compression")
+        if f.final_url.startswith("https://") and "strict-transport-security" not in f.response_headers:
+            add("no-hsts", "low", "No Strict-Transport-Security header")
     if f.elapsed_ms > 1500:
         add("slow-response", "medium", f"HTML took {f.elapsed_ms} ms to download (from this machine; confirm with PSI/CrUX TTFB)")
     if f.final_url.startswith("https://"):
@@ -214,11 +218,13 @@ def main() -> int:
     if not args.url and not args.file:
         ap.error("give a URL or --file")
     result = load_local(args.file, args.base_url) if args.file else fetch(args.url)
-    if result.error:
-        print_json({"url": args.url, "error": result.error})
+    if result.error:  # the finding lets triage.py and the seo-audit stop gate see the failure
+        hops = " -> ".join(u for u, _ in result.redirect_chain) or args.url
+        print_json({"url": args.url, "error": result.error,
+                    "findings": [Finding("fetch-failed", "critical", f"Page could not be fetched: {result.error}", hops)]})
         return 2
     facts = extract_page(result)
-    findings = sort_findings(audit_page(facts))
+    findings = sort_findings(audit_page(facts, from_file=bool(args.file)))
     report = {"url": facts.url, "summary": summarize(facts), "findings": findings}
     if args.facts:
         report["facts"] = facts.to_dict()

@@ -7,10 +7,15 @@ Load this guide when the user is new to SEO: they say they "don't know SEO", ask
 
 - **Plain language.** Explain each term the first time it comes up, in one short sentence (the glossary at the end
   has the wording). No acronyms without spelling them out.
-- **One action at a time.** Give the next concrete step and stop there. Don't hand over a 50-item list.
+- **Run end to end, then show one action at a time.** The run itself never pauses for a check-in
+  (`references/autonomy.md`): finish the checks, triage and report first. Then give the user the next concrete
+  step. Don't hand over a 50-item list.
 - **Explain WHY before HOW.** One sentence on what the problem costs them, then the steps to fix it.
-- **Show only the top 3–5 findings.** Run triage first (`triage.py`) and show only the P0/P1 items in
-  plain words. Mention that more items exist and offer them later.
+- **Show only the top 3–5 findings.** This limits what you show, not what you run. Run triage first
+  (`triage.py`) on the complete results and show only the P0/P1 items in plain words. Mention that more items
+  exist, keep them in the report's appendix and offer them later.
+- **Questions go last.** Ask only for access you couldn't get (e.g. Search Console) or business decisions,
+  batched at the end in plain words, each with your recommendation and where to click.
 - **Say where to click.** When a step happens in Google Search Console or another tool, give the exact menu
   path, e.g. *Search Console → Indexing → Pages*.
 - **Celebrate quick wins.** When something gets fixed, say so and say what it unlocks.
@@ -18,8 +23,9 @@ Load this guide when the user is new to SEO: they say they "don't know SEO", ask
 - **Warn about scams.** Treat these as red flags: "guaranteed #1 on Google", "1,000 backlinks for $50",
   "instant indexing", "secret algorithm". Explain why each one is a red flag.
 - **Use analogies sparingly**, only where one makes an idea click.
-- **Never change their site, Search Console or CDN settings without asking first.** Code changes go to them
-  as a diff for approval before anything is applied.
+- **Change their site only per autonomy level (`references/autonomy.md`).** At the default level, code changes
+  go to them as a diff for approval before anything is applied. CDN settings and Search Console settings (other
+  than sitemap submission) always need their OK first.
 
 ---
 
@@ -291,7 +297,7 @@ ranking.
 - **Google Search Console** shows searches, clicks, positions, indexing and speed. Check *Performance*
   monthly and compare the last 3 months with the 3 months before.
 - **Google Analytics 4 (GA4)** shows what visitors do after they arrive (calls, sales, sign-ups).
-- **Bing Webmaster Tools** is the same idea for Bing, which also feeds ChatGPT and Copilot.
+- **Bing Webmaster Tools** is the same idea for Bing, which powers Copilot and is reported to supply ChatGPT search.
 - **Track a few numbers only:**
   - Clicks from Google.
   - Conversions (enquiries or sales).

@@ -52,6 +52,9 @@ def load_rows(path: str) -> list[dict]:
         missing = {"clicks", "impressions", "position"} - set(mapping.values())
         if missing:
             raise SystemExit(f"{path}: missing columns {sorted(missing)}; found {reader.fieldnames}")
+        if not {"query", "page"} & set(mapping.values()):
+            raise SystemExit(f"{path}: no query or page column (found {reader.fieldnames}); a Countries/Devices/Dates "
+                             "export cannot be analysed. Export Queries.csv or Pages.csv, or a query+page API export.")
         rows = []
         for raw in reader:
             row = {canonical: raw[header] for header, canonical in mapping.items()}
@@ -61,11 +64,28 @@ def load_rows(path: str) -> list[dict]:
             if "ctr" not in row:
                 row["ctr"] = row["clicks"] / row["impressions"] if row["impressions"] else 0.0
             rows.append(row)
-    return rows
+    return merge_split_rows(rows)
 
 
 def key_of(row: dict) -> str:
     return " | ".join(row[k] for k in ("query", "page") if k in row)
+
+
+def merge_split_rows(rows: list[dict]) -> list[dict]:
+    """API/Looker exports with a date, device or country column split one query+page over several rows: sum them back."""
+    groups = defaultdict(list)
+    for row in rows:
+        groups[key_of(row)].append(row)
+    merged = []
+    for items in groups.values():
+        if len(items) == 1:
+            merged.append(items[0])
+            continue
+        clicks = sum(r["clicks"] for r in items)
+        impressions = sum(r["impressions"] for r in items)
+        merged.append({**items[0], "clicks": clicks, "impressions": impressions, "ctr": clicks / impressions,
+                       "position": sum(r["position"] * r["impressions"] for r in items) / impressions})
+    return merged
 
 
 def ctr_curve(rows: list[dict]) -> dict[int, float]:
@@ -129,11 +149,14 @@ def compare(current, previous):
         delta = row["clicks"] - old["clicks"]
         if abs(delta) < 5:
             continue
-        if row["position"] - old["position"] >= 1:
+        similar_rank = abs(row["position"] - old["position"]) < 1
+        if delta > 0:
+            cause = None  # the causes below explain losses only
+        elif row["position"] - old["position"] >= 1:
             cause = "rankings dropped"
-        elif old["impressions"] and row["impressions"] / old["impressions"] < 0.8:
+        elif similar_rank and old["impressions"] and row["impressions"] / old["impressions"] < 0.8:
             cause = "fewer impressions at similar rank (demand/seasonality, SERP feature or AI Overview taking space)"
-        elif old["ctr"] and row["ctr"] / old["ctr"] < 0.8:
+        elif similar_rank and old["ctr"] and row["ctr"] / old["ctr"] < 0.8:
             cause = "CTR fell at similar rank (snippet change, new SERP feature/AI Overview, competitor rich result)"
         else:
             cause = "mixed"

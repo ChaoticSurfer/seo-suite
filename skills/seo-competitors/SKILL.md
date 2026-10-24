@@ -24,12 +24,17 @@ Not for:
 - Doing the outreach → seo-links.
 - Your own GSC performance → seo-analytics.
 
-## Inputs to gather
+## Inputs: decide, don't ask
 
-- **Your domain**, and the target keyword set (10–100). Pull it from seo-keywords output or the GSC striking-distance list, or ask.
-- **Market:** country + language (`--gl`/`--hl` equivalents for searches), device focus.
-- **Business rivals** the user already knows. Useful, but verify them against the SERP.
-- **Optional:** paid tool access (Semrush/Ahrefs/Similarweb) and any credit budget.
+Decide each input from evidence, record the choice under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Your domain | The request | — |
+| Target keyword set (10–100) | seo-keywords output or the GSC striking-distance list; otherwise titles, H1s and nav labels of money pages, expanded with `keyword_ideas.py` | ~20 head terms from the money pages |
+| **Market:** country + language (`--gl`/`--hl` equivalents for searches), device focus | `<html lang>`, ccTLD, hreflang, currency, addresses; device split in GSC/GA4 | The copy's language and its main country; mobile |
+| Business rivals the user already knows | Useful if named, but verify them against the SERP | The SERP competitors from step 2 |
+| Optional: paid tool access (Semrush/Ahrefs/Similarweb) and any credit budget | The configured budget and connectors (`references/autonomy.md`) | Budget 0: the free path. Access the plan needs: **ask — batched at the end**, saying what it adds |
 
 ## Workflow
 
@@ -71,8 +76,8 @@ Not for:
    - **Paid:** see the next section.
 7. **Backlink gap** (paid only). Referring domains linking to 2+ competitors but not you → feed to seo-links.
 8. **Change monitoring.** When a rival suddenly outranks you:
-   - Fetch the Wayback Machine CDX API: `https://web.archive.org/cdx/search/cdx?url=rival.com/page&output=json&limit=20&from=2025&fl=timestamp,statuscode,digest`.
-   - Changed `digest` values show when the page content changed.
+   - Fetch the Wayback Machine CDX API: `https://web.archive.org/cdx/search/cdx?url=rival.com/page&output=json&from=<YYYYMMDD, about 3–6 months before the ranking change>&filter=statuscode:200&collapse=digest&fl=timestamp,statuscode,digest`.
+   - `collapse=digest` keeps only captures where the content changed, so each row's timestamp is the date a new version first appeared. Don't add a negative `limit`: rows then show the last capture of each version, so dates come out late.
    - Fetch `https://web.archive.org/web/<timestamp>/rival.com/page` to diff old vs new (titles, headings, sections added).
    - Report: "ranking gain coincides with page update on <date>".
 9. **Synthesise.**
@@ -124,6 +129,7 @@ Never present vendor traffic or keyword numbers as measurements. They are `[vend
 3. **Page comparison summary per priority keyword:** your metrics vs median rival, gap phrases worth covering, missing schema/trust signals, routed actions.
 4. **Gap list:** keywords rivals rank for that you don't (free sample or paid export), clustered and handed to seo-keywords/seo-strategy.
 5. **Change log** for rivals that jumped (Wayback evidence).
+6. **Assumptions:** the keyword set, market, device and competitor choices you decided, each with its evidence. Then the questions batched for the user (missing paid access), each with a recommendation.
 
 ## Pitfalls & myths
 

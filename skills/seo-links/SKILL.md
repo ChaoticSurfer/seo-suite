@@ -20,16 +20,18 @@ Not for:
 - Citations and NAP → seo-local.
 - Competitor content gaps → seo-competitors.
 
-## Inputs to gather
+## Inputs: decide, don't ask
 
-- **Site root.** Plus `seo-work/urls.txt` from `sitemap_check.py --urls-out`, for orphan detection.
-- **Money pages:** pages that convert or that the business most wants ranking. Ask; never guess.
-- **Search Console → Links export.** Top linking sites, top linked pages, top linking text. Ask the user to export it. Only a verified owner can.
-- **Optional free sources:**
-  - Bing Webmaster Tools → Backlinks export.
-  - Ahrefs Webmaster Tools (free for verified sites) → Backlinks / Broken backlinks CSV.
-- **Brand names, product names, founders' names.** Needed to search for unlinked mentions.
-- **Competitors** that rank for the target terms (from seo-competitors), only if a gap analysis is wanted.
+Decide each input from evidence, record the choice under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Site root, plus `seo-work/urls.txt` for orphan detection | The request; build the list with `sitemap_check.py --urls-out` | No sitemap: skip orphan detection and say so |
+| Money pages: pages that convert or that the business most wants ranking | Navigation; pages with forms, cart, checkout, booking or pricing; Product/Service/LocalBusiness schema; top GSC clicks | Homepage plus the top-level nav product/service pages |
+| Search Console → Links export: top linking sites, top linked pages, top linking text | A connector, or an export in `seo-work/`. Only a verified owner can export it | **Ask — batched at the end.** Carry on with part A and the free off-page checks; tag the profile `[needs data]` |
+| Optional free sources: Bing Webmaster Tools → Backlinks export; Ahrefs Webmaster Tools (free for verified sites) → Backlinks / Broken backlinks CSV | A connector, or an export in `seo-work/` | **Ask — batched at the end**, saying what each adds |
+| Brand names, product names, founders' names, for unlinked-mention searches | `<title>`, Organization schema, about page, footer, product pages | The Organization name or the homepage title's brand |
+| Competitors that rank for the target terms (from seo-competitors) | Domains in the top 10 for the head terms (WebSearch) | Skip the gap analysis unless the request or plan includes competitive link building |
 
 ## Workflow
 
@@ -69,7 +71,7 @@ Not for:
 
 5. For anchor text, use descriptive anchors that vary naturally. No "click here", no exact-match stuffing on every link (google-rules §3).
 
-6. For template-level fixes, change the nav, breadcrumbs, related-posts and footer components once rather than editing hundreds of pages. In a codebase, find the components and propose diffs.
+6. For template-level fixes, change the nav, breadcrumbs, related-posts and footer components once rather than editing hundreds of pages. In a codebase, find the components and propose diffs; apply them per autonomy level (`references/autonomy.md`).
 
 7. Re-crawl after the changes and compare the inlink and depth columns.
 
@@ -84,13 +86,13 @@ Not for:
    - Links pointing at 404s or redirects.
 3. Link reclamation (highest ROI, free):
    - Fetch the target URLs from the "top linked pages" export and find any that return 404 or chain-redirect.
-   - Fix with a one-hop 301 to the closest equivalent page, never mass-redirecting to the homepage (google-rules §9).
+   - Fix with a one-hop 301 to the closest equivalent page, never mass-redirecting to the homepage (google-rules §9), as a redirect-map diff applied per autonomy level (`references/autonomy.md`).
    - Verify with `redirect_check.py map.csv`.
 4. Unlinked mentions: WebSearch `"Brand Name" -site:example.com` and variants (product names, founder names, `intitle:"brand"`). List the pages that mention the brand without linking. Draft a polite link request for each.
 
 ### C. Off-page: earn new links
 
-Pick 2–3 tactics that suit the business. Every outreach message is a **draft** for the user to review and send:
+Pick 2–3 tactics that suit the business. Every outreach message is a **draft** for the user to review and send; sending is always gated at every autonomy level (`references/autonomy.md`), so send a message only with the user's approval for that run:
 
 - **Digital PR / data studies.** Original data, surveys or tools that journalists cite. Plan the asset, the angle and the target publications.
 - **Resource and links pages.** Footprints:
@@ -116,7 +118,7 @@ Pick 2–3 tactics that suit the business. Every outreach message is a **draft**
   1. Try removal outreach first (draft it).
   2. Then disavow at domain level (`domain:spam.example`).
   3. Then file a reconsideration request documenting the cleanup.
-- **Never upload a disavow file or file a reconsideration request yourself.** Prepare the file and the text, and the user submits them.
+- **Upload a disavow file or file a reconsideration request yourself only with the user's approval for that run** (always gated at every autonomy level, `references/autonomy.md`). By default, prepare the file and the text, and the user submits them.
 - Do not recommend disavowing on the basis of a third-party "toxicity score" alone. Those scores are vendor heuristics.
 
 ## Checks
@@ -161,6 +163,7 @@ Label every metric from these tools `[vendor data]`. DR/DA/TF are vendor estimat
 4. **Prospect sheet:** `site, page, contact route (public), angle, why relevant, draft message`. All drafts are clearly marked unsent.
 5. **Disavow recommendation:** usually "none needed", with the reason. If one is needed, the `disavow.txt` draft and the reconsideration text.
 6. Pipe crawl/sitemap JSON through `triage.py seo-work/crawl.json seo-work/sitemap.json` for P0–P3 ordering of the link-related findings.
+7. **Assumptions:** the money pages, brand names, competitors and data sources you decided, each with its evidence. Then the questions batched for the user (missing exports or access), each with a recommendation.
 
 ## Pitfalls & myths
 

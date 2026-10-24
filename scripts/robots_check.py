@@ -45,6 +45,23 @@ CRAWLERS = {
 }
 
 
+def google_visible_robots(text: str) -> str:
+    """The part of a robots.txt Google reads: no UTF-8 byte-order mark, nothing after the first 500 KiB."""
+    return text.removeprefix("\ufeff").encode()[:ROBOTS_MAX_BYTES].decode("utf-8", "ignore")
+
+
+def halts_crawling(status: int | None) -> bool:
+    """A 5xx or 429 robots.txt makes Google stop crawling the site (RFC 9309: assume complete disallow)."""
+    return status is not None and (500 <= status < 600 or status == 429)
+
+
+def _agent_token(value: str) -> str:
+    """Google keeps only the product token: 'Googlebot/2.1' names googlebot, '* x' is the * group."""
+    if value == "*" or (value.startswith("*") and value[1:2].isspace()):
+        return "*"
+    return re.match(r"[A-Za-z_-]*", value).group(0).lower()
+
+
 def parse_robots(text: str) -> list[dict]:
     """Return groups: [{"agents": [...], "rules": [("allow"|"disallow", pattern)]}]."""
     groups: list[dict] = []
@@ -60,12 +77,12 @@ def parse_robots(text: str) -> list[dict]:
             if current is None or not last_was_agent:
                 current = {"agents": [], "rules": []}
                 groups.append(current)
-            current["agents"].append(value.lower())
+            current["agents"].append(_agent_token(value))
             last_was_agent = True
             continue
-        last_was_agent = False
         if key in ("allow", "disallow") and current is not None:
             current["rules"].append((key, value))
+            last_was_agent = False  # only rules end a run of User-agent lines; Sitemap:, Crawl-delay: etc. do not
     return groups
 
 
@@ -98,16 +115,24 @@ def _pattern_regex(pattern: str) -> re.Pattern:
     return re.compile(body + ("$" if anchored else ""))
 
 
+def _percent_encoded(text: str) -> str:
+    """Google compares rules and paths percent-encoded: non-ASCII as UTF-8 %XX, existing %xx in upper case."""
+    text = re.sub(r"%[0-9a-fA-F]{2}", lambda m: m.group(0).upper(), text)
+    return re.sub(r"[^\x00-\x7f]", lambda m: urllib.parse.quote(m.group(0)), text)
+
+
 def is_allowed(group: dict | None, path: str) -> tuple[bool, str]:
     """Longest matching pattern wins; on equal length, allow wins. Empty disallow matches nothing."""
     if group is None:
         return True, "no matching group"
+    path = _percent_encoded(path)
     best: tuple[int, bool, str] | None = None
     for kind, pattern in group["rules"]:
         if not pattern:
             continue
-        if _pattern_regex(pattern).match(path):
-            candidate = (len(pattern), kind == "allow", f"{kind}: {pattern}")
+        encoded = _percent_encoded(pattern)
+        if _pattern_regex(encoded).match(path):
+            candidate = (len(encoded), kind == "allow", f"{kind}: {pattern}")
             if best is None or candidate[:2] > best[:2]:
                 best = candidate
     return (True, "no rule matched") if best is None else (best[1], best[2])
@@ -126,11 +151,15 @@ def evaluate(text: str, paths: list[str]) -> dict:
     return {"groups": groups, "sitemaps": sitemaps_in(text), "matrix": matrix}
 
 
-def findings_for(text: str, size: int, status: int | None, evaluation: dict) -> list[Finding]:
+def findings_for(text: str, size: int, status: int | None, evaluation: dict, redirect_error: str = "") -> list[Finding]:
+    """`status` is None only when the fetch gave up on robots.txt's redirects (`redirect_error` says why)."""
     out: list[Finding] = []
-    if status and (500 <= status < 600 or status == 429):
+    if halts_crawling(status):
         out.append(Finding("robots-5xx", "critical", f"robots.txt returns {status}: Google stops crawling for 12 h, then uses its cached copy for up to 30 days"))
-    elif status and status >= 400:
+    elif status is None:  # Google follows at least 5 hops, then treats robots.txt as a 404
+        out.append(Finding("robots-missing", "info", "robots.txt cannot be reached through its redirects: Google treats it as a 404, "
+                           "so everything is crawlable", redirect_error))
+    elif status >= 400:
         out.append(Finding("robots-missing", "info", f"robots.txt returns {status}: everything is crawlable"))
     if size > ROBOTS_MAX_BYTES:
         out.append(Finding("robots-too-big", "high", f"robots.txt is {size} bytes; Google ignores content after 500 KiB"))
@@ -146,10 +175,10 @@ def findings_for(text: str, size: int, status: int | None, evaluation: dict) -> 
                                f"{bot} blocked from '/': the site cannot be cited by {CRAWLERS[bot].split(' /')[0]}", verdict["rule"]))
     if re.search(r"^\s*(noindex|crawl-delay)\s*:", text, re.I | re.M):
         out.append(Finding("robots-unsupported", "low", "noindex:/crawl-delay: lines are ignored by Google (Bing and Anthropic honour crawl-delay)"))
-    for group in evaluation["groups"]:
-        for kind, pattern in group["rules"]:
-            if kind == "disallow" and re.search(r"\.(css|js)(\$|\*|$)", pattern):
-                out.append(Finding("robots-blocks-assets", "high", "CSS/JS disallowed — Google cannot render pages properly", pattern))
+    googlebot_group = group_for(evaluation["groups"], "Googlebot")
+    for kind, pattern in (googlebot_group["rules"] if googlebot_group else []):
+        if kind == "disallow" and re.search(r"\.(css|js)(\$|\*|$)", pattern):
+            out.append(Finding("robots-blocks-assets", "high", "CSS/JS disallowed for Googlebot — Google cannot render pages properly", pattern))
     return out
 
 
@@ -165,21 +194,22 @@ def main() -> int:
     if args.file:
         with open(args.file, encoding="utf-8", errors="replace") as fh:
             text = fh.read()
-        status, source = 200, args.file
+        status, source, redirect_error = 200, args.file, ""
     else:
         source = urllib.parse.urljoin(site_root(args.site), "/robots.txt")
         result = fetch(source)
-        if result.error:
+        if result.error and not result.redirect_failed:  # robots.txt lost in redirects is a 404 to Google (google-rules §1)
             print_json({"robots_url": source, "error": result.error})
             return 2
-        status = result.status
+        status, redirect_error = result.status, result.error
         text = result.text if status == 200 else ""
     size = len(text.encode())
+    text = google_visible_robots(text)
     evaluation = evaluate(text, paths)
     print_json({
         "robots_url": source, "status": status, "bytes": size, "sitemaps": evaluation["sitemaps"],
         "content_signals": content_signals(text),
-        "matrix": evaluation["matrix"], "findings": sort_findings(findings_for(text, size, status, evaluation)),
+        "matrix": evaluation["matrix"], "findings": sort_findings(findings_for(text, size, status, evaluation, redirect_error)),
     })
     return 0
 

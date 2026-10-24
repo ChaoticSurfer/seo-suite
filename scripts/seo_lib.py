@@ -5,11 +5,14 @@ Python 3.9+ standard library only. Every CLI in this folder builds on
 """
 from __future__ import annotations
 
+import codecs
 import gzip
+import http.client
 import json
 import re
 import ssl
 import time
+import unicodedata
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -25,6 +28,7 @@ REDIRECT_STATUSES = {301, 302, 303, 307, 308}
 FETCHABLE_SCHEMES = {"http", "https"}
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
+BYTE_ORDER_MARKS = ((codecs.BOM_UTF8, "utf-8-sig"), (codecs.BOM_UTF16_LE, "utf-16"), (codecs.BOM_UTF16_BE, "utf-16"))
 
 
 @dataclass
@@ -48,15 +52,44 @@ class FetchResult:
 
     @property
     def text(self) -> str:
-        charset = "utf-8"
-        match = re.search(r"charset=([\w-]+)", self.headers.get("content-type", ""), re.I)
-        if match:
-            charset = match.group(1)
-        return self.body.decode(charset, errors="replace")
+        return self.body.decode(_sniff_charset(self.headers.get("content-type", ""), self.body), errors="replace")
 
     @property
     def is_html(self) -> bool:
         return "html" in self.headers.get("content-type", "").lower()
+
+    @property
+    def redirect_failed(self) -> bool:
+        """fetch() gave up on the redirects themselves (a loop, more than MAX_REDIRECTS hops, a non-http(s) target),
+        not on the network or the server."""
+        hops = [hop for hop, _ in self.redirect_chain]
+        return self.status is None and bool(hops) and (
+            self.final_url in hops or len(hops) > MAX_REDIRECTS
+            or urllib.parse.urlsplit(self.final_url).scheme.lower() not in FETCHABLE_SCHEMES)
+
+
+def _sniff_charset(content_type: str, body: bytes) -> str:
+    """Pick the decoder the way browsers do: byte-order mark, then the Content-Type charset, then a <meta> charset
+    in the first 1024 bytes, then UTF-8. Labels that are not text encodings Python knows are skipped, as browsers
+    skip labels they do not know."""
+    for bom, codec in BYTE_ORDER_MARKS:
+        if body.startswith(bom):
+            return codec
+    header = re.search(r"charset=[\"']?([\w.:-]+)", content_type, re.I)
+    meta = re.search(rb"<meta[^>]+charset=[\"']?([\w.:-]+)", body[:1024], re.I)
+    for label, from_meta in ((header and header.group(1), False), (meta and meta.group(1).decode("ascii"), True)):
+        if not label:
+            continue
+        try:
+            name = codecs.lookup(label).name
+            # LookupError for codecs that are not text encodings (hex, base64, rot13, zip); UnicodeError for the ones
+            # that cannot decode a page at all (undefined, idna). errors="replace" keeps a lone byte valid UTF-16.
+            b"<\xff".decode(name, "replace")  # a non-ASCII byte too, so codecs that can't decode real pages fail here
+        except (LookupError, UnicodeError):
+            continue
+        # A <meta> that the ASCII prescan could read cannot be in UTF-16, so browsers read the page as UTF-8 (WHATWG).
+        return "utf-8" if from_meta and name.startswith("utf-16") else name
+    return "utf-8"
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -69,41 +102,96 @@ def _decode_body(raw: bytes, encoding: str) -> bytes:
     if encoding == "gzip":
         return gzip.decompress(raw)
     if encoding == "deflate":
-        return zlib.decompress(raw)
+        try:
+            return zlib.decompress(raw)
+        except zlib.error:  # raw deflate without the zlib wrapper, which browsers also accept
+            return zlib.decompress(raw, -zlib.MAX_WBITS)
     return raw
 
 
-def fetch(url: str, timeout: float = 20.0, method: str = "GET", user_agent: str = USER_AGENT) -> FetchResult:
-    """Fetch `url`, following redirects by hand so every hop is recorded."""
+def to_uri(url: str) -> str:
+    """Percent-encode the path and query the way browsers do: non-ASCII as UTF-8, spaces, control characters and DEL.
+    Other printable ASCII ([ ] | ^ { } ...) stays as written, and existing %xx escapes are upper-cased
+    (RFC 3986 §6.2.2.1), so /café, /caf%c3%a9 and /caf%C3%A9 are one URL. A non-ASCII host is IDNA-encoded (Python's
+    IDNA 2003 codec; browsers differ only for ß/ς/ZWJ/ZWNJ), so a page that writes its own URLs in punycode matches
+    itself in same_site().
+    A host IDNA cannot encode ("a..b.com") is kept as written; fetch() reports it as an error."""
+    parts = urllib.parse.urlsplit(_ascii_host(url))
+    return urllib.parse.urlunsplit((parts.scheme, parts.netloc, _percent_encode(parts.path), _percent_encode(parts.query),
+                                    parts.fragment))
+
+
+def _percent_encode(part: str) -> str:
+    part = re.sub(r"%[0-9a-fA-F]{2}", lambda m: m.group(0).upper(), part)
+    return re.sub(r"[^\x21-\x7e]", lambda m: urllib.parse.quote(m.group(0)), part)
+
+
+def _ascii_host(url: str) -> str:
+    """`url` with its host IDNA-encoded (münchen.de -> xn--mnchen-3ya.de), userinfo and port kept. urllib connects to a
+    Unicode host but writes it unencoded into the Host header, which fails or sends latin-1 bytes. A host IDNA cannot
+    encode (an empty label, a character IDNA 2003 does not know) is kept as written, and fetch() reports it as an error."""
+    parts = urllib.parse.urlsplit(url)
+    if parts.netloc.isascii():
+        return url
+    userinfo, at, host_port = parts.netloc.rpartition("@")
+    host, colon, port = host_port.partition(":")
+    try:
+        host = host.encode("idna").decode("ascii")
+    except UnicodeError:
+        return url
+    return urllib.parse.urlunsplit(parts._replace(netloc=f"{userinfo}{at}{host}{colon}{port}"))
+
+
+def fetch(url: str, timeout: float = 20.0, method: str = "GET", user_agent: str = USER_AGENT,
+          max_bytes: int = MAX_BODY_BYTES) -> FetchResult:
+    """Fetch `url`, following redirects by hand so every hop is recorded. At most `max_bytes` of the body are read."""
     opener = urllib.request.build_opener(_NoRedirect, urllib.request.HTTPSHandler(context=ssl.create_default_context()))
     chain: list[tuple[str, int]] = []
     current = url
     started = time.monotonic()
     for _ in range(MAX_REDIRECTS + 1):
+        current = to_uri(current)
         if urllib.parse.urlsplit(current).scheme.lower() not in FETCHABLE_SCHEMES:  # no file://, ftp://, data: via redirects
             return FetchResult(url, current, None, {}, b"", chain, _ms_since(started), error=f"refusing non-http(s) URL {current}")
         if any(current == hop for hop, _ in chain):
             return FetchResult(url, current, None, {}, b"", chain, _ms_since(started), error=f"redirect loop back to {current}")
-        request = urllib.request.Request(
-            current,
-            method=method,
-            headers={"User-Agent": user_agent, "Accept-Encoding": "gzip, deflate", "Accept": "text/html,*/*;q=0.8"},
-        )
         try:
-            response = opener.open(request, timeout=timeout)
-            status, headers = response.status, response.headers
-            raw = response.read(MAX_BODY_BYTES)
-        except urllib.error.HTTPError as err:  # 3xx (redirect handler declined), 4xx and 5xx land here
-            status, headers = err.code, err.headers
-            raw = err.read(MAX_BODY_BYTES) if method == "GET" else b""
-        except (urllib.error.URLError, TimeoutError, ConnectionError, ssl.SSLError) as err:
+            request = urllib.request.Request(
+                current,  # to_uri() IDNA-encoded the host: urllib writes a Unicode one unencoded into the Host header
+                method=method,
+                headers={"User-Agent": user_agent, "Accept-Encoding": "gzip, deflate", "Accept": "text/html,*/*;q=0.8"},
+            )
+            try:
+                response = opener.open(request, timeout=timeout)
+                status, headers = response.status, response.headers
+                raw = response.read(max_bytes)
+            except urllib.error.HTTPError as err:  # 3xx (redirect handler declined), 4xx and 5xx land here
+                status, headers = err.code, err.headers
+                raw = err.read(max_bytes) if method == "GET" else b""
+        # OSError covers URLError, TLS, refused/reset and read timeouts (socket.timeout on 3.9); HTTPException covers a
+        # cut-off body (IncompleteRead) and a bad port; ValueError covers a host IDNA cannot encode (e.g. "a..b.com").
+        except (OSError, http.client.HTTPException, ValueError) as err:
             return FetchResult(url, current, None, {}, b"", chain, _ms_since(started), error=str(getattr(err, "reason", err)))
-        header_map = {k.lower(): v for k, v in headers.items()}
+        header_map: dict[str, str] = {}
+        for k, v in headers.items():
+            k = k.lower()
+            # A repeated header (Link) is one comma-joined value (RFC 9110 §5.3). Repeated X-Robots-Tag headers are kept
+            # one per line instead, because a `bingbot:` scope ends with its own header.
+            separator = "\n" if k == "x-robots-tag" else ", "
+            header_map[k] = f"{header_map[k]}{separator}{v}" if k in header_map else v
         if status in REDIRECT_STATUSES and "location" in header_map:
             chain.append((current, status))
-            current = urllib.parse.urljoin(current, header_map["location"])
+            location = header_map["location"]
+            if not location.isascii():  # http.client reads header bytes as latin-1; browsers read a raw Location as UTF-8
+                location = location.encode("latin-1").decode("utf-8", errors="replace")
+            current = urllib.parse.urljoin(current, location)
             continue
-        body = _decode_body(raw, header_map.get("content-encoding", ""))
+        encoding = header_map.get("content-encoding", "")
+        try:
+            body = _decode_body(raw, encoding)
+        except (zlib.error, OSError, EOFError) as err:  # gzip.BadGzipFile is an OSError; a truncated gzip raises EOFError
+            return FetchResult(url, current, None, {}, b"", chain, _ms_since(started),
+                               error=f"HTTP {status} body could not be decoded as {encoding}: {err}")
         return FetchResult(url, current, status, header_map, body, chain, _ms_since(started))
     return FetchResult(url, current, None, {}, b"", chain, _ms_since(started), error=f"more than {MAX_REDIRECTS} redirects")
 
@@ -113,22 +201,32 @@ def _ms_since(started: float) -> int:
 
 
 def load_local(path: str, base_url: str = "https://localhost/") -> FetchResult:
-    """Treat a saved HTML file as a 200 response so the auditors work offline."""
+    """Treat a saved HTML file as a 200 response so the auditors work offline.
+
+    A file that is valid UTF-8 is read as UTF-8, because a rendered DOM saved from the browser keeps the page's original
+    <meta charset>; any other file is decoded like a fetched page (BOM, then <meta charset>)."""
     with open(path, "rb") as fh:
         body = fh.read()
-    return FetchResult(base_url, base_url, 200, {"content-type": "text/html; charset=utf-8"}, body, [], 0)
+    try:
+        body.decode("utf-8")
+        content_type = "text/html; charset=utf-8"
+    except UnicodeDecodeError:
+        content_type = "text/html"
+    return FetchResult(base_url, to_uri(base_url), 200, {"content-type": content_type}, body, [], 0)  # same form as extracted URLs
 
 
 # ---------------------------------------------------------------- HTML parsing
 
 _SKIP_TEXT_TAGS = {"script", "style", "noscript", "template", "svg"}
 _HEADING_TAGS = {"h1", "h2", "h3", "h4", "h5", "h6"}
+_HEAD_CONTENT_TAGS = {"html", "head", "meta", "link", "title", "style", "script", "noscript", "base", "template"}
 
 
 class _PageParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
         self.lang = ""
+        self.base_href = ""
         self.title_parts: list[str] = []
         self.title_count = 0
         self.metas: list[dict[str, str]] = []
@@ -145,7 +243,8 @@ class _PageParser(HTMLParser):
         self.list_count = 0
         self.table_count = 0
         self._stack: list[str] = []
-        self._in_head = False
+        self._in_head = True  # <head> and its tags are optional: browsers keep the head open until body content starts
+        self._picture_has_source = False
         self._in_title = False
         self._in_json_ld = False
         self._json_ld_buffer: list[str] = []
@@ -159,12 +258,12 @@ class _PageParser(HTMLParser):
         a = {k: (v or "") for k, v in attrs}
         if a.get("itemtype"):
             self.itemtypes.append(a["itemtype"])
+        if self._in_head and tag not in _HEAD_CONTENT_TAGS and not (self._skip_depth or self._in_title):
+            self._in_head = False  # <body>, or any body-only element such as <img> or <div>, ends the head for good
         if tag == "html":
             self.lang = a.get("lang", "")
-        elif tag == "head":
-            self._in_head = True
-        elif tag == "body":
-            self._in_head = False
+        elif tag == "base" and a.get("href") and not self.base_href:  # only the first <base href> counts
+            self.base_href = a["href"]
         elif tag == "title" and not self._stack_has("svg"):
             self._in_title = True
             self.title_count += 1
@@ -175,9 +274,14 @@ class _PageParser(HTMLParser):
         elif tag in _HEADING_TAGS:
             self._heading = (int(tag[1]), [])
         elif tag == "a":
+            self._flush_anchor()  # an <a> start tag closes any <a> still open, as browsers do
             self._anchor = a
             self._anchor_text = []
+        elif tag == "source" and self._stack_has("picture") and (a.get("srcset") or a.get("type")):
+            self._picture_has_source = True
         elif tag == "img":
+            if self._stack_has("picture") and self._picture_has_source:
+                a["_picture_source"] = "1"  # the browser picks from the <picture>'s <source>s, not just this src
             self.images.append(a)
             if self._anchor is not None and a.get("alt"):
                 self._anchor_text.append(a["alt"])
@@ -196,11 +300,13 @@ class _PageParser(HTMLParser):
             self.table_count += 1
         if tag in _SKIP_TEXT_TAGS:
             self._skip_depth += 1
-        if tag not in ("meta", "link", "img", "br", "hr", "input", "source", "wbr"):
+        if tag not in ("meta", "link", "base", "img", "br", "hr", "input", "source", "wbr"):
             self._stack.append(tag)
 
     def handle_startendtag(self, tag, attrs):
         self.handle_starttag(tag, attrs)
+        if tag == "svg":  # foreign element: the self-closing slash really closes it (browsers ignore it on <script> etc.)
+            self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
         if tag == "head":
@@ -211,9 +317,10 @@ class _PageParser(HTMLParser):
             level, parts = self._heading
             self.headings.append((level, _squash(" ".join(parts))))
             self._heading = None
-        elif tag == "a" and self._anchor is not None:
-            self.anchors.append({**self._anchor, "_text": _squash(" ".join(self._anchor_text))})
-            self._anchor = None
+        elif tag == "a":
+            self._flush_anchor()
+        elif tag == "picture":
+            self._picture_has_source = False
         elif tag == "script" and self._in_json_ld:
             self.json_ld.append("".join(self._json_ld_buffer))
             self._in_json_ld = False
@@ -237,6 +344,8 @@ class _PageParser(HTMLParser):
             return
         if self._skip_depth:
             return
+        if self._in_head and data.strip():
+            self._in_head = False  # so does the first non-whitespace text
         self.text_parts.append(data)
         if self._heading:
             self._heading[1].append(data)
@@ -244,6 +353,15 @@ class _PageParser(HTMLParser):
             self._anchor_text.append(data)
         if self._paragraph is not None:
             self._paragraph.append(data)
+
+    def close(self):
+        super().close()  # parse any buffered trailing data first
+        self._flush_anchor()  # an <a> never closed is still a link
+
+    def _flush_anchor(self):
+        if self._anchor is not None:
+            self.anchors.append({**self._anchor, "_text": _squash(" ".join(self._anchor_text))})
+            self._anchor = None
 
     def _stack_has(self, tag: str) -> bool:
         return tag in self._stack
@@ -312,12 +430,15 @@ def extract_page(result: FetchResult) -> PageFacts:
     if result.is_html or result.body.lstrip()[:15].lower().startswith((b"<!doctype html", b"<html")):
         parser.feed(result.text)
         parser.close()
-    base = result.final_url
-    header_links = parse_link_header(result.headers.get("link", ""))
+    base = urllib.parse.urljoin(result.final_url, parser.base_href)  # a <base href> moves what relative URLs resolve against
+    resolve = lambda href: to_uri(urllib.parse.urljoin(base, href))
+    # Link-header URLs resolve against the response URL, never the document's <base>.
+    header_links = [{**l, "href": urllib.parse.urljoin(result.final_url, l["href"])}
+                    for l in parse_link_header(result.headers.get("link", ""))]
     rel_canonical = [l for l in parser.link_tags + header_links if "canonical" in l.get("rel", "").lower().split()]
     canonicals = [l for l in rel_canonical if l.get("_in_head")]  # Google only honours canonicals in <head> or the header
     hreflang = [
-        {"hreflang": l.get("hreflang", ""), "href": urllib.parse.urljoin(base, l.get("href", ""))}
+        {"hreflang": l.get("hreflang", ""), "href": resolve(l.get("href", ""))}
         for l in parser.link_tags + header_links
         if "alternate" in l.get("rel", "").lower().split() and l.get("hreflang")
     ]
@@ -328,7 +449,7 @@ def extract_page(result: FetchResult) -> PageFacts:
             continue
         absolute = normalize_url(urllib.parse.urljoin(base, href))
         entry = {"href": absolute, "text": anchor["_text"], "rel": anchor.get("rel", "")}
-        (internal if same_site(absolute, base) else external).append(entry)
+        (internal if same_site(absolute, result.final_url) else external).append(entry)
 
     json_ld, json_ld_errors = [], []
     for raw in parser.json_ld:
@@ -362,8 +483,8 @@ def extract_page(result: FetchResult) -> PageFacts:
             m.get("content", "") for m in parser.metas if m.get("name", "").lower() in ("robots", "googlebot")
         ),
         x_robots_tag=result.headers.get("x-robots-tag", ""),
-        canonical=urllib.parse.urljoin(base, canonicals[0].get("href", "")) if canonicals else "",
-        canonical_count=len(canonicals),
+        canonical=resolve(canonicals[0].get("href", "")) if canonicals else "",
+        canonical_count=len({resolve(l.get("href", "")) for l in canonicals}),  # distinct URLs: repeating the same one is fine
         canonical_in_body=len(rel_canonical) > len(canonicals),
         hreflang=hreflang,
         viewport=_meta_content(parser.metas, "viewport"),
@@ -378,7 +499,7 @@ def extract_page(result: FetchResult) -> PageFacts:
         table_count=parser.table_count,
         internal_links=internal,
         external_links=external,
-        images=[{**img, "src": urllib.parse.urljoin(base, img.get("src", ""))} for img in parser.images],
+        images=[{**img, "src": resolve(img.get("src", ""))} for img in parser.images],
         head_blocking_scripts=head_blocking,
         json_ld=json_ld,
         json_ld_errors=json_ld_errors,
@@ -404,8 +525,9 @@ def parse_link_header(value: str) -> list[dict[str, str]]:
 # ---------------------------------------------------------------- URL helpers
 
 def normalize_url(url: str) -> str:
-    """Lower-case scheme/host, drop the fragment, and give an empty path its implicit '/'."""
-    parts = urllib.parse.urlsplit(url)
+    """Lower-case scheme/host, drop the fragment, give an empty path its implicit '/', and put the host, path and query
+    in to_uri() form (so /café, /caf%c3%a9 and /caf%C3%A9 are one URL, and urllib can request it)."""
+    parts = urllib.parse.urlsplit(to_uri(url))
     return urllib.parse.urlunsplit((parts.scheme.lower(), parts.netloc.lower(), parts.path or "/", parts.query, ""))
 
 
@@ -423,9 +545,33 @@ def site_root(url: str) -> str:
     return f"{parts.scheme}://{parts.netloc}"
 
 
+# X-Robots-Tag rules whose own value follows a colon, so `max-snippet:0` is not read as a user-agent scope.
+_ROBOTS_RULES_WITH_VALUES = {"max-snippet", "max-image-preview", "max-video-preview", "unavailable_after"}
+
+
+def googlebot_robots_directives(meta_robots: str, x_robots_tag: str) -> str:
+    """Lower-cased robots rules Googlebot obeys: the robots/googlebot meta tags plus the X-Robots-Tag rules that are
+    not scoped to another crawler. `bingbot: noindex, nofollow` applies to Bing only; a scope lasts until the next `agent:`
+    or the end of its header (fetch() joins repeated X-Robots-Tag headers with newlines)."""
+    rules = []
+    for header in x_robots_tag.lower().split("\n"):
+        agent = ""
+        for token in header.split(","):
+            scoped = re.match(r"\s*([\w-]+)\s*:(.*)", token)
+            if scoped and scoped.group(1) not in _ROBOTS_RULES_WITH_VALUES:
+                agent, token = scoped.group(1), scoped.group(2)
+            if agent in ("", "googlebot"):
+                rules.append(token.strip())
+    return ", ".join([meta_robots.lower(), *rules])
+
+
+def robots_noindex(directives: str) -> bool:
+    """True for `noindex`, or `none` (= noindex, nofollow) as a whole rule; `max-image-preview:none` is not one."""
+    return "noindex" in directives or "none" in re.split(r"[,\s]+", directives)
+
+
 def is_indexable(facts: PageFacts) -> bool:
-    directives = f"{facts.meta_robots},{facts.x_robots_tag}".lower()
-    return facts.status == 200 and "noindex" not in directives and "none" not in re.split(r"[,\s]+", directives)
+    return facts.status == 200 and not robots_noindex(googlebot_robots_directives(facts.meta_robots, facts.x_robots_tag))
 
 
 # ---------------------------------------------------------------- SERP display
@@ -443,7 +589,9 @@ TITLE_MAX_PX = 600
 
 
 def title_pixel_width(title: str) -> int:
-    return round(sum(_ARIAL_WIDTHS.get(ch, 556) for ch in title) * TITLE_FONT_PX / 1000)
+    # Full-width East Asian characters (CJK ideographs, kana, hangul) render about 1 em wide.
+    return round(sum(1000 if unicodedata.east_asian_width(ch) in ("W", "F") else _ARIAL_WIDTHS.get(ch, 556) for ch in title)
+                 * TITLE_FONT_PX / 1000)
 
 
 def sort_findings(findings: list[Finding]) -> list[Finding]:

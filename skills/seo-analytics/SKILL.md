@@ -24,19 +24,20 @@ Not for:
 - Keyword ideas for new pages → seo-keywords.
 - Competitor visibility → seo-competitors.
 
-## Inputs to gather
+## Inputs: decide, don't ask
 
-- **Search Console Performance export(s).**
-  - UI export: `Queries.csv` / `Pages.csv` (top 1,000 rows only).
-  - API or Looker Studio export with query+page rows: needed for cannibalisation. API limit: 25k rows/request, ~50k rows/day/type (google-rules §11).
-  - For comparisons: **two windows of equal length, aligned on weekdays**, with the last 2–3 days excluded (GSC data lags).
-- **Brand regex.** Brand name plus misspellings, e.g. `acme|acme ?corp|აკმე`.
-- **Optional:**
-  - Bing Webmaster export (same shape; works with gsc_analyze).
-  - GA4 organic landing-page report.
-  - Server access logs (`.log` / `.gz`).
-  - The dates of site changes, deploys and migrations.
-- **For drops:** when it started, which section/country/device, and whether conversions dropped too.
+Decide each input from evidence, record the choice under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Search Console Performance export(s). UI export: `Queries.csv` / `Pages.csv` (top 1,000 rows only). API or Looker Studio export with query+page rows: needed for cannibalisation. API limit: 25k rows/request, ~50k rows/day/type (google-rules §11) | A connector or the API, or exports in `seo-work/` | **Ask — batched at the end.** Carry on with the drop tree's technical, update-date and SERP branches, plus logs if present |
+| Comparison windows | Choose them yourself: **two windows of equal length, aligned on weekdays**, with the last 2–3 days excluded (GSC data lags) | The last 28 days vs the previous 28, plus YoY when 16 months exist |
+| Brand regex: brand name plus misspellings (example below) | Site name, Organization schema, domain, and the brand variants in GSC queries, in every alphabet the brand is written in | The domain name without the TLD |
+| Optional: Bing Webmaster export (same shape; works with gsc_analyze), GA4 organic landing-page report, server access logs (`.log` / `.gz`) | A connector, or files in the project or `seo-work/` | **Ask — batched at the end**, saying what each adds |
+| The dates of site changes, deploys and migrations | Git history, `SEO-WORKLOG.md`, sitemap `lastmod` | "None found", noted |
+| For drops: when it started, which section/country/device, and whether conversions dropped too | The GSC daily series and its page/country/device dimensions; GA4 conversions | Conversions `[needs data]` without GA4 |
+
+Brand regex example: `acme|acme ?corp|აკმე`.
 
 ## Workflow
 
@@ -81,7 +82,7 @@ Not for:
 
 2. Walk the **drop tree in order** and stop at the first branch the evidence supports. Record the evidence for each branch:
    1. **Is the drop real?**
-      - GSC clicks vs GA4 organic sessions, comparing trend direction (expect a 10–20% level gap).
+      - GSC clicks vs GA4 organic sessions: compare trend direction, not levels. The totals won't match exactly (attribution, consent, non-HTML files, time zones); Google only says the general trends should be similar (google-rules §11) [Google doc].
       - A drop in GA4 only → tracking/consent/tag issue, not SEO.
       - Check year-over-year to rule out seasonality.
    2. **Technical.** Run in parallel:
@@ -95,7 +96,7 @@ Not for:
       - Deploys on the drop date.
       - The Search Console Page indexing report for jumps in "Excluded" (seo-technical).
    3. **Algorithm update.** Compare the drop date with the Google Search Status Dashboard (`https://status.search.google.com/` → ranking incidents; fetch it). Shape matters:
-      - A site-wide step change on an update date coincides with a systems re-evaluation (helpful content / core / spam). See google-rules §4.
+      - A site-wide step change on an update date coincides with a systems re-evaluation (core / spam; the helpful content system was folded into core in March 2024, so "helpful content update" only applies to drops before then). See google-rules §4.
       - Section-specific changes point to page-level issues.
       - Never say "penalised" unless Search Console shows a **manual action**.
    4. **Seasonality / demand.** YoY in GSC (16 months of data; google-rules §11), plus Google Trends for the head terms. Impressions down at a stable position = demand.
@@ -114,7 +115,7 @@ Not for:
    - Errors served to bots.
    - Parameter-URL share (crawl waste).
    - Sitemap paths never crawled.
-   - Fake "Googlebot" IPs (`unverified_ips`).
+   - Fake "Googlebot" IPs (`unverified_ips`: the reverse DNS name is missing or outside Google's domains, or doesn't resolve back to the IP). `unverifiable_ips` are IPs where the forward lookup failed or the log's host field isn't an IP; they aren't proof of a fake. Check them against Google's published IP ranges before blocking.
    - Whether AI bots (OAI-SearchBot, Claude-SearchBot, PerplexityBot) reach the site at all.
 
 ### C. Reporting and dashboards
@@ -187,6 +188,7 @@ Label third-party traffic numbers `[vendor data]` / `[estimate]`. They are model
 2. Drop diagnosis: the tree with ✅/❌ and evidence per branch, the most likely explanation in "consistent with" language, and next actions routed to the right skill.
 3. A KPI/dashboard spec (Looker Studio data sources, fields, filters) or a monthly report draft.
 4. Experiment record (pre-registration + result).
+5. **Assumptions:** the windows, brand regex, data sources and change dates you decided, each with its evidence. Then the questions batched for the user (missing exports or access), each with a recommendation.
 
 ## Pitfalls & myths
 

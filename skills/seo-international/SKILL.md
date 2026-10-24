@@ -19,13 +19,17 @@ Show each market's searchers the right language and region version, and make sur
   - A single-language site serving one country. Nothing here applies beyond `<html lang>`.
   - A Google Business Profile per country: use **seo-local**.
 
-## Inputs to gather
+## Inputs: decide, don't ask
 
-1. Markets: language × country pairs (e.g. `ka-GE`, `en-GB`, `ru`), and which one is the fallback.
-2. Current URL structure and hosts. Where do the alternates live?
-3. How hreflang is (or will be) emitted: HTML `<link>`, HTTP `Link` header, or the XML sitemap. Which CMS or framework does it?
-4. How translations are produced: human, machine with human review, or raw machine output.
-5. Optional: a Search Console export per country (Performance → Countries filter), and Bing/Yandex data where relevant.
+Decide each input from evidence, record it under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
+
+| Input | Decide from | Default when evidence is thin |
+|---|---|---|
+| Current markets: language × country pairs (e.g. `ka-GE`, `en-GB`, `ru`), and the fallback | `<html lang>`, ccTLD, hreflang, currency and addresses on the page; the x-default target | The fallback is the version the root URL serves. New markets to enter: a business decision, ask — batched at the end |
+| URL structure and hosts: where the alternates live | hreflang alternates, the language switcher's links, the crawl | No alternates yet: recommend subfolders (see Checks) |
+| How hreflang is (or will be) emitted: HTML `<link>`, HTTP `Link` header or XML sitemap, and the CMS or framework that does it | `page_audit.py --facts` (`facts.hreflang`, and the `link` header in `facts.response_headers`); `hreflang_links` from `sitemap_check.py`; the repo | No hreflang yet: recommend the method the stack emits most easily |
+| How translations are produced: human, machine with human review, or raw machine output | The language review in step 3 `[estimate]` | Unknown: say so, and recommend human review where text reads as machine output |
+| Search Console export per country (Performance → Countries filter), Bing/Yandex data where relevant | What's configured or already in the workspace | Run without them. Ask — batched at the end, naming what each adds |
 
 ## Workflow
 
@@ -37,7 +41,7 @@ Show each market's searchers the right language and region version, and make sur
    python3 "$S/page_audit.py" https://example.com/ka/pricing > seo-work/intl-ka.json
    ```
    It flags:
-   - `hreflang-invalid`: bad ISO codes, plus `UK`/`EU`/`UN` regions.
+   - `hreflang-invalid`: a code not shaped like an ISO 639-1 language + optional ISO 15924 script + optional ISO 3166-1 alpha-2 region (so `es-419` and `fil` are flagged), plus `UK`/`EU`/`UN` regions. It checks the shape only, not the code lists: a region-only code that looks like a language, such as `gb`, passes, so check each language code by hand.
    - `hreflang-duplicate`.
    - `hreflang-no-self`.
    - `hreflang-no-x-default`.
@@ -49,7 +53,7 @@ Show each market's searchers the right language and region version, and make sur
    ```
    The crawl reports `hreflang-no-return` when page A lists B but B doesn't list A.
    - **Script gap:** reciprocity is only checked between pages the crawl reached.
-   - **Script gap:** hreflang sent via HTTP `Link` headers or in sitemaps isn't parsed for reciprocity. `sitemap_check.py` only counts `xhtml:link` alternates (`hreflang_links`).
+   - **Script gap:** hreflang in XML sitemaps isn't checked for reciprocity (HTML `<link>` and HTTP `Link` header hreflang are). `sitemap_check.py` only counts `xhtml:link` alternates (`hreflang_links`).
 
    For sitemap-based hreflang, read a sample of the sitemap XML and check it by hand.
 3. **Language really matches.** Google detects language from **visible content** and ignores `lang` attributes and URLs (§6). Read the main text on each version:
@@ -69,7 +73,7 @@ Show each market's searchers the right language and region version, and make sur
    ```bash
    python3 "$S/triage.py" seo-work/intl-*.json
    ```
-   Map each hreflang issue to the template or generator that emits it. Then fix it in code (diff first) and re-run step 1.
+   Map each hreflang issue to the template or generator that emits it. Then fix it in code (diff first) per autonomy level (references/autonomy.md) and re-run step 1.
 
 ## Checks
 
@@ -137,6 +141,7 @@ Markets: … · Structure: … · hreflang method: …
 ## Language/translation review per market [estimate] (sampled pages, what's untranslated or machine-like)
 ## Per-market keyword findings (autocomplete [measured]; volumes [needs data] unless a paid/Ads source was used)
 ## Structure recommendation (if asked) with trade-offs
+## Assumptions (markets, fallback, hreflang method, translation process: each decision and its evidence)
 ## Not verified [needs data]
 ```
 

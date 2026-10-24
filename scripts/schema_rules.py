@@ -2,7 +2,8 @@
 
 Source: developers.google.com/search/docs/appearance/structured-data/search-gallery
 (and each feature's page). `required_any` means at least one of the listed
-properties must be present. Re-check the gallery when Google announces changes.
+properties must be present; `recommended_any` is the same for a recommendation.
+Re-check the gallery when Google announces changes.
 """
 from __future__ import annotations
 
@@ -15,7 +16,8 @@ TYPE_RULES: dict[str, dict] = {
     "Product": {
         "required": ["name"],
         "required_any": [["offers", "review", "aggregateRating"]],
-        "recommended": ["image", "description", "sku", "brand", "gtin", "offers"],
+        "recommended": ["image", "description", "sku", "brand", "offers"],
+        "recommended_any": [["gtin", "gtin8", "gtin12", "gtin13", "gtin14"]],
     },
     "Offer": {
         "required_any": [["price", "priceSpecification"]],
@@ -24,8 +26,9 @@ TYPE_RULES: dict[str, dict] = {
     "AggregateRating": {"required": ["ratingValue"], "required_any": [["ratingCount", "reviewCount"]]},
     "Review": {"required": ["author", "reviewRating"], "recommended": ["datePublished"]},
     "BreadcrumbList": {"required": ["itemListElement"]},  # needs ≥2 ListItems (checked below)
-    "ListItem": {"required": ["position", "name"], "recommended": ["item"]},  # item may be omitted on the last crumb only
-    "ProductGroup": {"required": ["name", "productGroupID"], "recommended": ["variesBy", "hasVariant", "brand", "url"]},
+    "ListItem": {"required": ["position"]},  # name/item rules differ per list (a carousel item needs only url), so BreadcrumbList checks its crumbs below
+    # productGroupID may instead come as inProductGroupWithID on every variant.
+    "ProductGroup": {"required": ["name"], "recommended": ["productGroupID", "variesBy", "hasVariant", "brand", "url"]},
     "OfferShippingDetails": {"required": ["shippingDestination", "shippingRate", "deliveryTime"]},
     "MerchantReturnPolicy": {"required": ["applicableCountry", "returnPolicyCategory"],
                              "recommended": ["merchantReturnDays", "returnFees", "returnMethod"]},
@@ -72,12 +75,13 @@ TYPE_RULES: dict[str, dict] = {
     "Person": {"recommended": ["name", "url", "sameAs", "jobTitle", "image"]},
 }
 TYPE_RULES["SoftwareApplication"]["aliases"] = ["MobileApplication", "WebApplication"]
+TYPE_RULES["Organization"]["aliases"] = ["EducationalOrganization"]  # an Organization (and CivicStructure), not a LocalBusiness
 
 # LocalBusiness subtypes are numerous; treat any of these as LocalBusiness.
 LOCAL_BUSINESS_SUBTYPES = {
     "Restaurant", "Store", "Dentist", "MedicalClinic", "Hotel", "AutoRepair", "LegalService", "RealEstateAgent",
     "HealthAndBeautyBusiness", "HomeAndConstructionBusiness", "ProfessionalService", "FinancialService",
-    "FoodEstablishment", "LodgingBusiness", "SportsActivityLocation", "EducationalOrganization",
+    "FoodEstablishment", "LodgingBusiness", "SportsActivityLocation",
 }
 
 # Types that validate fine but no longer earn (or rarely earn) a Google rich result.
@@ -157,16 +161,28 @@ def validate_json_ld(blocks: list) -> tuple[list[str], list[Finding]]:
                 if not any(_present(node, p) for p in group):
                     findings.append(Finding("schema-missing-required", "high", f"{type_name} needs one of {group}", path))
             missing_recommended = [p for p in rule.get("recommended", []) if not _present(node, p)]
+            missing_recommended += [" | ".join(group) for group in rule.get("recommended_any", [])
+                                    if not any(_present(node, p) for p in group)]
             if missing_recommended:
                 findings.append(Finding("schema-missing-recommended", "low", f"{type_name} lacks recommended {missing_recommended}", path))
+    own_business = {"Organization", "LocalBusiness"} | LOCAL_BUSINESS_SUBTYPES | set(TYPE_RULES["Organization"]["aliases"])
     for path, node in iter_typed_nodes(blocks):
         types = set(node_types(node))
-        if types & ({"Organization", "LocalBusiness"} | LOCAL_BUSINESS_SUBTYPES) and (node.get("aggregateRating") or node.get("review")):
+        if types & own_business and (node.get("aggregateRating") or node.get("review")):
             findings.append(Finding("schema-self-serving-review", "medium",
                                     "Reviews/ratings on your own Organization/LocalBusiness are self-serving and ineligible for review snippets", path))
         items = node.get("itemListElement")
-        if "BreadcrumbList" in node_types(node) and isinstance(items, list) and len(items) < 2:
-            findings.append(Finding("schema-breadcrumb-short", "medium", "BreadcrumbList needs at least 2 ListItems", path))
+        if "BreadcrumbList" in node_types(node) and isinstance(items, list):
+            if len(items) < 2:
+                findings.append(Finding("schema-breadcrumb-short", "medium", "BreadcrumbList needs at least 2 ListItems", path))
+            for i, crumb in enumerate(items):
+                if not isinstance(crumb, dict):
+                    continue
+                crumb_path = f"{path}.itemListElement[{i}]"
+                if not (_present(crumb, "name") or _present(crumb, "item.name")):  # name may come from an item Thing
+                    findings.append(Finding("schema-missing-required", "high", "BreadcrumbList crumb is missing required 'name' (or item.name)", crumb_path))
+                if i < len(items) - 1 and not _present(crumb, "item"):
+                    findings.append(Finding("schema-missing-required", "high", "BreadcrumbList crumb is missing required 'item' (only the last crumb may omit it)", crumb_path))
     for i, block in enumerate(blocks):
         for top in block if isinstance(block, list) else [block]:
             if isinstance(top, dict) and "@context" not in top:
