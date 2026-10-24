@@ -22,6 +22,10 @@ with a stated reason.
 - **A credit guard** (`credit_guard.py`). It runs as a hook around every paid API call. It reuses cached results,
   limits rows and keeps spending inside the monthly budgets you set. Every budget starts at 0, so paid calls are
   off until you choose otherwise.
+- **Audit profiles** (`audit_profile.py`). An audit picks its tool stack and depth by fixed rules: the free
+  big-website stack by default at every size, the paid list for the site's size only when a DataForSEO or other-tools
+  budget (or Ahrefs, on big sites) is above 0, `audit_profile` is `paid`, or you ask for it, and a quick one-URL check
+  only on request (`references/profiles.md`).
 - **3 optional connectors** for Semrush, Ahrefs and DataForSEO, each the vendor's official MCP server.
 - **References.**
   - `google-rules.md`: dated, verified Google and Bing rules, with an explicit list of unverified items.

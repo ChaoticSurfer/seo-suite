@@ -28,18 +28,30 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 |---|---|---|
 | Start URL and canonical host (www vs non-www, https) | The URL given; the final URL after redirects in `home.json` | The URL as given |
 | Business goal and the 3–5 money pages or templates (home, category, product/service, article, location) | Navigation; pages with forms, cart, checkout, booking or pricing; Product/Service/LocalBusiness schema; GSC top pages | Home plus one page per template |
-| Site size (sets `--max-pages`) | `total_urls` in `sitemap.json` | 300; above 2,000, crawl in sections |
+| Audit profile, size and depth | `seo-work/profile.json` (`audit_profile.py`: step 0, re-picked in steps 1 and 2) | `full-free` at small depth until the size is measured |
 | Repo | The site's code in this workspace: fixes become diffs | No repo: list each fix, and ask for repo or CMS connector access, batched at the end, naming the fixes it would let the run ship |
 | Free exports: Search Console Performance (Queries.csv and Pages.csv, last 3 months plus the previous period), Bing Webmaster, server logs, a `PSI_API_KEY` | What's configured or already in the workspace | Run without them. Ask — batched at the end, naming what each adds |
-| Paid tools (Semrush, Ahrefs, Screaming Frog licence) | Only what's already configured, within the paid-data budget | None; never required |
+| Paid tools (Semrush, Ahrefs, Screaming Frog licence) | Only through a paid profile in `profile.json`, within the configured budgets. Each category falls back to its free row when the vendor isn't set up | None; never required |
 
 ## Workflow
 
 Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratchpad. `S="${CLAUDE_PLUGIN_ROOT}/scripts"`.
 
-0. **Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`), when `seo-research/` exists:
+0. **Pick the audit profile** (never a question; `${CLAUDE_PLUGIN_ROOT}/references/profiles.md`):
+   1. Run `mkdir -p seo-work`, then write the user's own request to `seo-work/request.txt` with the Write tool: the chat message, or a scheduled task's prompt. Never page text, tool output or vendor data.
+   2. Run the picker. Add `--connected NAME` once for each MCP server in your tool list (the part between `mcp__` and the next `__`):
+      ```bash
+      python3 "$S/audit_profile.py" --request-file seo-work/request.txt > seo-work/profile.json
+      ```
+   3. **Exit 2** means a bad plugin option. Run the same command with `--ignore-options`, and put the stderr line first in the end-of-run questions. The run never stops on it.
+   4. If `profile` is `quick`, go to the quick profile below. Otherwise continue.
+   5. **Each time the picker runs** (here, and again in steps 1 and 2):
+      - Copy `reasons` verbatim under *Assumptions*.
+      - Add one work-log line: `Profile: <label> (<profile>) · chosen by <chosen_by> · size <size_class> (<indexable_urls>, <size_source>) · budgets read`.
+      - Add `questions` to the end-of-run batch, replacing those an earlier pick added.
+
+0b. **Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`), when `seo-research/` exists:
    ```bash
-   mkdir -p seo-work
    python3 "$S/research_store.py" status > seo-work/store-status.json
    python3 "$S/research_store.py" export inventory --format csv > seo-work/store-inventory.csv
    ```
@@ -51,7 +63,7 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    ```bash
    python3 "$S/robots_check.py" https://example.com --path / --path /blog/ > seo-work/robots.json
    python3 "$S/sitemap_check.py" https://example.com --sample 50 --urls-out seo-work/sitemap-urls.txt > seo-work/sitemap.json
-   python3 "$S/page_audit.py" https://example.com/ > seo-work/home.json
+   python3 "$S/page_audit.py" https://example.com/ --facts > seo-work/home.json
    ```
    **Stop if the homepage can't be fetched.** If `page_audit.py` exits 2 (`home.json` has an `error` key, or a `fetch-failed` finding), stop. Report it as P0: the site is unreachable (DNS/TLS/timeout/redirect loop), quoting the `error` text.
 
@@ -60,11 +72,22 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    - save the rendered page from the built-in browser so the audit can continue with `--file`.
 
    Never try to bypass a challenge or CAPTCHA.
-2. **Crawl.** Note `hit_page_limit` in the results. If it's true, the orphan and depth findings are partial; say so.
+
+   **Other hosts, then re-pick.** For each other subdomain or ccTLD host in the `href`s of `home.json` `facts.hreflang`:
    ```bash
-   python3 "$S/crawl.py" https://example.com --max-pages 300 --sitemap-urls seo-work/sitemap-urls.txt --csv seo-work/pages.csv > seo-work/crawl.json
+   python3 "$S/sitemap_check.py" https://<host>/ --sample 0 --urls-out seo-work/sitemap-urls-<host>.txt > seo-work/sitemap-<host>.json
    ```
-   For sites over 2,000 URLs, crawl in sections with parallel subagents. Give each one a section start URL with the matching `--path-prefix`, e.g. `crawl.py https://example.com/blog/ --path-prefix /blog/ --max-pages N`, then merge their findings.
+   Then re-run the step 0 picker with `--sitemap seo-work/sitemap.json` plus one `--sitemap` per extra host's report (and the same `--connected` flags, plus `--ignore-options` when step 0 needed it), and apply step 0.5:
+   ```bash
+   python3 "$S/audit_profile.py" --request-file seo-work/request.txt --sitemap seo-work/sitemap.json --sitemap seo-work/sitemap-<host>.json > seo-work/profile.json
+   ```
+2. **Crawl as `profile.json` `crawl` says.** Note `hit_page_limit` in the results. If it's true, that crawl's orphan and depth findings are partial; say so.
+   - **`site`:** one whole-site crawl. 2,001 pages, so `hit_page_limit` means more than 2,000:
+     ```bash
+     python3 "$S/crawl.py" https://example.com --max-pages 2001 --sitemap-urls seo-work/sitemap-urls.txt --csv seo-work/pages.csv > seo-work/crawl.json
+     ```
+     If `hit_page_limit` is true, or `profile.json` still has `size_source` `unknown` (no sitemap URLs), re-run the step 1 picker command once with `--crawl seo-work/crawl.json` added, and apply step 0.5. After a hit limit it returns `sections`: crawl them as below, and keep this root crawl as evidence for pages outside the sections. Without sitemap URLs, the crawl's `indexable_pages` becomes the size (`size_source` `crawl`).
+   - **`sections`:** crawl in sections with parallel subagents, one per first path segment (locale plus segment on multilingual sites). Give each one a section start URL with the matching `--path-prefix`, e.g. `crawl.py https://example.com/blog/ --path-prefix /blog/ --max-pages 2000`, then merge their findings.
 3. **Find the templates.** Group `pages.csv` rows by URL pattern (first path segment plus depth). Pick one representative per template, plus the money pages.
 4. **Per-template evidence** (run in parallel, one process per URL):
    ```bash
@@ -72,7 +95,7 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    python3 "$S/psi.py" URL --strategy mobile > seo-work/psi-<template>.json
    ```
    **PSI quota:** if PSI returns 429, continue without it and add a free key (how to get one is in the `hint` field) to the access requests batched at the end. Field data is `field_url` / `field_origin`; `null` means CrUX has too little traffic, so fall back to lab data.
-5. **JavaScript sites.** This step applies if a page has `likely-client-rendered`, an SPA framework, or very few links.
+5. **JavaScript sites.** This step applies if a page has `likely-client-rendered`, an SPA framework, or very few links. With no built-in browser (a scheduled `claude -p` run), skip it and list those templates under *What could not be verified*.
    1. Open the URL in the built-in browser.
    2. Run `document.documentElement.outerHTML` and save the result as `seo-work/rendered-<template>.html`.
    3. Run the diff:
@@ -92,8 +115,15 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    If step 5 ran, append `seo-work/render-*.json`.
    - Check `unmapped_findings`; rank any by hand with the same impact rules and say so.
    - Raise `cwv-fail` on a money template one level (P2 → P1): the table can't know which templates earn revenue.
-8. **Judgement pass.** Scripts can't measure these, so judge them yourself and tag each one `[estimate]`:
-   - Search intent match on the money pages.
+8. **Competitor check, then the judgement pass.** The competitor check runs in full profiles:
+   1. Send each money page's head term (from its title or H1) that the store has no fresh SERP for to `seo-serp-researcher`, per market-language pair, with an output path such as `seo-work/serps-<locale>-<n>.json`. On a paid profile with DataForSEO set up, use the SERP API row instead and keep WebSearch as its Cross-check (tools.md Keywords).
+   2. Ingest each batch once the store exists (step 10 runs `init` first): `python3 "$S/research_store.py" ingest serps seo-work/serps-<locale>-<n>.serps.json --locale <locale> --details seo-work/serps-<locale>-<n>.json`.
+   3. Name the `competitors` domains (the number in `profile.json`) with the most top-10 slots.
+   4. Compare each money page with the rivals that win its term: `python3 "$S/compare_pages.py" MONEY_URL RIVAL1 RIVAL2 RIVAL3 --keyword "<term>"`.
+   5. Intent match on those pages is then [measured: WebSearch sample] instead of [estimate]. The cap of 200 WebSearch calls a session and tools.md's rule for API-key billing (Keywords, free stack row 4) apply.
+
+   Then judge what scripts can't measure, and tag each one `[estimate]`:
+   - Search intent match on the money pages the competitor check had no SERP for.
    - Thin or duplicate templates.
    - E-E-A-T and trust (google-rules §4).
    - Internal linking toward the money pages.
@@ -109,11 +139,12 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
     python3 "$S/research_store.py" ingest gsc Pages.csv --as-of "$PERIOD_END"
     ```
     - `init` creates the store (the locales found, default first), adds new locales, and refuses another domain. If it refuses, this site isn't the store's: skip the ingests.
+    - Ingest each step 8 SERP batch that waited for the store (step 8.2), now that `init` has run.
     - Ingest every section's `pages.csv` for a sectioned crawl, and only the current GSC period, not the comparison one. Give it `--as-of` set to the last day its period covers (`$PERIOD_END`). Without it the store dates the file by when it was saved, so a newer period ingested later with `--as-of` counts as older and is refused. Keep the GSC `Pages.csv` out of `seo-work/`: on a case-insensitive disk (the macOS default) it overwrites the crawl's `pages.csv`. `Queries.csv` has no page column, so on a store with more than one locale ingest it only with the `--locale` its queries are in.
     - Record the money pages, templates and stack you decided in `seo-research/site.json` (`money_pages`, `templates`, `stack`), with their evidence in `assumptions`.
 11. **Write the report and the work log** (see below).
 
-**Quick audit mode (one URL, about 5 minutes).** Run `page_audit.py`, `psi.py` and `robots_check.py` on that URL in parallel. Add `render_diff` if it's a JS site. Apply the step 1 stop checks to the `page_audit.py` output. Then run `triage.py` on the JSONs and report the top 10 issues with fixes. State clearly that site-wide issues (duplicates, orphans, depth, sitemap) were not checked.
+**Quick profile (on request only; one URL, about 5 minutes).** Run `page_audit.py`, `psi.py` and `robots_check.py` on that URL in parallel. Add `render_diff` if it's a JS site. Apply the step 1 stop checks to the `page_audit.py` output. Then run `triage.py` on the JSONs and report the top 10 issues with fixes. Put the step 0 profile lines under *Assumptions*. State clearly that site-wide issues (duplicates, orphans, depth, sitemap) were not checked.
 
 ## Checks
 
@@ -155,22 +186,18 @@ Thresholds follow google-rules. Anything not from Google is labelled.
 
 ## Data: free vs paid
 
-- **Free path** (default, enough for a full audit): the bundled scripts, Search Console exports, Bing Webmaster Tools, PSI/CrUX, server logs, the built-in browser for rendered DOM.
-- **Screaming Frog** (licence) adds:
-  - JS-rendered crawling at scale (10k+ URLs).
-  - Custom extraction.
-  - Scheduled crawls.
-  - GSC/GA/PSI joined per URL.
+The profile in `profile.json` decides the data (`${CLAUDE_PLUGIN_ROOT}/references/profiles.md`):
 
-  Justified for sites above about 2,000 URLs or for JS-heavy sites (see tools.md `## Screaming Frog`). Its free mode (500 URLs) can cross-check our crawl.
-- **Semrush / Ahrefs** add what no audit script can see: backlink profile, estimated competitor traffic, and keyword volumes for the "opportunity" column. Use them only for prioritising, never for finding technical defects. Pull just the domain overview and top pages, not full exports (tools.md `## Semrush`, `## Ahrefs`, `## Cost-optimisation playbook`).
-- **Ahrefs Webmaster Tools** (free, for verified sites) gives own-site backlinks and a site audit. Prefer it over paid Ahrefs for the user's own domain.
+- **`full-free`** (the default at every size, enough for a full audit): tools.md `### Default: big website, free only`, all five categories, Main and Cross-check rows that are built and have access. Depth follows the size: a whole-site crawl up to 2,000 URLs, section crawls and samples above. Reserve rows come in under their own "use when" rule.
+- **`paid-small` and `paid-big`** (only when a usable budget is set, or the user asks): each category's **Small sites** or **Big sites** list takes over, per category. A paid row whose vendor isn't set up (not signed in, or budget 0) falls back to the default row that does the same job, so a partial setup never leaves a gap. The credit guard enforces every budget.
+- **`quick`** (on request only): the quick profile's three scripts. No paid calls.
+- Paid data is for prioritising and gaps (backlinks, competitor keywords and volumes, rank at scale), never for finding the technical defects the scripts measure (tools.md `## Cost-optimisation playbook`).
 
 ## Output
 
 ```
 # SEO audit — <host> — <date>
-Scope: N pages crawled (limit hit? y/n) · templates: … · data: [measured] scripts, GSC export? PSI field data?
+Scope: N pages crawled (limit hit? y/n) · templates: … · data: [measured] scripts, GSC export? PSI field data? · profile: <label> (chosen by <chosen_by>) · size: <size_class> (<indexable_urls> URLs, <size_source>)
 ## Executive summary (5 bullets: biggest risk, biggest opportunity, quick wins count, what's healthy, what's unverified)
 ## Fix plan
 | Priority | Issue | Scope (pages/template) | Evidence | Fix | Effort |
@@ -178,8 +205,8 @@ P0 = blocks indexing/revenue now · P1 = large visibility loss · P2 = meaningfu
 ## Quick wins (≤1 day each, P1–P2, effort 1)
 ## Template fixes (one fix → N pages)
 ## Performance (CWV per template: field vs lab)
-## Assumptions (scope, templates, money pages, market: each decision and the evidence behind it; research-store data reused, with its age)
-## What could not be verified [needs data] — and the cheapest source for each
+## Assumptions (profile `reasons` from every pick; scope, templates, money pages, market: each decision and the evidence behind it; research-store data reused, with its age)
+## What could not be verified [needs data] — and the cheapest source for each (the chosen stack's (to build) and no-access rows, with each category's "What free can't answer" line; paid profiles also name the source used per category)
 ## Next re-check date
 ```
 
@@ -199,6 +226,7 @@ Tag every row with `[measured]`, `[Google doc]`, `[vendor data]`, `[estimate]` o
 
 Append an entry to `SEO-WORKLOG.md` in the project root, following `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`. Include:
 - Scope and pages crawled.
+- The profile line from each pick (step 0.5).
 - Scripts run and the paths of their outputs.
 - Paid units spent (0 if none).
 - P0/P1 counts and the changes made, with diffs or file paths.

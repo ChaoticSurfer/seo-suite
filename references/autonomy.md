@@ -11,6 +11,7 @@ and carry on:
 | Decision | How to decide it |
 |---|---|
 | Scope and crawl size | Sitemap URL count. Up to 2,000 URLs: crawl all. Above that: section crawls (`--path-prefix`) in parallel subagents |
+| Audit profile and depth | `audit_profile.py` (`references/profiles.md`): request words, then `audit_profile`, then paid budgets, then the measured size |
 | Templates and money pages | URL patterns in the crawl CSV; navigation; pages with forms, cart, checkout, booking or pricing; Product/Service/LocalBusiness schema |
 | Market and language | `<html lang>`, ccTLD, hreflang, currency and addresses on the page |
 | Competitors | Domains that rank in the top 10 for the site's head terms (WebSearch) |
@@ -81,6 +82,7 @@ The user sets them once with `/plugin configure seo-suite@seo-suite`:
 | Key | Default | Meaning |
 |---|---|---|
 | `autonomy_level` | 1 | The level above (1–4) |
+| `audit_profile` | auto | The audit profile when the request names none: `auto` (the free stack, or the paid list for the site's size when its budget is above 0), `quick`, `full-free` or `paid` (`references/profiles.md`) |
 | `semrush_monthly_units`, `ahrefs_monthly_units` | 0 | Monthly budget for paid calls, in API units. 0 denies paid calls |
 | `dataforseo_monthly_usd`, `other_monthly_usd` | 0 | Monthly budget for paid calls, in US dollars. 0 denies paid calls |
 | `per_run_cap_pct` | 25 | The most one run may spend, as a percentage of each monthly budget |
@@ -89,8 +91,9 @@ The user sets them once with `/plugin configure seo-suite@seo-suite`:
 | `cache_ttl_days` | 0 (per data type) | How long cached paid results are reused |
 | `psi_api_key` | unset | Optional PageSpeed Insights key |
 
-The credit guard (`hooks/hooks.json`) enforces them on every paid call. A call above `ask_above_pct` is deferred:
-the guard denies it and records it as a batched request in its `requests.jsonl`, and Claude raises it with the
-end-of-run questions. So "paid calls within budget" means within the monthly budget, the per-run cap and the
-per-call threshold. If nothing is configured, that is level 1 with budgets of 0: free tools only, which still covers
-a full audit. Setup and the guard's details: `skills/seo-automation` and `references/paid-tools-automation.md` §8.
+The credit guard (`hooks/hooks.json`) enforces the budget and limit keys on every paid call; `audit_profile` is read
+by `scripts/audit_profile.py`, not the guard. A call above `ask_above_pct` is deferred: the guard denies it and records
+it as a batched request in its `requests.jsonl`, and Claude raises it with the end-of-run questions. So "paid calls
+within budget" means within the monthly budget, the per-run cap and the per-call threshold. If nothing is configured,
+that is level 1 with budgets of 0: free tools only, which still covers a full audit. Setup and the guard's details:
+`skills/seo-automation` and `references/paid-tools-automation.md` §8.

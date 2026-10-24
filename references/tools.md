@@ -100,7 +100,8 @@ Perplexity, DataForSEO) don't. A row that needs a Cloud billing account or has a
 when budgets or credentials for paid tools are configured (every credit-guard budget starts at 0), or when the user
 asks. They take over per category, using the paid list for the site's size. A paid Main row whose vendor isn't set up
 yet falls back to the default row that does the same job, so a partial setup never leaves a gap. Every tool in this
-stack also has a label in the paid lists, where several are Cross-checks or Reserve.
+stack also has a label in the paid lists, where several are Cross-checks or Reserve. seo-audit applies this through
+scripts/audit_profile.py; see references/profiles.md.
 
 **Reserve.** Each category's Reserve table applies to this stack too. A Reserve row marked "(paid lists)", "(small
 sites)" or "(big sites)" covers only the paid lists. When its tool also sits in a list here, the row names that

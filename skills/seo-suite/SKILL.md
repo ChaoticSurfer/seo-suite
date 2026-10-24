@@ -137,6 +137,6 @@ Delegate bulky data collection to the `seo-site-auditor` agent, SERP batches to 
 
 ## 4. Quick start
 
-- "Quick check of one page" → `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/page_audit.py" URL`, then explain the top issues.
+- "Quick check of one page" → `seo-audit` (its quick profile: `audit_profile.py` picks `quick` from the words "quick check").
 - "Full audit" → `seo-audit`.
 - "Teach me SEO" → beginner guide, pillar by pillar, with one hands-on step per pillar on the user's own site.

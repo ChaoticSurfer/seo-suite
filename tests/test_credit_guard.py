@@ -505,7 +505,7 @@ class BatchTest(GuardCase):
 
 
 class SessionStartTest(unittest.TestCase):
-    def run_hook(self, key):
+    def run_hook(self, key, options=None):
         hook = HOOKS["SessionStart"][0]["hooks"][0]
         with tempfile.TemporaryDirectory() as tmp:
             env_file = os.path.join(tmp, "env.sh")
@@ -513,6 +513,7 @@ class SessionStartTest(unittest.TestCase):
             env["CLAUDE_ENV_FILE"] = env_file
             if key:
                 env["CLAUDE_PLUGIN_OPTION_PSI_API_KEY"] = key
+            env.update({"CLAUDE_PLUGIN_OPTION_" + name: value for name, value in (options or {}).items()})
             subprocess.run([sys.executable] + hook["args"], env=env, check=True, timeout=30)
             if not os.path.exists(env_file):
                 return None
@@ -524,6 +525,11 @@ class SessionStartTest(unittest.TestCase):
 
     def test_no_key_writes_nothing(self):
         self.assertIsNone(self.run_hook(""))
+
+    def test_profile_and_budgets_are_exported_for_bash(self):
+        exported = self.run_hook("", {"AUDIT_PROFILE": "auto", "DATAFORSEO_MONTHLY_USD": "25", "AUTONOMY_LEVEL": "2"})
+        self.assertEqual(exported, "export CLAUDE_PLUGIN_OPTION_AUDIT_PROFILE=auto\n"
+                                   "export CLAUDE_PLUGIN_OPTION_DATAFORSEO_MONTHLY_USD=25\n")
 
 
 if __name__ == "__main__":

@@ -486,6 +486,7 @@ describes what it does. If the two disagree, fix one of them.
 | Option | Default | Meaning |
 |---|---|---|
 | `autonomy_level` | 1 | `autonomy.md` levels 1–4 |
+| `audit_profile` | auto | The audit profile when the request names none: `auto`, `quick`, `full-free` or `paid` (`references/profiles.md`). Read by `scripts/audit_profile.py`, not by the guard |
 | `semrush_monthly_units`, `ahrefs_monthly_units` | 0 | Monthly budget in vendor units. 0 = that vendor's paid calls are denied |
 | `dataforseo_monthly_usd` | 0 | Monthly DataForSEO budget in USD |
 | `other_monthly_usd` | 0 | One USD budget shared by Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly and Lumar crawls |
@@ -494,6 +495,10 @@ describes what it does. If the two disagree, fix one of them.
 | `max_rows` | 50 | Row limit the guard clamps or adds |
 | `cache_ttl_days` | per data type | One TTL for every data type when set |
 | `psi_api_key` (sensitive) | unset | Exported as `PSI_API_KEY` by the core SessionStart hook; not used by the guard |
+
+Hooks get these variables, but commands Claude runs through Bash don't [cc-plugin-ref]. So the core SessionStart hook
+also exports `audit_profile` and the four monthly budgets to Bash under their `CLAUDE_PLUGIN_OPTION_` names, for
+`scripts/audit_profile.py`; an option changed mid-session reaches Bash at the next session.
 
 ### Which tools it guards
 
@@ -611,7 +616,7 @@ prefix [cc-hooks]. The vendor whose pattern matches is the one guarded, so every
 
 | Pipeline | Cadence | Paid step and call shape | Per run | Per month | Sources |
 |---|---|---|---|---|---|
-| B1 Full audit | Quarterly | None required. Large or JS sites: Screaming Frog CLI ($0 per crawl with a licence), or DataForSEO On-Page with `max_crawl_pages` | $0. On-Page 5,000 pages: $0.75 / JS $7.50 / browser $25.50. Semrush SA read path ≈ 400 + 100 per non-zero issue | ≈ $0 | [dfs-onpage-price] [semrush-sa] [sf-pricing] |
+| B1 Full audit | Quarterly | None on `full-free`, the default audit profile at every size (references/profiles.md). Paid crawlers follow the profile's lists: Screaming Frog CLI is Main on `paid-big` ($0 per crawl with a licence) and Reserve elsewhere; DataForSEO On-Page with `max_crawl_pages` is a Cross-check on `paid-small` and `paid-big`, within budgets | $0. On-Page 5,000 pages: $0.75 / JS $7.50 / browser $25.50. Semrush SA read path ≈ 400 + 100 per non-zero issue | ≈ $0 | [dfs-onpage-price] [semrush-sa] [sf-pricing] |
 | B2 Weekly technical monitor | Weekly | Ahrefs `site-audit/projects` (free), then `issues` with `date_compared` only if "new" > 0 (interactive only) | $0; Ahrefs ≤ 50 units | $0 | [ahrefs-sa-issues] |
 | B3 Keyword research | Quarterly or on demand | Shortlist of 300: DataForSEO `search_volume` Standard (1 task) + Labs `bulk_keyword_difficulty`. SERPs for the top 20. No Keyword Planner: Labs `keyword_ideas` with `limit` 1,000 | $0.06 + $0.048 + $0.012 ≈ $0.12 (+$0.132 for ideas). Semrush 3,000 units. Ahrefs 6,300 units | ≈ $0.04 averaged | [dfs-ads-price] [dfs-labs-price] [dfs-keyword-ideas] [semrush-keyword] [ahrefs-ke-ref] |
 | B4 Competitor gap | Monthly | DataForSEO `domain_intersection` (`intersections=false`, `limit` 100, volume filter) per competitor | 3 × $0.024 = $0.072. Ahrefs 3 × 2,200 units. Semrush 3 × 1,000 units | $0.07 | [dfs-intersection] [ahrefs-ok-ref] [semrush-domain] |

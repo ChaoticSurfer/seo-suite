@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "seo-suite",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Full-spectrum SEO for Claude Code: technical, on-page, content & copywriting, keywords, schema, local, international, e-commerce, media, links, migrations, AI search (AEO/GEO), analytics, competitors and strategy \u2014 with standard-library Python auditors, code-computed prioritisation, beginner and expert guides, and cost-aware use of Semrush/Ahrefs/Screaming Frog/DataForSEO.",
   "author": {
     "name": "ChaoticSurfer",
@@ -31,6 +31,13 @@
       "default": 1,
       "min": 1,
       "max": 4
+    },
+    "audit_profile": {
+      "type": "string",
+      "title": "Audit profile",
+      "description": "Which audit runs when you don't say. auto (default): the free big-website stack at every size, or the paid list for the site's size when a DataForSEO, other-tools or (big sites) Ahrefs budget is above 0. quick: a one-URL check. full-free: never paid tools, even with budgets set. paid: the paid list for the site's size; with no usable budget the run stays free and asks you for one. Your words in a request (\"quick check\", \"deep audit\", \"free only\", \"use paid tools\") override it. See references/profiles.md.",
+      "options": ["auto", "quick", "full-free", "paid"],
+      "default": "auto"
     },
     "semrush_monthly_units": {
       "type": "number",

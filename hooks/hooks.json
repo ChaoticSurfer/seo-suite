@@ -1,5 +1,5 @@
 {
-  "description": "seo-suite credit guard for paid SEO MCP tools (Semrush, Ahrefs, DataForSEO, Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly, Screaming Frog, Sitebulb, Lumar) under every naming variant: mcp__<server>__*, mcp__plugin_<plugin>_<server>__* and mcp__claude_ai_<name>__*. The matcher is case-insensitive by character classes because hook matchers are case-sensitive JavaScript regexes. PreToolUse fails closed (onFailure block); PostToolBatch has no matcher and runs after every batch in every session, so its failure must not stop unrelated work (onFailure continue); paid calls stay blocked anyway because PreToolUse fails closed. SessionStart exports the psi_api_key option as PSI_API_KEY for scripts/psi.py.",
+  "description": "seo-suite credit guard for paid SEO MCP tools (Semrush, Ahrefs, DataForSEO, Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly, Screaming Frog, Sitebulb, Lumar) under every naming variant: mcp__<server>__*, mcp__plugin_<plugin>_<server>__* and mcp__claude_ai_<name>__*. The matcher is case-insensitive by character classes because hook matchers are case-sensitive JavaScript regexes. PreToolUse fails closed (onFailure block); PostToolBatch has no matcher and runs after every batch in every session, so its failure must not stop unrelated work (onFailure continue); paid calls stay blocked anyway because PreToolUse fails closed. SessionStart exports the psi_api_key option as PSI_API_KEY for scripts/psi.py. SessionStart also exports audit_profile and the four monthly budgets under their CLAUDE_PLUGIN_OPTION_ names for scripts/audit_profile.py.",
   "hooks": {
     "SessionStart": [
       {
@@ -9,7 +9,7 @@
             "command": "python3",
             "args": [
               "-c",
-              "import os, shlex\nkey = os.environ.get('CLAUDE_PLUGIN_OPTION_PSI_API_KEY', '')\nenv_file = os.environ.get('CLAUDE_ENV_FILE', '')\nif key and env_file:\n    with open(env_file, 'a') as handle:\n        handle.write('export PSI_API_KEY=' + shlex.quote(key) + '\\n')\n"
+              "import os, shlex\nenv_file = os.environ.get('CLAUDE_ENV_FILE', '')\nexports = [('PSI_API_KEY', os.environ.get('CLAUDE_PLUGIN_OPTION_PSI_API_KEY', ''))]\nfor key in ('AUDIT_PROFILE', 'DATAFORSEO_MONTHLY_USD', 'OTHER_MONTHLY_USD', 'AHREFS_MONTHLY_UNITS', 'SEMRUSH_MONTHLY_UNITS'):\n    name = 'CLAUDE_PLUGIN_OPTION_' + key\n    exports.append((name, os.environ.get(name, '')))\nlines = ['export ' + name + '=' + shlex.quote(value) + '\\n' for name, value in exports if value]\nif lines and env_file:\n    with open(env_file, 'a') as handle:\n        handle.writelines(lines)\n"
             ],
             "timeout": 10
           }
