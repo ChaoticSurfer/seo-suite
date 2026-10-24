@@ -1,7 +1,9 @@
 # SEO work log
 
-Every seo-suite task ends by appending one entry to `SEO-WORKLOG.md` in the project root (create it if missing;
-for a site with no repo, keep it in the working folder the user chose). Newest entry on top. The log is how the
+Every seo-suite task ends by appending one entry to the project's `SEO-WORKLOG.md`. Default location:
+`project-reports/<project>/SEO-WORKLOG.md` inside the seo-suite folder (gitignored), next to that project's research
+store (`project-reports/<project>/seo-research/`) and dated reports (`seo-research/research/`). This keeps project
+repos untouched and nothing project-specific in the plugin's git history. Use the project root only if the user asks. Newest entry on top. The log is how the
 next session — or the next person — knows what was checked, what changed, what it cost, and when to look again.
 
 ## Entry format

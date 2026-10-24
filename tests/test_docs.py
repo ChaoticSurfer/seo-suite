@@ -12,7 +12,7 @@ SCRIPT_CALL = re.compile(r"(?:scripts|\$S\"?)/([a-z_]+\.py)((?:[^\n`|]*))")  # a
 
 def markdown_files():
     for base, _, files in os.walk(ROOT):
-        if os.path.relpath(base, ROOT).split(os.sep)[0] in ("tests", ".git"):
+        if os.path.relpath(base, ROOT).split(os.sep)[0] in ("tests", ".git", "project-reports"):  # local, per-project output
             continue
         for name in files:
             if name.endswith(".md"):

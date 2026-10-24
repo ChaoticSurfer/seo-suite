@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 seo-work/
 .DS_Store
+
+# Project-specific SEO reports, logs and research stores (local only for now)
+project-reports/
