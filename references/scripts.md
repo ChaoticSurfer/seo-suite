@@ -10,9 +10,9 @@ Tests: `python3 -m unittest discover -s "${CLAUDE_PLUGIN_ROOT}/tests"`.
 | Script | Purpose | Key usage |
 |---|---|---|
 | `page_audit.py` | One page: status/redirects, robots, title (px width), description, canonical, hreflang, viewport, h1/headings, thin/JS-rendered content, images (alt, dimensions, lazy LCP), links (nofollow, anchors), compression, HSTS, mixed content, OG, JSON-LD validation, bot-challenge detection | `page_audit.py URL [--facts] [--fail-on high]` · `page_audit.py --file dom.html --base-url URL` |
-| `crawl.py` | BFS crawl of one host obeying Googlebot's robots rules; site findings: broken links, links to redirects, duplicate titles/descriptions/content, near-duplicates (≥90% shingle overlap), click depth, weakly linked, canonical to bad target / in body, hreflang return links, orphans vs sitemap, soft-404 probe; per-page issue counts | `crawl.py URL --max-pages 300 --workers 4 --delay 0.5 --sitemap-urls urls.txt --csv pages.csv --links-csv edges.csv [--path-prefix /blog/] [--user-agent "..."]` |
+| `crawl.py` | BFS crawl of one host obeying Googlebot's robots.txt group (first 500 KiB); a robots.txt 5xx, 429 or network error stops the crawl before it starts (`robots-5xx`), while a 4xx or a failed redirect (loop, too many hops, non-http target) means no rules; site findings: broken links, links to redirects, duplicate titles/descriptions/content, near-duplicates (≥90% shingle overlap), click depth, weakly linked, canonical to bad target / in body, hreflang return links, orphans vs sitemap, soft-404 probe; per-page issue counts | `crawl.py URL --max-pages 300 --workers 4 --delay 0.5 --sitemap-urls urls.txt --csv pages.csv --links-csv edges.csv [--path-prefix /blog/] [--user-agent "..."]` |
 | `robots_check.py` | Google-style robots.txt evaluation (longest match, groups), 22 search/AI crawler access matrix, sitemaps, Content-Signal lines, 5xx/429/size/asset-blocking findings | `robots_check.py URL [--path /x --path /y]` · `robots_check.py --file draft-robots.txt --path /` |
-| `sitemap_check.py` | Sitemap index recursion, .gz, 50k/50MB limits, lastmod validity/uniformity/future, http URLs, cross-host; samples URLs for non-200/noindex/non-canonical | `sitemap_check.py URL [--sample 30] [--urls-out urls.txt]` |
+| `sitemap_check.py` | XML, RSS/Atom and text sitemaps; index recursion (up to 200 files; a nested index is flagged and followed only if robots.txt or the command line names it), .gz, 50k URLs / 50 MB uncompressed per file (larger files are `sitemap-too-big`), lastmod validity/uniformity/future, http URLs, cross-host; samples URLs for non-200/noindex/non-canonical | `sitemap_check.py URL [--sample 30] [--urls-out urls.txt]` |
 | `psi.py` | PageSpeed Insights: CrUX field p75 (URL + origin) with ratings, CWV pass, Lighthouse scores, LCP element, top opportunities, failed SEO audits | `psi.py URL [--strategy mobile\|desktop]` (set `PSI_API_KEY` for quota) |
 | `keyword_ideas.py` | Autocomplete expansion (Google, Bing, YouTube) with a–z, question and commercial modifiers; intent classification; theme clusters. **No volumes.** | `keyword_ideas.py "seed" ["seed 2"] --hl en --gl gb --sources google,bing,youtube [--deep]` |
 | `gsc_analyze.py` | GSC/Bing performance CSV: striking distance (est. extra clicks), CTR under-performers vs the site's own CTR curve, question queries, brand split, cannibalisation (query+page), period comparison with likely cause | `gsc_analyze.py Queries.csv [--brand "regex"] [--compare prev.csv] [--min-impressions 50]` |
@@ -30,11 +30,13 @@ Tests: `python3 -m unittest discover -s "${CLAUDE_PLUGIN_ROOT}/tests"`.
 ## Getting a rendered DOM (for JS sites or bot-challenged sites the user can open)
 
 In the built-in browser, open the page, then run `document.documentElement.outerHTML` with the JavaScript tool and
-save the result to a file. Stop and ask the user if a CAPTCHA or challenge page appears — never bypass it.
+save the result to a file. If a CAPTCHA or challenge page appears, stop that step (never bypass it), record an
+access request batched at the end of the run, and continue with everything else (`references/autonomy.md`).
 
 ## Known limits
 
-No JavaScript execution · one host per crawl · robots matching treats `Googlebot-Image` etc. via their own group
+No JavaScript execution · one host per crawl · sitemap recursion stops after 200 files (index + children);
+`sitemap-files-skipped` reports the rest · robots matching treats `Googlebot-Image` etc. via their own group
 only if named · schema validation covers Google's main types, not the full schema.org vocabulary ·
 autocomplete endpoints are unofficial and rate-limited — keep `--delay` ≥0.25 s · title pixel width is an
 Arial-20px estimate · translation language detection is offline, so close neighbours without a profile (Galician read

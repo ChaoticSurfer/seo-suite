@@ -6,15 +6,16 @@ with a stated reason.
 
 ## What's inside
 
-- **19 skills.** The `seo-suite` router plus audit, technical, onpage, content, keywords, schema,
-  ai-search, local, international, ecommerce, media, links, migration, analytics, competitors,
-  programmatic, strategy and automation.
+- **21 skills.** The `seo-suite` router plus audit, technical, onpage, content, blog-builder, blog-review,
+  keywords, schema, ai-search, local, international, ecommerce, media, links, migration, analytics,
+  competitors, programmatic, strategy and automation.
 - **3 agents.** `seo-site-auditor` collects data, `seo-serp-researcher` runs SERP batches in parallel,
   and `seo-content-reviewer` grades pages.
-- **15 scripts.** Python standard library only, no installs. They cover page audit, crawler, robots,
+- **17 scripts.** Python standard library only, no installs. They cover page audit, crawler, robots,
   sitemaps, PageSpeed/CrUX, keyword ideas, Search Console analysis, log analysis, redirect-map QA,
-  content scoring, competitor comparison, render diff, SERP-overlap clustering, code-based triage (P0–P3) and AI-visibility
-  statistics with confidence intervals.
+  content scoring, competitor comparison, render diff, SERP-overlap clustering, code-based triage (P0–P3), AI-visibility
+  statistics with confidence intervals, translation checks across a post's language versions (`translation_check.py`)
+  and AI-text quality heuristics with no AI-detection score (`ai_text_check.py`).
 - **A shared research store** (`research_store.py`). Keyword, search-results and Search Console research is kept
   in one folder per site, so it is done once: every skill reads it first, re-fetches only what has gone stale, and
   writes new findings back.
@@ -24,7 +25,8 @@ with a stated reason.
 - **3 optional connectors** for Semrush, Ahrefs and DataForSEO, each the vendor's official MCP server.
 - **References.**
   - `google-rules.md`: dated, verified Google and Bing rules, with an explicit list of unverified items.
-  - `tools.md`: free and paid tools, why each paid tool is worth it, and how to spend less on it.
+  - `tools.md`: the ranked tool stacks (the default free stack, and paid stacks for small and big sites, each tool
+    Main, Cross-check or Reserve), why each paid tool is worth it, and how to spend less on it.
   - `guide-beginner.md` and `guide-expert.md`: the same SEO pillars at two depths. The router picks one
     for the user's level.
   - `autonomy.md`: what Claude decides on its own, what it asks, and the autonomy levels.
@@ -79,27 +81,29 @@ on the autonomy level you set with `/plugin configure seo-suite@seo-suite`:
 | **1. Analyse** (default) | Fetches, crawls, scripts, free APIs, paid calls within budget, reports, the work log |
 | **2. Fix in code** | Level 1, plus edits, commits and pull requests in the site's repo |
 | **3. Ship** | Level 2, plus merging pull requests that pass CI, and submitting sitemaps or IndexNow for changed URLs |
-| **4. Operate** | Level 3, plus CMS drafts and publishing, and Search Console sitemap submission through an authorised connector |
+| **4. Operate** | Level 3, plus publishing to a CMS and Search Console sitemap submission through an authorised connector |
 
-Some actions always need you, at every level: messages to real people, buying links or reviews, disavow files,
-deleting pages that earn traffic, DNS and CDN changes, and spending above budget. The full list is in
-[references/autonomy.md](references/autonomy.md).
+Some actions always need your OK, at every level: messages to real people, disavow files, deleting pages that earn
+traffic, DNS and CDN changes, Business Profile and Merchant Center edits, and spending above budget. The run prepares
+each one exactly and lists it at the end; Claude carries out the items you approve. Buying reviews or ranking links,
+and anything a vendor's terms forbid, are never done. The full list is in [references/autonomy.md](references/autonomy.md).
 
 ## Use
 
 Ask in plain words: "audit example.com", "why did traffic drop in September", "add Product schema",
 "get us cited in ChatGPT", "teach me SEO". You can also call a skill directly: `/seo-suite:seo-audit`.
 
-Scripts run on their own too:
+Scripts run on their own too. `<plugin-dir>` is your clone, `~/.claude/skills/seo-suite` for a local copy, or
+`~/.claude/plugins/cache/seo-suite/seo-suite/<version>/` after a marketplace install:
 
 ```bash
-python3 ~/.claude/skills/seo-suite/scripts/page_audit.py https://example.com/
+python3 <plugin-dir>/scripts/page_audit.py https://example.com/
 ```
 
 ## Tests
 
 ```bash
-python3 -m unittest discover -s ~/.claude/skills/seo-suite/tests
+python3 -m unittest discover -s <plugin-dir>/tests
 ```
 
 `test_docs.py` fails if a skill references a script or flag that doesn't exist. `test_scripts.py` fails if

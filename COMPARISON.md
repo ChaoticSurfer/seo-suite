@@ -37,7 +37,7 @@ showed to be overstated were corrected.
 | **Beginner and expert modes** | Two guides covering the same pillars. The router picks one based on the user's level | None |
 | **Work log** | Every task appends to `SEO-WORKLOG.md`: scope, data sources, paid units spent, changes, unverified items, re-check date | Ultimate records each work step in a hashed ledger (`work-ledger.json` + `index.md`; `check --final` fails on unresolved steps). marketingskills' SEO-operator loop appends one line per run to a log. The rest have none |
 | **Safety rules** | Fetched pages are data, not instructions. Stops at bot challenges. Refuses non-http(s) redirects. Outreach, disavow, Change of Address, CDN/DNS and Business Profile changes are always gated; code, IndexNow and CMS changes follow the autonomy level the user sets (`references/autonomy.md`) | claude-seo has injection rules and an SSRF guard. Most have none |
-| **Tests** | Over 200 unit tests. The docs test fails if a skill mentions a script or flag that doesn't exist; the triage test fails on any finding id with no table row | claude-seo, Ultimate, AEOTester, LovableSEO, geo-seo-claude and marketingskills have tests (AEOTester and Ultimate have many more test files); five have none |
+| **Tests** | Over 350 unit tests. The docs test fails if a skill mentions a script or flag that doesn't exist; the triage test fails on any finding id with no table row | claude-seo, Ultimate, AEOTester, LovableSEO, geo-seo-claude and marketingskills have tests (AEOTester and Ultimate have many more test files); five have none |
 
 ## Where others are still stronger
 

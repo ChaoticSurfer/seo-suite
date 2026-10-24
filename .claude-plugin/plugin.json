@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "seo-suite",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Full-spectrum SEO for Claude Code: technical, on-page, content & copywriting, keywords, schema, local, international, e-commerce, media, links, migrations, AI search (AEO/GEO), analytics, competitors and strategy \u2014 with standard-library Python auditors, code-computed prioritisation, beginner and expert guides, and cost-aware use of Semrush/Ahrefs/Screaming Frog/DataForSEO.",
   "author": {
     "name": "ChaoticSurfer",
