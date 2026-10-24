@@ -22,6 +22,7 @@ MAX_BODY_BYTES = 15 * 1024 * 1024  # Google crawlers fetch at most 15 MB; we rea
 GOOGLEBOT_HTML_INDEX_BYTES = 2 * 1024 * 1024  # Googlebot for Search indexes only the first 2 MB of HTML (uncompressed).
 MAX_REDIRECTS = 10  # Googlebot follows up to 10 hops.
 REDIRECT_STATUSES = {301, 302, 303, 307, 308}
+FETCHABLE_SCHEMES = {"http", "https"}
 
 SEVERITY_ORDER = {"critical": 0, "high": 1, "medium": 2, "low": 3, "info": 4}
 
@@ -79,6 +80,8 @@ def fetch(url: str, timeout: float = 20.0, method: str = "GET", user_agent: str 
     current = url
     started = time.monotonic()
     for _ in range(MAX_REDIRECTS + 1):
+        if urllib.parse.urlsplit(current).scheme.lower() not in FETCHABLE_SCHEMES:  # no file://, ftp://, data: via redirects
+            return FetchResult(url, current, None, {}, b"", chain, _ms_since(started), error=f"refusing non-http(s) URL {current}")
         if any(current == hop for hop, _ in chain):
             return FetchResult(url, current, None, {}, b"", chain, _ms_since(started), error=f"redirect loop back to {current}")
         request = urllib.request.Request(

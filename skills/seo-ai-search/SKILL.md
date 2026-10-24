@@ -82,7 +82,7 @@ Make the site reachable, eligible, quotable and measurably present in AI answers
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/ai_visibility.py" seo-work/ai-observations.csv --brand-domain site.com
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/ai_visibility.py" seo-work/ai-observations.csv --compare seo-work/ai-observations-prev.csv
      ```
-   - Report rates with their 95% Wilson intervals, as **observational drift**. Overlapping intervals mean no detectable change. Never say "our change caused" it.
+   - Report rates with their 95% Wilson intervals, as **observational drift**. A change is detectable only when the CI for the difference (`--compare` output `change_now_minus_before`) excludes 0; overlapping per-period intervals do not rule a change out. Never say "our change caused" it.
 9. **First-party signals:**
    - Search Console: AI Overviews and AI Mode traffic is counted inside Web performance. The Search generative AI performance report (June 2026) gives impressions only, no clicks or queries, in a staged rollout.
    - Bing Webmaster Tools AI Performance report: citations and grounding queries, preview, CSV export [3rd-party, unverified].

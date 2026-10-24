@@ -10,7 +10,9 @@ from keyword_ideas import classify_intent  # noqa: E402
 from page_audit import audit_page  # noqa: E402
 from robots_check import evaluate, group_for, is_allowed, parse_robots  # noqa: E402
 from schema_rules import validate_json_ld  # noqa: E402
-from ai_visibility import wilson  # noqa: E402
+from ai_visibility import difference_ci, wilson  # noqa: E402
+from content_score import ngrams  # noqa: E402
+from triage import collect  # noqa: E402
 from render_diff import diff  # noqa: E402
 from seo_lib import extract_page, load_local, normalize_url, title_pixel_width  # noqa: E402
 from triage import FINDING_TABLE, priority  # noqa: E402
@@ -108,12 +110,13 @@ class GscTest(unittest.TestCase):
     ROWS = [
         {"query": "seo audit", "page": "/a", "clicks": 10, "impressions": 1000, "ctr": 0.01, "position": 8.2},
         {"query": "seo audit", "page": "/b", "clicks": 5, "impressions": 500, "ctr": 0.01, "position": 9.0},
+        {"query": "seo audit checklist", "page": "/c", "clicks": 1, "impressions": 400, "ctr": 0.0025, "position": 14.0},
         {"query": "brand", "page": "/", "clicks": 300, "impressions": 1000, "ctr": 0.3, "position": 1.1},
     ]
 
     def test_striking_distance_finds_page_two_terms(self):
         rows = striking_distance(self.ROWS, ctr_curve(self.ROWS), 4, 20, 50)
-        self.assertEqual({r["page"] for r in rows}, {"/a", "/b"})
+        self.assertEqual({r["page"] for r in rows}, {"/a", "/b", "/c"})  # page one and page two; not the #1 brand row
 
     def test_cannibalization(self):
         self.assertEqual(cannibalization(self.ROWS)[0]["query"], "seo audit")
@@ -135,8 +138,8 @@ class TriageTest(unittest.TestCase):
                 with open(os.path.join(SCRIPTS, name), encoding="utf-8") as fh:
                     source = fh.read()
                 emitted |= set(re.findall(r'(?:Finding\(|add\()"([a-z0-9-]+)"', source))
-                emitted |= {f"duplicate-{w}" for w in ("titles", "descriptions", "content")} if "duplicate-{" in source else set()
-        emitted.discard("duplicate-")
+        from crawl import DUPLICATE_CHECKS, duplicate_id
+        emitted |= {duplicate_id(label) for label, _ in DUPLICATE_CHECKS}  # the one id built at runtime
         self.assertEqual(sorted(emitted - set(FINDING_TABLE)), [])
 
     def test_priority_rules(self):
@@ -144,6 +147,28 @@ class TriageTest(unittest.TestCase):
         self.assertEqual(priority(3, 1, 0.5), "P1")
         self.assertEqual(priority(4, 4, 0), "P2")
         self.assertEqual(priority(1, 1, 0), "park")
+
+
+class ReviewRegressionTest(unittest.TestCase):
+    def test_triage_keeps_same_finding_on_different_pages(self):
+        a = {"url": "https://x.com/a", "findings": [{"id": "title-missing", "severity": "high", "message": "No <title>"}]}
+        b = {**a, "url": "https://x.com/b"}
+        rows = collect(a, "a.json") + collect(b, "b.json")
+        keys = {(r["source"], r["id"], r["severity"], r["message"], r["evidence"]) for r in rows}
+        self.assertEqual(len(keys), 2)
+        self.assertEqual({r["url"] for r in rows}, {"https://x.com/a", "https://x.com/b"})
+
+    def test_fetch_refuses_non_http_schemes(self):
+        from seo_lib import fetch
+        self.assertIn("refusing non-http(s)", fetch("file:///etc/passwd").error)
+
+    def test_ngrams_do_not_cross_punctuation(self):
+        self.assertNotIn("speed performance", ngrams("Core speed, performance matters.", 2))
+        self.assertIn("core speed", ngrams("Core speed, performance matters.", 2))
+
+    def test_difference_ci_detects_large_change_only(self):
+        self.assertTrue(difference_ci(18, 20, 2, 20)["detectable_change"])
+        self.assertFalse(difference_ci(6, 10, 5, 10)["detectable_change"])
 
 
 class MiscTest(unittest.TestCase):

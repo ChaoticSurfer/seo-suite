@@ -338,7 +338,7 @@ say they're experienced.
 - **Content:** citable passages, statistics with sources, first-hand data, entity consistency (Organization
   `sameAs`). The GEO paper reports up to ~40% visibility gains on its benchmark; treat that as directional.
 - **Measurement:** a frozen query set, 3–5 runs per engine, logged to CSV, then `ai_visibility.py` (Wilson
-  95% CIs). Overlapping CIs mean no detectable change.
+  95% CIs). Call a change only when the CI of the difference excludes 0 (`--compare` reports it); overlapping CIs don't rule one out.
 
 **Paid trackers:** see `## AI visibility trackers` in `references/tools.md`.
 **Skill:** seo-ai-search.

@@ -49,9 +49,10 @@ Decide what each page should become and write content that earns the click.
    - the top 10 results' page types, angles and freshness;
    - People Also Ask and related searches;
    - SERP features, including any AI Overview.
-2. Run `compare_pages.py <your-or-placeholder-url> <top 3–5 URLs> --keyword "$KW"`.
-   - `content_gap_phrases` gives subtopics competitors share; competitor headings give structure.
-   - With no page yet, put the strongest competitor first and read the gap the other way round.
+2. Run `compare_pages.py <your-url> <top 3–5 URLs> --keyword "$KW"` and use `content_gap_phrases`
+   (subtopics competitors share that your page lacks); competitor headings give structure.
+   - With no page yet, run `compare_pages.py --no-own-page <top 3–5 URLs> --keyword "$KW"` and use
+     `shared_competitor_phrases`.
 3. **Write the brief:**
    - search intent and the reader's job-to-be-done;
    - primary and secondary queries;
@@ -80,7 +81,7 @@ Decide what each page should become and write content that earns the click.
    - update facts;
    - add the missing subtopics;
    - change `dateModified` only for substantive edits.
-5. Score the draft with `content_score.py --file draft.html --keyword "$KW"` and fix the placement and structure gaps.
+5. Score the draft with `content_score.py --file draft.html --base-url https://site/<planned-slug> --keyword "$KW"` and fix the placement and structure gaps.
 6. Deliver as a file or diff. **Never publish to the CMS without explicit approval.**
 
 ## Checks

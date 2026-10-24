@@ -38,20 +38,26 @@ def syllables(word: str) -> int:
 
 
 def flesch_reading_ease(text: str) -> float | None:
-    words = re.findall(r"[A-Za-z]+", text)
     sents = sentences(text)
+    words = re.findall(r"[A-Za-z]+", " ".join(sents))  # only words inside the sentences being counted
     if len(words) < 100 or not sents:
         return None
     return round(206.835 - 1.015 * (len(words) / len(sents)) - 84.6 * (sum(map(syllables, words)) / len(words)), 1)
 
 
+def ngrams(text: str, n: int) -> list[str]:
+    """Word n-grams that never cross punctuation, so 'speed, performance' is not a phrase."""
+    grams = []
+    for chunk in re.split(r"[.!?,;:()\[\]\"“”|/]+", text.lower()):
+        tokens = re.findall(r"\w[\w'-]*", chunk)
+        grams += [" ".join(tokens[i:i + n]) for i in range(len(tokens) - n + 1)
+                  if tokens[i] not in STOPWORDS and tokens[i + n - 1] not in STOPWORDS
+                  and not any(t.isdigit() for t in tokens[i:i + n])]
+    return grams
+
+
 def top_phrases(text: str, n: int, limit: int = 25) -> list[tuple[str, int]]:
-    tokens = re.findall(r"[\w'-]+", text.lower())
-    grams = Counter(
-        " ".join(tokens[i:i + n]) for i in range(len(tokens) - n + 1)
-        if tokens[i] not in STOPWORDS and tokens[i + n - 1] not in STOPWORDS and not any(t.isdigit() for t in tokens[i:i + n])
-    )
-    return grams.most_common(limit)
+    return Counter(ngrams(text, n)).most_common(limit)
 
 
 def keyword_pattern(keyword: str) -> re.Pattern:
@@ -63,8 +69,13 @@ def contains(haystack: str, keyword: str) -> bool:
     return bool(keyword_pattern(keyword).search(haystack.lower()))
 
 
+def body_text(f: PageFacts) -> str:
+    """Paragraph copy when the page has <p> text; otherwise all visible text (which includes nav/footer)."""
+    return " ".join(f.paragraphs) or f.visible_text
+
+
 def keyword_placement(f: PageFacts, keyword: str) -> dict:
-    first_100 = " ".join(f.visible_text.split()[:100])
+    first_100 = " ".join(body_text(f).split()[:100])
     slug = urllib.parse.unquote(urllib.parse.urlsplit(f.final_url).path).replace("-", " ").replace("_", " ")
     occurrences = len(keyword_pattern(keyword).findall(f.visible_text.lower()))
     return {
@@ -85,7 +96,7 @@ def trust_signals(f: PageFacts) -> dict:
     return {
         "author_in_schema": has("author"), "date_published_in_schema": has("datePublished"),
         "date_modified_in_schema": has("dateModified"),
-        "visible_byline": bool(re.search(r"\b(by|written by|author:|reviewed by)\s+[A-Z][a-z]+", text)),
+        "visible_byline": bool(re.search(r"\b(?i:by|written by|author:|reviewed by)\s+[A-Z][a-z]+", text)),
         "visible_updated_date": bool(re.search(r"\b(updated|last updated|published)\b[^.]{0,30}\b(20\d\d)\b", text, re.I)),
         "about_page_linked": "about" in links, "contact_page_linked": "contact" in links,
         "privacy_policy_linked": "privacy" in links,
@@ -110,10 +121,11 @@ def structure(f: PageFacts) -> dict:
 
 
 def score_page(f: PageFacts, keyword: str | None) -> dict:
-    sents = sentences(f.visible_text)
+    body = body_text(f)
+    sents = sentences(body)
     report = {
-        "url": f.final_url, "title": f.title,
-        "readability": {"flesch_reading_ease": flesch_reading_ease(f.visible_text),
+        "url": f.final_url, "status": f.status, "title": f.title,
+        "readability": {"flesch_reading_ease": flesch_reading_ease(body),
                         "avg_sentence_words": round(sum(len(s.split()) for s in sents) / len(sents), 1) if sents else None,
                         "note": "Flesch is English-only; 60–70 is plain English. Match the audience, not a number."},
         "structure": structure(f), "trust_signals": trust_signals(f),
@@ -137,6 +149,10 @@ def main() -> int:
     result = load_local(args.file, args.base_url) if args.file else fetch(args.url)
     if result.error:
         print_json({"url": args.url, "error": result.error})
+        return 2
+    if result.status >= 400:
+        print_json({"url": result.final_url, "status": result.status,
+                    "error": f"HTTP {result.status} — not scoring an error page (check page_audit for bot challenges)"})
         return 2
     print_json(score_page(extract_page(result), args.keyword))
     return 0

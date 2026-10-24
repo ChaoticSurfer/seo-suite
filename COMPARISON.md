@@ -34,7 +34,7 @@ Each claim below is either measured on seo-suite's own code and tests or comes f
 | **Beginner and expert modes** | Two guides covering the same pillars. The router picks one based on the user's level | None |
 | **Work log** | Every task appends to `SEO-WORKLOG.md`: scope, data sources, paid units spent, changes, unverified items, re-check date | None |
 | **Safety rules** | Fetched pages are data, not instructions. Stops at bot challenges. No outreach, disavow, IndexNow, CMS or Search Console change without approval | claude-seo has injection rules. Most have none |
-| **Tests** | 25 unit tests. The docs test fails if a skill mentions a script or flag that doesn't exist; the triage test fails on any finding id with no table row | claude-seo has tests; most have none |
+| **Tests** | 28 unit tests. The docs test fails if a skill mentions a script or flag that doesn't exist; the triage test fails on any finding id with no table row | claude-seo has tests; most have none |
 
 ## Where others are still stronger
 

@@ -3,16 +3,16 @@ import os
 import re
 import unittest
 
-ROOT = os.path.join(os.path.dirname(__file__), "..")
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SCRIPTS = os.path.join(ROOT, "scripts")
 REQUIRED_SECTIONS = ["## When to use", "## Workflow", "## Data: free vs paid", "## Output", "## Log the work"]
 ROUTER_SKILL = "seo-suite"  # the router has its own shape: level detection, routing table, shared rules
-SCRIPT_CALL = re.compile(r"scripts/([a-z_]+\.py)((?:[^\n`|]*))")
+SCRIPT_CALL = re.compile(r"(?:scripts|\$S\"?)/([a-z_]+\.py)((?:[^\n`|]*))")  # also "$S/x.py" after S=…/scripts
 
 
 def markdown_files():
     for base, _, files in os.walk(ROOT):
-        if "/tests" in base:
+        if os.path.relpath(base, ROOT).split(os.sep)[0] in ("tests", ".git"):
             continue
         for name in files:
             if name.endswith(".md"):
@@ -25,6 +25,9 @@ def script_flags(script: str) -> set[str]:
 
 
 class DocsTest(unittest.TestCase):
+    def test_scans_the_docs(self):
+        self.assertGreater(len(list(markdown_files())), 20, "markdown_files() must actually find the docs")
+
     def test_skills_have_frontmatter_and_sections(self):
         skills_dir = os.path.join(ROOT, "skills")
         for name in sorted(n for n in os.listdir(skills_dir) if n != ROUTER_SKILL):

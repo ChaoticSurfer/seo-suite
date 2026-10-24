@@ -255,7 +255,8 @@ suggestions. For structured data, ask → **seo-schema**.
   - Correct hours.
   - The most specific category.
   - Photos.
-- **Reviews.** Ask happy customers and reply to every review. Never buy reviews or pay for good ones.
+- **Reviews.** Ask *every* customer for a review the same way, with a direct review link, and reply to every review.
+  Never ask only the happy ones ("review gating"), offer anything in return, or buy reviews — all break Google's rules.
 - **Consistent details.** The same name, address and phone number everywhere online.
 - **Local pages.** A page per real location or service area, each with genuinely local content.
 
@@ -319,7 +320,7 @@ data" → **seo-analytics**. It finds "almost ranking" searches and pages with l
 7. Publish or rewrite the 3 best pages for those topics, with first-hand experience, photos and a clear
    next step.
 8. Add an About page, author bios and real contact details (trust).
-9. Ask 5 happy customers for reviews.
+9. Start asking every recent customer for a review, all the same way, with a direct link (not only the happy ones).
 
 **Days 61–90: reputation and review**
 10. Contact 10 partners or associations for listings or links (Claude drafts, you send).

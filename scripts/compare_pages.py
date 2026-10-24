@@ -10,10 +10,11 @@ For a brief before your page exists, pass only rivals with --no-own-page (return
 from __future__ import annotations
 
 import argparse
+import statistics
 import sys
 from concurrent.futures import ThreadPoolExecutor
 
-from content_score import contains, score_page, top_phrases
+from content_score import ngrams, score_page, top_phrases
 from page_audit import summarize
 from seo_lib import extract_page, fetch, print_json
 
@@ -45,18 +46,19 @@ def main() -> int:
 
     own_pages, rivals = ([], pages) if args.no_own_page else (pages[:1], pages[1:])
     rival_rows = rows if args.no_own_page else rows[1:]
-    mine = own_pages[0].visible_text if own_pages else ""
+    mine = set(ngrams(own_pages[0].visible_text, 2) + ngrams(own_pages[0].visible_text, 3)) if own_pages else set()
     phrase_sites: dict[str, int] = {}
     for facts in rivals:
         phrases = {p for p, _ in top_phrases(facts.visible_text, 2, 80) + top_phrases(facts.visible_text, 3, 60)}
         for phrase in phrases:
             phrase_sites[phrase] = phrase_sites.get(phrase, 0) + 1
     needed = min(MIN_COMPETITORS_SHARING_PHRASE, len(rivals))
-    gap = sorted((p for p, n in phrase_sites.items() if n >= needed and not (mine and contains(mine, p))),
+    gap = sorted((p for p, n in phrase_sites.items() if n >= needed and p not in mine),
                  key=lambda p: -phrase_sites[p])
+    rival_words = [r["word_count"] for r in rival_rows if r["status"] == 200]
     print_json({
         "keyword": args.keyword, "yours": None if args.no_own_page else rows[0], "competitors": rival_rows,
-        "median_competitor_words": sorted(r["word_count"] for r in rival_rows)[len(rival_rows) // 2],
+        "median_competitor_words": statistics.median(rival_words) if rival_words else None,
         "content_gap_phrases" if own_pages else "shared_competitor_phrases": gap[:60],
         "note": "Gap phrases are subtopics rivals cover and you don't. Add only those that serve the searcher; length is not a ranking factor.",
     })

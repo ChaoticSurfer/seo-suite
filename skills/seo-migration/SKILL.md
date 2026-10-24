@@ -102,7 +102,7 @@ Move URLs so that every old URL with value lands on its single best new equivale
 
       Not used for http→https, www, or path-only changes.
    9. Optionally use IndexNow for Bing and Yandex. Only with the user's approval, since it submits URLs to third parties.
-   10. Update the top external links you control (social profiles, Business Profile, directories). Send outreach for the most valuable backlinks only if the user approves each message.
+   10. Prepare a change list for the external links the user controls (social profiles, Business Profile, directories) for the owner to apply — never edit those accounts yourself. Draft outreach for the most valuable backlinks; send nothing unless the user approves each message.
 
 ### Phase 5: Monitoring
 

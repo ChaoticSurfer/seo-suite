@@ -132,11 +132,14 @@ def priority(impact: int, effort: int, share: float) -> str:
 
 def collect(report: dict, source: str) -> list[dict]:
     rows = []
+    page = report.get("url") or report.get("start") or report.get("site") or report.get("robots_url") or ""
     for key in ("findings", "site_findings"):
         for f in report.get(key, []):
-            rows.append({"id": f["id"], "pages": None, "message": f["message"], "evidence": f.get("evidence", ""), "source": source})
+            rows.append({"id": f["id"], "severity": f.get("severity"), "url": page, "pages": None, "message": f["message"],
+                         "evidence": f.get("evidence", ""), "source": source})
     for f in report.get("page_issue_summary", []):
-        rows.append({"id": f["id"], "pages": f["pages"], "message": f"{f['pages']} pages", "evidence": ", ".join(f["examples"]), "source": source})
+        rows.append({"id": f["id"], "severity": f.get("severity"), "url": page, "pages": f["pages"], "message": f"{f['pages']} pages",
+                     "evidence": ", ".join(f["examples"]), "source": source})
     return rows
 
 
@@ -158,7 +161,7 @@ def main() -> int:
         if row["id"] not in FINDING_TABLE:
             unknown.append(row)
             continue
-        dedupe_key = (row["id"], row["message"])
+        dedupe_key = (row["source"], row["id"], row["severity"], row["message"], row["evidence"])
         if dedupe_key in seen:
             continue
         seen.add(dedupe_key)

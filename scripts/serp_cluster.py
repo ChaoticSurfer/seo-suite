@@ -20,7 +20,8 @@ from seo_lib import normalize_url, print_json
 
 def _key(url: str) -> str:
     parts = urllib.parse.urlsplit(normalize_url(url))
-    return f"{(parts.hostname or '').removeprefix('www.')}{parts.path.rstrip('/')}"
+    query = f"?{parts.query}" if parts.query else ""  # watch?v=…, viewtopic.php?t=… are distinct results
+    return f"{(parts.hostname or '').removeprefix('www.')}{parts.path.rstrip('/')}{query}"
 
 
 def overlaps(serps: dict[str, list[str]]) -> dict[tuple[str, str], int]:
@@ -58,7 +59,7 @@ def main() -> int:
     shared = overlaps(serps)
     groups = clusters(list(serps), shared, args.same_page)
     cluster_of = {kw: i for i, g in enumerate(groups) for kw in g}
-    interlinks = sorted({(cluster_of[a], cluster_of[b]) for (a, b), n in shared.items()
+    interlinks = sorted({tuple(sorted((cluster_of[a], cluster_of[b]))) for (a, b), n in shared.items()
                          if args.interlink <= n < args.same_page and cluster_of[a] != cluster_of[b]})
     print_json({
         "keywords": len(serps), "clusters": [{"id": i, "keywords": g} for i, g in enumerate(groups)],

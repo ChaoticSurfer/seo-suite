@@ -107,6 +107,15 @@ def near_duplicates(pages: dict[str, PageFacts]) -> list[tuple[str, str, float]]
     return sorted(pairs, key=lambda p: -p[2])
 
 
+# (label, key) pairs for exact-duplicate checks; ids are duplicate-titles / -descriptions / -content.
+DUPLICATE_CHECKS = (("titles", lambda f: f.title), ("meta descriptions", lambda f: f.meta_description),
+                    ("body content", _content_hash))
+
+
+def duplicate_id(label: str) -> str:
+    return f"duplicate-{label.split()[-1]}"
+
+
 def site_findings(pages: dict[str, PageFacts], depth: dict[str, int], inlinks: dict[str, set[str]],
                   blocked: list[str], sitemap_urls: list[str]) -> list[Finding]:
     out: list[Finding] = []
@@ -121,8 +130,7 @@ def site_findings(pages: dict[str, PageFacts], depth: dict[str, int], inlinks: d
         out.append(Finding("links-to-redirects", "medium", f"{len(redirected)} internally linked URLs redirect; update links to the final URL", sample(redirected)))
 
     indexable = {u: f for u, f in pages.items() if is_indexable(f) and not f.redirect_chain}
-    for label, key in (("titles", lambda f: f.title), ("meta descriptions", lambda f: f.meta_description),
-                       ("body content", _content_hash)):
+    for label, key in DUPLICATE_CHECKS:
         groups = defaultdict(list)
         for url, facts in indexable.items():
             value = key(facts)
@@ -131,7 +139,7 @@ def site_findings(pages: dict[str, PageFacts], depth: dict[str, int], inlinks: d
         dupes = [urls for urls in groups.values() if len(urls) > 1]
         if dupes:
             severity = "high" if label == "body content" else "medium"
-            out.append(Finding(f"duplicate-{label.split()[-1]}", severity,
+            out.append(Finding(duplicate_id(label), severity,
                                f"{sum(len(d) for d in dupes)} indexable pages share {label} in {len(dupes)} groups",
                                " | ".join(sample(d) for d in dupes[:3])))
 
@@ -197,12 +205,12 @@ def main() -> int:
             sitemap_urls = [normalize_url(line.strip()) for line in fh if line.strip()]
 
     per_page: dict[str, list[Finding]] = {u: audit_page(f) for u, f in pages.items()}
-    counts = Counter((f.id, f.severity) for fs in per_page.values() for f in fs)
+    counts = Counter(key for fs in per_page.values() for key in {(f.id, f.severity) for f in fs})  # pages, not findings
     examples = defaultdict(list)
     for url, fs in per_page.items():
-        for f in fs:
-            if len(examples[f.id]) < 3:
-                examples[f.id].append(url)
+        for issue_id in {f.id for f in fs}:
+            if len(examples[issue_id]) < 3:
+                examples[issue_id].append(url)
     page_issue_summary = sorted(
         ({"id": i, "severity": s, "pages": n, "examples": examples[i]} for (i, s), n in counts.items()),
         key=lambda row: (SEVERITY_ORDER[row["severity"]], -row["pages"]),
