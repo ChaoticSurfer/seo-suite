@@ -482,8 +482,6 @@ geo-seo-claude, seomachine and the older seo-skills), keeping only ideas with ev
 
 - A read-only **Search Console API fetcher** (`webmasters.readonly` scope) that writes the same CSVs `gsc_analyze.py`
   reads, so mid-size sites aren't limited by the 1,000-row export.
-- **WordPress drafts** for autonomy level 4, through an Application Password on a Contributor account, which can save
-  drafts but not publish.
 - An **IndexNow submitter** that checks the key file before sending, since level 3 promises IndexNow.
 - **CrUX LCP subparts and the full 40-week history** in `psi.py`, using the same Google key.
 - A **crawl diff** between runs, which the weekly technical monitor needs.
