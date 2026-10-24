@@ -1,6 +1,6 @@
 ---
 name: seo-suite
-description: Entry point for any SEO request — "help with SEO", "why am I not ranking", "SEO audit", "improve my Google traffic", "get cited by ChatGPT", "teach me SEO", "what should I fix first". Runs autonomously end to end (asks only for credentials/access and true business decisions), detects the user's level, picks the right seo-suite skill(s), and sets the shared rules — evidence first, free data by default, paid tools (Semrush, Ahrefs, Screaming Frog, DataForSEO) only when justified, and a work log after every task. Use the specific skill directly when the request is already narrow (e.g. seo-schema for "add Product schema").
+description: Entry point for any SEO request — "help with SEO", "why am I not ranking", "SEO audit", "improve my Google traffic", "get cited by ChatGPT", "teach me SEO", "what should I fix first". Runs autonomously end to end (asks only for credentials/access and true business decisions), detects the user's level, picks the right seo-suite skill(s), and sets the shared rules — evidence first, free data by default, paid tools (Semrush, Ahrefs, Screaming Frog, DataForSEO) only when justified, research done once and reused from the shared store in seo-research/, and a work log after every task. Use the specific skill directly when the request is already narrow (e.g. seo-schema for "add Product schema").
 ---
 
 # seo-suite
@@ -56,6 +56,8 @@ including the autonomy levels the user sets once and the actions that are always
 | Crawling, indexing, rendering, speed/CWV, robots, sitemaps, JS frameworks, logs, CI checks | `seo-technical` |
 | Optimise one page (title, meta, headings, internal links) | `seo-onpage` |
 | Content audit, briefs, writing/refreshing, E-E-A-T, cannibalisation, decay | `seo-content` |
+| Write blog posts / a content calendar from keywords | `seo-blog-builder` |
+| Review AI-written or translated blog posts | `seo-blog-review` |
 | Keyword research, intent, clustering, topical map | `seo-keywords` |
 | Structured data / rich results | `seo-schema` |
 | AI Overviews, ChatGPT/Perplexity/Claude citations, AI crawlers, llms.txt | `seo-ai-search` |
@@ -69,6 +71,7 @@ including the autonomy levels the user sets once and the actions that are always
 | Competitor and SERP analysis, content/backlink gaps | `seo-competitors` |
 | Template pages at scale (locations, integrations, comparisons) | `seo-programmatic` |
 | Goals → KPIs → roadmap, budget and tool stack | `seo-strategy` |
+| Connect Semrush/Ahrefs/DataForSEO, budgets, scheduled runs | `seo-automation` |
 
 Several skills often apply: run the audit first, then hand findings to the specialist skills.
 Delegate bulky data collection to the `seo-site-auditor` agent, SERP batches to `seo-serp-researcher`
@@ -97,7 +100,30 @@ Delegate bulky data collection to the `seo-site-auditor` agent, SERP batches to 
    approval for that run. Code changes (shown as diffs), CMS edits and IndexNow submissions follow the autonomy
    level. URL Inspection is a read and needs only Search Console access. Never use real customer contact data for
    testing.
-7. **Log the work.** End every task by appending an entry to `SEO-WORKLOG.md` per
+7. **One research, many uses: the store in `seo-research/`.** Keyword, SERP, Search Console and crawl data is
+   researched once per site and kept in the project's research store
+   (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`); `--dir DIR` points at another folder.
+   - **Read it first:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status`, plus the `export` or
+     `next-topics` the task needs.
+   - **Reuse fresh data.** Fetch only what `status` lists as `stale` or `missing`, and the stale records it lists in
+     `gaps.<locale>`. A refresh of a few rows makes a dataset fresh while its other rows stay old. So reuse a record
+     only while its own date is within the TTL, whatever its dataset's age (research-store §6). Each `gaps` list
+     names at most 50 records: when its `count` is larger, find the rest by those dates.
+     - `needs_serp`: SERP batches for those keywords.
+     - `stale_volumes`: re-export those keywords' volumes, within budget. Semrush volumes listed there are past its
+       one-month caching cap: refresh them, or keep them out of the committed store (research-store §1). Keywords
+       still listed after the re-export got no volume from the vendor (`-`, `n/a` or no row). Don't buy them again
+       until the `volumes` TTL has passed since that export, and list them in the work log so later runs skip them.
+     - `stale_gsc`, `stale_gsc_pages`: ingest one full query+page export, with `--as-of`. Queries and pages still
+       listed after that are missing from the export (no impressions in its period, or past its row limit): don't
+       fetch them again.
+     - `stale_inventory`: re-crawl those sections (`crawl.py --path-prefix`) and `ingest crawl`. A URL a full crawl
+       still misses is out of its reach (removed, unlinked or past `--max-pages`): don't crawl again for it.
+   - **Write results back** with `ingest`, `set-status` or `glossary add`. Subagents write files to `seo-work/`, and
+     one process ingests them.
+   - **Say what was reused and how old it was** under *Assumptions* and in the work log.
+   - Never put secrets, raw paid responses or personal data in it.
+8. **Log the work.** End every task by appending an entry to `SEO-WORKLOG.md` per
    `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`.
 
 ## 4. Quick start

@@ -45,6 +45,20 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 
 ## Workflow
 
+**Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`):
+
+```bash
+mkdir -p seo-work
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export clusters --format json > seo-work/store-clusters.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" next-topics --limit 30 > seo-work/store-topics.json
+```
+
+- `seo-research/site.json` holds the markets, locales and money pages already decided. `status` gives each dataset's age per locale.
+- In step 1, each skill reuses its fresh store data and refreshes only the `stale` and `missing` entries. Over a fresh store, the baseline fetches no research again.
+- The clusters (roles, target URLs, statuses) are the starting topical map for step 4, and `next-topics` ranks the new-content backlog for step 5 [heuristic].
+- No store yet (`status` exits with "no research store here"): create it with `init --site URL --locales …` (research-store §9). Step 1's skills fill it.
+
 1. **Baseline.** These are independent, so run them in parallel:
    - `seo-site-auditor` agent on the site: robots, sitemap, crawl, psi, triage → `seo-work/triage.json`.
    - seo-analytics on GSC exports: non-branded clicks, top clusters, striking distance, YoY trend.
@@ -126,6 +140,10 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - Monthly: KPI report (seo-analytics).
    - Quarterly: re-baseline (crawl + triage + competitor SERPs + AI visibility), refresh the roadmap.
    - After each confirmed core update: a drop/gain review.
+10. **Write back to the research store.**
+    - The URL action per cluster from step 4, with `set-status --cluster ID`: `--status published --url URL` for an existing page to optimise or a merge's surviving page, `--status planned --url URL` for a new page, and `--status skip` for clusters the plan drops.
+    - Pillar and support roles: add `role` to the cluster entries of the locale's newest `serp_cluster.py` file and re-ingest it with `ingest clusters` (research-store §2, §5).
+    - The markets, money pages, stack and assumptions decided here go into `seo-research/site.json` by hand. It is the one store file skills edit directly.
 
 ## Checks
 
@@ -164,7 +182,7 @@ Buy them when the plan depends on *competitor* or *market* data. See the tier li
 4. Prioritised backlog (P0–P3 + content + links) and the 12-week roadmap table.
 5. Tool stack and monthly budget with a justification per paid line.
 6. Risk register and review cadence.
-7. **Assumptions:** each input you decided, with its evidence. Then the open questions batched for the user (access, business decisions), each with a recommendation, and the `[needs data]` items.
+7. **Assumptions:** each input you decided, with its evidence, and which store data was reused, how old it was and what was refreshed. Then the open questions batched for the user (access, business decisions), each with a recommendation, and the `[needs data]` items.
 
 ## Pitfalls & myths
 
@@ -180,6 +198,7 @@ Buy them when the plan depends on *competitor* or *market* data. See the tier li
 Append to `SEO-WORKLOG.md` (`${CLAUDE_PLUGIN_ROOT}/references/worklog.md`):
 - Strategy version and date.
 - Inputs and baselines (file paths).
+- Store data reused (with its age) and refreshed; the cluster statuses and `site.json` fields changed.
 - Decisions and their reasons.
 - Chosen tool tier and cost.
 - The next review date.

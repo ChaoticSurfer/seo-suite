@@ -33,6 +33,13 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | Country or market (citation sources differ by country) | ccTLD, addresses, phone country code, `<html lang>` | The country of the business address |
 
 ## Workflow
+0. **Read the research store first** (`seo-research/`, `${CLAUDE_PLUGIN_ROOT}/references/research-store.md`) when the project has one:
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --locale en --format json > seo-work/store-keywords-en.json
+   ```
+   - "<service> <city>" keywords with demand evidence show which service × area pages are worth having (Inputs).
+   - Their SERP snapshots younger than the `serps` TTL give step 7's organic results and whether a local pack shows (`local_pack` in `features`). WebSearch only the rest. The store holds no map-pack businesses, so the competitor check in Inputs still runs.
 1. **Eligibility and risk** (google-rules §7) [Google doc]:
    - The business needs in-person contact during its stated hours.
    - Virtual offices are ineligible. PO boxes aren't allowed. A co-working space needs signage and staff on site.
@@ -83,6 +90,12 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - Local press, associations and chambers of commerce, sponsorships, partner businesses, event listings, local "best of" lists.
    - Hand outreach off to seo-links.
 9. **Prioritise:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/triage.py" seo-work/local-audit-*.json`. Profile items go first because they're the largest local lever.
+10. **Write back to the store** (skip when the project has none):
+    - Step 7's WebSearch results go in with `ingest serps`, as the two files `seo-serp-researcher` writes, with `local pack` among the features when the map pack shows. That also adds queries the store didn't hold.
+    - Record each location page as the owner of its "<service> <city>" query:
+      ```bash
+      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" set-status --keyword "<service> <city>" --locale en --status published --url https://site/locations/tbilisi
+      ```
 
 ## Checks
 **Local ranking factors** [Google doc]:
@@ -149,7 +162,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 6. **Review plan**, with templates only.
 7. **Citation targets** with evidence that they rank.
 8. **Measurement baseline** (profile and Search Console numbers as given by the user, tagged [measured]).
-9. **Assumptions:** the ground-truth details, services × areas, competitors and market assumed, with the evidence for each. Then the requests batched at the end, each with a recommendation: missing access (Business Profile, Search Console, on-location searches) and the owner's calls (which NAP string is real).
+9. **Assumptions:** the ground-truth details, services × areas, competitors and market assumed, with the evidence for each; which store data was reused and how old it was. Then the requests batched at the end, each with a recommendation: missing access (Business Profile, Search Console, on-location searches) and the owner's calls (which NAP string is real).
 
 ## Pitfalls & myths
 - **Keyword-stuffing the profile name** may help briefly, but it is a guideline violation and a common cause of suspension.

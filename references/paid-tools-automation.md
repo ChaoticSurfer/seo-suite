@@ -619,7 +619,8 @@ prefix [cc-hooks]. The vendor whose pattern matches is the one guarded, so every
 | B7 GSC content refresh | Monthly | SERP Standard for the flagged pages' top queries (~20) | $0.012 (AIO $0.024) | ≈ $0.02 | [dfs-serp-price] [gsc-all-data] |
 | B8 AI visibility | Weekly sampling, monthly report | LLM Scraper Standard: 25 prompts × 2 engines × 3 runs. LLM Mentions monthly with `limit` 100 | $0.18 per week; $0.20 per month | ≈ $0.98 | [dfs-llm-responses] [dfs-llm-mentions] |
 | B9 Multilingual blog QA | Weekly or per PR | Optional SERP check per target keyword per locale | $0.0006 per keyword-locale (10 posts × 3 locales ≈ $0.018) | ≈ $0.08 | [dfs-serp-price] |
-| **Total scheduled (DataForSEO)** | | | | **≈ $5.8 a month**; budget $10 | |
+| B10 Blog batch | Weekly | SERP Standard only for the topics whose snapshot is stale (`next-topics --limit 12` per locale). Volumes for the shortlisted head terms only when they are missing or stale: `search_volume` Standard as in B3, one task per locale | $0.0006 per keyword-locale (12 topics × 3 locales ≈ $0.022). Volumes $0.06 per task | ≈ $0.09 (+$0.06 per locale whose volumes are refreshed, at most monthly) | [dfs-serp-price] [dfs-ads-price] |
+| **Total scheduled (DataForSEO)** | | | | **≈ $5.9 a month**; budget $10 | |
 
 **Semrush and Ahrefs** fit interactive, targeted work: competitor keyword sets, link-index lookups and Semrush-only
 metrics. Keep them ≤ 40% of the included allowance, so other skills still have room.

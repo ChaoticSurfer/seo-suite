@@ -33,6 +33,13 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | **Search Console:** Pages and Merchant listings / Product snippets reports, plus a query+page performance export | A connector or exports in `seo-work/` | **Ask — batched at the end.** Carry on with the crawl |
 
 ## Workflow
+0. **Read the research store first** (`seo-research/`, `${CLAUDE_PLUGIN_ROOT}/references/research-store.md`) when the project has one:
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --locale en --format json > seo-work/store-keywords-en.json
+   ```
+   - Category and facet terms in the store with GSC impressions or a vendor volume are the search data that proves a facet has demand (Checks). Use each number only while its own `provenance` date (`demand.gsc_impressions`, `demand.volume`) is within its TTL (research-store §6). Research only the facets they don't cover, with `seo-keywords`.
+   - The store's inventory holds no canonicals, parameters or link data, so step 1 still crawls.
 1. **Inventory, all three in parallel:**
    ```bash
    mkdir -p seo-work
@@ -61,6 +68,11 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - **Categories:** a short, helpful intro (who it's for, how to choose, key filters) above or near the grid, plus buying guides linked from the category. Not a wall of keyword text below the footer.
    - **Products:** rewrite manufacturer copy for the top SKUs first; add specs tables, sizing, real photos, real reviews and Q&A.
 9. **Prioritise:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/triage.py" seo-work/shop-crawl.json seo-work/shop-robots.json seo-work/shop-sitemap.json`.
+10. **Write back to the store** (skip when the project has none):
+    ```bash
+    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest crawl seo-work/shop-pages.csv
+    ```
+    Facet demand researched in this run goes in the way `seo-keywords` writes it: `ingest keyword-ideas`, plus `ingest volumes` for a paid lookup.
 
 ## Checks
 **Faceted navigation** (google-rules §8) [Google doc]:
@@ -149,7 +161,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 6. **Internal-link plan.**
 7. **Content priorities** by revenue.
 8. **The `triage.py` plan.**
-9. **Assumptions:** the platform, catalogue size, patterns and top-revenue pages assumed, with the evidence for each. Then the requests batched at the end, each with a recommendation: missing access (Merchant Center, Search Console, GA4, logs).
+9. **Assumptions:** the platform, catalogue size, patterns and top-revenue pages assumed, with the evidence for each; which store data was reused and how old it was. Then the requests batched at the end, each with a recommendation: missing access (Merchant Center, Search Console, GA4, logs).
 
 ## Pitfalls & myths
 - **Canonicalising every filter to the category while linking to filters sitewide:** Google may ignore those canonicals, and you still pay the crawl cost.

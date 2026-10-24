@@ -1,6 +1,6 @@
 ---
 name: seo-automation
-description: Sets up and runs SEO unattended. Connects Semrush, Ahrefs, DataForSEO, GA4 and other vendor MCPs once (OAuth or keys go into Claude Code's secure plugin config, never into chat), sets the autonomy level and paid-data budgets once, proposes the permission rules, and schedules pipelines that each use the cheapest data source (full audit, weekly technical monitor, keyword research, competitor gap, backlink deltas, rank tracking, GSC content refresh, AI-visibility tracking, multilingual blog QA) while a credit guard caches, clamps and budgets every paid call. Triggers include "automate SEO", "connect Semrush", "connect Ahrefs", "set up SEO automation", "run SEO weekly", "schedule an SEO audit", "budget for SEO tools" and "stop burning Semrush units". Not for a one-off audit (seo-audit) or for choosing which tools to buy (seo-strategy).
+description: Sets up and runs SEO unattended. Connects Semrush, Ahrefs, DataForSEO, GA4 and other vendor MCPs once (OAuth or keys go into Claude Code's secure plugin config, never into chat), sets the autonomy level and paid-data budgets once, proposes the permission rules, and schedules pipelines that each use the cheapest data source (full audit, weekly technical monitor, keyword research, competitor gap, backlink deltas, rank tracking, GSC content refresh, AI-visibility tracking, multilingual blog QA, weekly blog batch) while a credit guard caches, clamps and budgets every paid call. Triggers include "automate SEO", "connect Semrush", "connect Ahrefs", "set up SEO automation", "run SEO weekly", "schedule an SEO audit", "budget for SEO tools" and "stop burning Semrush units". Not for a one-off audit (seo-audit) or for choosing which tools to buy (seo-strategy).
 ---
 
 # SEO automation: connect once, budget once, run unattended
@@ -33,7 +33,8 @@ are in `${CLAUDE_PLUGIN_ROOT}/references/paid-tools-automation.md`. Read it befo
 | Site, repo, locale, competitors, money pages | As in `autonomy.md`: from the working directory, `<html lang>`, the SERPs and GSC |
 | Pipelines to schedule and their cadence | The defaults in the table under B, cut to the vendors that are connected |
 | Proposed budget numbers | Each scheduled pipeline's expected spend per run (B) × runs per month, plus 50% headroom |
-| Where outputs go | `seo-work/<pipeline>/<YYYY-MM-DD>/`, `SEO-WORKLOG.md`, and PRs at level ≥ 2 |
+| Where outputs go | `seo-work/<pipeline>/<YYYY-MM-DD>/`, `SEO-WORKLOG.md`, and PRs at level ≥ 2. Research results go into the store, `seo-research/` |
+| What a run refreshes | `research_store.py status`: only its `stale` and `missing` datasets per locale, and the stale records in its `gaps.<locale>` (router rule 7) |
 
 **Ask only for these, batched at the end of setup, each with a recommendation:**
 1. **Sign-ins and keys.** The user completes them in `/mcp` or `/plugin configure`, never in chat.
@@ -43,6 +44,17 @@ are in `${CLAUDE_PLUGIN_ROOT}/references/paid-tools-automation.md`. Read it befo
    (launchd job, Desktop task or cloud routine).
 
 ## Workflow
+
+**Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`):
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status
+```
+
+- Its `stale` and `missing` lists, per dataset and locale, and the stale records in `gaps.<locale>`, are what the
+  pipelines in B refresh. Everything else is reused.
+- No store yet (`status` exits with "no research store here"): create it during setup with
+  `init --site URL --locales …` (research-store §9), so the first run has somewhere to write.
 
 ### A. One-time setup
 
@@ -160,6 +172,14 @@ are in `${CLAUDE_PLUGIN_ROOT}/references/paid-tools-automation.md`. Read it befo
 ### B. Pipelines (the cheapest source per step)
 
 **Rules for every pipeline:**
+- **Read the research store first.** Run `status` and fetch only the datasets it lists as stale or missing for that
+  locale (TTLs in days: keywords 90, volumes 30, SERPs 30, GSC 7, inventory 30, competitors 90, posts 7). A fresh
+  dataset can still hold stale records: also refresh those in `gaps.<locale>.needs_serp`, `stale_volumes`,
+  `stale_gsc`, `stale_gsc_pages` and `stale_inventory`, as router rule 7 says.
+- **Write back before the report.** Ingest what the run fetched with the matching `ingest` command (research-store
+  §3), with `--as-of` set to the last day an export covers (a GSC export above all; the default is the file's
+  modification time), and move clusters along with `set-status`. Paid results go in only as derived columns
+  (`ingest volumes … --source <vendor>`); the raw response stays in the guard cache.
 - Start with the free balance checks.
 - Estimate the spend before any paid call and stop a step that would pass `per_run_cap_pct` of a vendor's budget.
 - Shortlist before paying, and send an explicit row limit (`max_rows`) on every call.
@@ -179,6 +199,7 @@ are in `${CLAUDE_PLUGIN_ROOT}/references/paid-tools-automation.md`. Read it befo
 | B7 | GSC-driven content refresh (`seo-content`) | Monthly | Page-level GSC last 3 months vs a year earlier → flag pages −20% clicks → classify (decay, lost position, SERP/AI Overview change) → SERP check of the flagged pages' top queries only | ≈ $0.01–0.02 for 10 pages |
 | B8 | AI-visibility tracking (`seo-ai-search`) | Weekly sampling, monthly report | Frozen prompt set + `ai_visibility.py`. GSC Generative AI report via UI export (no API). Paid: DataForSEO LLM Scraper Standard for repeat runs; LLM Mentions monthly | 25 prompts × 2 engines × 3 runs ≈ $0.18/week; LLM Mentions ≈ $0.10 + $0.001/row per month |
 | B9 | Multilingual blog QA (`seo-blog-review`) | On each new or changed post (PR trigger), or weekly | Fetch changed posts → `content_score.py`, `page_audit.py`, the blog-review checks per language. Paid only to confirm a target query's SERP per locale | $0 by default. SERP check $0.0006 per keyword per locale |
+| B10 | Blog batch (`seo-blog-builder`) | Weekly | Store `status` → refresh only stale or missing data (the CMS posts export included, `ingest posts`) → `next-topics` → briefs and drafts → the blog-review checks per language | $0 by default. Paid only for stale SERP refreshes ($0.0006 per keyword per locale) and the volume shortlist (B3 prices) |
 
 **Where results go, by autonomy level:**
 - **Level 1:** a report and JSON in `seo-work/<pipeline>/<date>/`, plus a `SEO-WORKLOG.md` entry.
@@ -233,6 +254,8 @@ are in `${CLAUDE_PLUGIN_ROOT}/references/paid-tools-automation.md`. Read it befo
 - `--permission-mode dontAsk` denies anything not pre-approved. Since v2.1.302 a `-p` run with no mode set starts in
   Manual, where a call that needs approval is also denied ([headless]).
 - `--max-turns` and `--max-budget-usd` cap Claude's own spend, not vendor credits. Vendor credits are the guard's job.
+- **The research store** is written by `research_store.py`, which `"Bash(python3 *)"` already allows. Add
+  `"Edit(./seo-research/**)"` only for a pipeline that edits store files by hand (briefs, `site.json`).
 - **Never add `--bare`.** Bare mode skips hooks, installed plugins and MCP servers, so the run would have no credit
   guard and no vendor servers ([headless]).
 - **Never add Ahrefs MCP tools to a scheduled run.** Ahrefs forbids scripted or bridged use of its MCP endpoint, and
@@ -245,6 +268,7 @@ are in `${CLAUDE_PLUGIN_ROOT}/references/paid-tools-automation.md`. Read it befo
 
 **The prompt file** (`seo-work/automation/prompts/<pipeline>.md`) is self-contained. It says:
 - which pipeline to run per the `seo-automation` skill;
+- to read the research store first and refresh only its stale or missing data;
 - to take autonomy and budgets from the plugin config;
 - not to ask questions;
 - where outputs go;
@@ -307,7 +331,7 @@ A scheduled prompt is not live user input and never counts as approval for a gat
 - autocomplete-based keyword ideas;
 - AI-visibility sampling by hand with `ai_visibility.py`.
 
-All nine pipelines run at $0 with paid steps skipped. Those steps are marked `[needs data]`.
+All ten pipelines run at $0 with paid steps skipped. Those steps are marked `[needs data]`.
 
 **Paid, only for what free sources can't give:**
 - competitors' keywords and gaps;
@@ -325,6 +349,7 @@ Cheapest source per data type, call shapes and traps: `paid-tools-automation.md`
   budget that covers it.
 - `seo-work/automation/prompts/*.md`, `seo-work/automation/*.plist`, `seo-work/automation/logs/`.
 - `seo-work/<pipeline>/<date>/`: report, raw JSON and CSV. Each report states its spend and its cache hits.
+- `seo-research/`: the research store every pipeline reads first and writes back to, versioned with the site repo.
 - `seo-work/automation/inbox.md`: open decisions for the user, each with a recommendation.
 - **Assumptions:** a section in `setup.md` and in every pipeline report. List what was decided without asking:
   - vendors detected;
@@ -332,6 +357,7 @@ Cheapest source per data type, call shapes and traps: `paid-tools-automation.md`
   - cadence;
   - competitors;
   - locale;
+  - which store data was reused, how old it was, and what was refreshed;
   - which paid steps were skipped and why.
 
   The user corrects these afterwards.
@@ -358,7 +384,8 @@ Cheapest source per data type, call shapes and traps: `paid-tools-automation.md`
   app or use a service account.
 - **Using the Google Indexing API to "force indexing" of normal pages.** It is only for JobPosting and BroadcastEvent
   pages.
-- **Caching Semrush data longer than one month.** That breaches the ToS. Cap it at 30 days.
+- **Caching Semrush data longer than one month.** That breaches the ToS. Cap it at 30 days. Committed store volumes
+  stay in git history, so read research-store §1 before committing Semrush-sourced volumes.
 
 ## Log the work
 Append an entry to `SEO-WORKLOG.md` per `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`.
@@ -373,6 +400,7 @@ Append an entry to `SEO-WORKLOG.md` per `${CLAUDE_PLUGIN_ROOT}/references/worklo
 
 **For each scheduled run, include:**
 - the pipeline;
+- store data reused (with its age) and refreshed;
 - units or dollars per vendor, with estimated vs actual;
 - cache hits;
 - guard denials and why;

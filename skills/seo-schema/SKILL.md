@@ -31,6 +31,15 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 | Search Console exports: Enhancements (per type), Merchant listings, Product snippets, and URL Inspection results | Exports already in the workspace; the URL Inspection API when Search Console access is configured | Run without them. Ask — batched at the end, naming what each adds |
 
 ## Workflow
+0. **Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`), when `seo-research/` exists:
+   ```bash
+   mkdir -p seo-work
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export inventory --format csv > seo-work/store-inventory.csv
+   ```
+   - `seo-research/site.json` → `templates` and `stack` start the template and emitter inputs. Check them against the pages.
+   - The inventory gives a live URL (`status` 200) per template; pick the one with the most `gsc_clicks`.
+   - The markup checks still run on the live pages. Note what you reused and its age for *Assumptions* and the work log.
 1. **Inventory every template, in parallel.**
    ```bash
    mkdir -p seo-work && i=0
@@ -59,6 +68,7 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
    - The URL Inspection API (free, 2,000 calls/day/site) reports detected rich results for indexed URLs.
 8. **Prioritise:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/triage.py" seo-work/schema-*.json`.
 9. **Monitor:** Search Console → Enhancements (one report per type), Merchant listings and Product snippets. Counts update over days to weeks after recrawl.
+10. **Write back to the research store**, when it exists: record the templates and how each one emits markup (server-rendered, plugin, GTM) in `seo-research/site.json` → `templates` and `stack`, so the next skill doesn't rediscover them. Markup findings stay in `seo-work/`; the store has no dataset for them.
 
 ## Checks
 **What `schema_rules.py` checks, and what it doesn't.**
@@ -186,7 +196,7 @@ For each template:
 - Parity issues, each naming the visible element vs the markup value.
 - The proposed JSON-LD as a diff in the right file.
 - The validation step and the Search Console report to watch.
-- Assumptions: the templates, stack and emitters decided from evidence, and the evidence for each.
+- Assumptions: the templates, stack and emitters decided from evidence, and the evidence for each, plus the research-store data reused and its age.
 - End with the `triage.py` plan.
 
 ## Pitfalls & myths

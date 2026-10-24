@@ -23,6 +23,9 @@ Load this guide when the user is new to SEO: they say they "don't know SEO", ask
 - **Warn about scams.** Treat these as red flags: "guaranteed #1 on Google", "1,000 backlinks for $50",
   "instant indexing", "secret algorithm". Explain why each one is a red flag.
 - **Use analogies sparingly**, only where one makes an idea click.
+- **Research once, reuse it.** Keyword and search research is saved in a `seo-research/` folder in their project
+  (`references/research-store.md`). Say so in one sentence the first time, so they know later tasks (blog posts,
+  page fixes) build on it instead of starting over.
 - **Change their site only per autonomy level (`references/autonomy.md`).** At the default level, code changes
   go to them as a diff for approval before anything is applied. CDN settings and Search Console settings (other
   than sitemap submission) always need their OK first.
@@ -172,6 +175,8 @@ person reading.
 - "Improve this page for Google" → **seo-onpage**
 - "Review my blog / which pages should I update or delete?" → **seo-content**
 - "Write a content plan" → **seo-strategy** + **seo-content**
+- "Write blog posts from my keywords" → **seo-blog-builder**
+- "Check my AI-written or translated blog posts" → **seo-blog-review**
 
 ---
 
@@ -320,11 +325,12 @@ data" → **seo-analytics**. It finds "almost ranking" searches and pages with l
 4. Fix indexing errors from *Indexing → Pages*.
 5. Pick your 5–10 most important pages (services and products). Improve their titles, headings and first
    paragraph (**seo-onpage**).
-6. Do keyword research for your main service (**seo-keywords**). Choose 3 topics to write about.
+6. Do keyword research for your main service (**seo-keywords**). Choose 3 topics to write about. The research
+   is saved in `seo-research/`, so the next steps reuse it.
 
 **Days 31–60: content**
 7. Publish or rewrite the 3 best pages for those topics, with first-hand experience, photos and a clear
-   next step.
+   next step. For blog posts, **seo-blog-builder** drafts them from the saved research; you review them.
 8. Add an About page, author bios and real contact details (trust).
 9. Start asking every recent customer for a review, all the same way, with a direct link (not only the happy ones).
 
@@ -376,6 +382,8 @@ data" → **seo-analytics**. It finds "almost ranking" searches and pages with l
 - **PBN:** private blog network, fake sites made to create links. Forbidden.
 - **Position / ranking:** where your page appears in results (1 = top).
 - **Redirect (301):** automatically forwarding an old address to a new one, permanently.
+- **Research store:** the `seo-research/` folder where Claude saves keyword and search research, so later
+  tasks reuse it.
 - **robots.txt:** a file telling robots which parts of a site they may visit.
 - **Schema / structured data:** hidden code that labels page content (business, product, article) for
   search engines.

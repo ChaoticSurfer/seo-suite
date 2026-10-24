@@ -37,6 +37,16 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 
 Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratchpad. `S="${CLAUDE_PLUGIN_ROOT}/scripts"`.
 
+0. **Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`), when `seo-research/` exists:
+   ```bash
+   mkdir -p seo-work
+   python3 "$S/research_store.py" status > seo-work/store-status.json
+   python3 "$S/research_store.py" export inventory --format csv > seo-work/store-inventory.csv
+   ```
+   - Start the Inputs from `seo-research/site.json` (`money_pages`, `templates`, `stack`, `locales`, `markets`) and check each against the site. The site wins.
+   - The inventory's `gsc_clicks` stand in for the GSC top pages when picking money pages, on rows whose `gsc_at` is within the 7-day `gsc` TTL (research-store §6).
+   - The crawl and page checks still run: an audit measures the site as it is today, and the store keeps the page list, not the findings.
+   - Note what you reused and its age for *Assumptions* and the work log.
 1. **Access gate (run these three in parallel; they are independent):**
    ```bash
    python3 "$S/robots_check.py" https://example.com --path / --path /blog/ > seo-work/robots.json
@@ -92,7 +102,16 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    - Locate the template or layout file.
    - Show a diff, and apply it per autonomy level (references/autonomy.md).
    - Re-run `page_audit.py` afterwards to prove the fix.
-10. **Write the report and the work log** (see below).
+10. **Write the results back to the research store:**
+    ```bash
+    python3 "$S/research_store.py" init --site https://example.com --locales en,ka
+    python3 "$S/research_store.py" ingest crawl seo-work/pages.csv
+    python3 "$S/research_store.py" ingest gsc Pages.csv --as-of "$PERIOD_END"
+    ```
+    - `init` creates the store (the locales found, default first), adds new locales, and refuses another domain. If it refuses, this site isn't the store's: skip the ingests.
+    - Ingest every section's `pages.csv` for a sectioned crawl, and only the current GSC period, not the comparison one. Give it `--as-of` set to the last day its period covers (`$PERIOD_END`). Without it the store dates the file by when it was saved, so a newer period ingested later with `--as-of` counts as older and is refused. Keep the GSC `Pages.csv` out of `seo-work/`: on a case-insensitive disk (the macOS default) it overwrites the crawl's `pages.csv`. `Queries.csv` has no page column, so on a store with more than one locale ingest it only with the `--locale` its queries are in.
+    - Record the money pages, templates and stack you decided in `seo-research/site.json` (`money_pages`, `templates`, `stack`), with their evidence in `assumptions`.
+11. **Write the report and the work log** (see below).
 
 **Quick audit mode (one URL, about 5 minutes).** Run `page_audit.py`, `psi.py` and `robots_check.py` on that URL in parallel. Add `render_diff` if it's a JS site. Apply the step 1 stop checks to the `page_audit.py` output. Then run `triage.py` on the JSONs and report the top 10 issues with fixes. State clearly that site-wide issues (duplicates, orphans, depth, sitemap) were not checked.
 
@@ -159,7 +178,7 @@ P0 = blocks indexing/revenue now · P1 = large visibility loss · P2 = meaningfu
 ## Quick wins (≤1 day each, P1–P2, effort 1)
 ## Template fixes (one fix → N pages)
 ## Performance (CWV per template: field vs lab)
-## Assumptions (scope, templates, money pages, market: each decision and the evidence behind it)
+## Assumptions (scope, templates, money pages, market: each decision and the evidence behind it; research-store data reused, with its age)
 ## What could not be verified [needs data] — and the cheapest source for each
 ## Next re-check date
 ```

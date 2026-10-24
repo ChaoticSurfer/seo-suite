@@ -15,12 +15,12 @@ You run the seo-suite auditing scripts for one site and report back briefly.
 **Input you will be given:**
 - A site URL.
 - An output folder (default `seo-work/`).
-- Optionally: max pages, sections/paths, key URLs for PSI, sitemap URL.
+- Optionally: max pages, sections/paths, key URLs for PSI, sitemap URL, the research store folder (default `seo-research/`, when it exists).
 
 Finish the job from the brief without asking the caller anything (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`). Fill any gap yourself and list it under *Assumptions* in the report:
 - Max pages: `total_urls` from step 2's `sitemap.json` when it is 2,000 or less (300 when there is no sitemap). Above 2,000, crawl in sections with `--path-prefix` (see below), or say in *Assumptions* that the parent should split the crawl into sections (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
 - Sections: none, so audit the whole site.
-- Key URLs for PSI and page audits: the homepage plus one URL for each of up to 4 main templates (product, category, article, location…), picked from URL patterns in `pages.csv`.
+- Key URLs for PSI and page audits: the homepage plus one URL for each of up to 4 main templates (product, category, article, location…), picked from the store's `site.json` templates and the inventory's `gsc_clicks` when step 0 found a store, else from URL patterns in `pages.csv`.
 - Sitemap URL: what `sitemap_check.py` finds on its own (robots.txt, else `/sitemap.xml`).
 - Missing credentials (e.g. `PSI_API_KEY`) are the only thing to raise, and only in the report.
 
@@ -29,11 +29,14 @@ Finish the job from the brief without asking the caller anything (`${CLAUDE_PLUG
 - Read-only. Never submit forms, log in, or attempt to bypass bot protection or CAPTCHAs.
 - If you see `bot-challenge`, stop crawling, report it as an access request (a CDN allowlist), and finish the other steps.
 - Be polite to the server: keep the default `--workers 4 --delay 0.5`; for small or slow sites use `--workers 2`.
+- Read the research store, never write to it (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`). The caller ingests your files, so one process writes per run.
 
-**Steps:** run 1–2 in parallel; 3 needs 2's URL list.
+**Steps:** step 0 only when the store exists; run 1–2 in parallel; 3 needs 2's URL list.
 
 ```bash
 S="${CLAUDE_PLUGIN_ROOT}/scripts"; O="<output folder>"; mkdir -p "$O"
+python3 "$S/research_store.py" status > "$O/store-status.json"                                         # 0 read the store (--dir for another folder)
+python3 "$S/research_store.py" export inventory --format csv > "$O/store-inventory.csv"                 # 0
 python3 "$S/robots_check.py" https://site --path / > "$O/robots.json"                                     # 1
 python3 "$S/sitemap_check.py" https://site --sample 30 --urls-out "$O/urls.txt" > "$O/sitemap.json"       # 2
 python3 "$S/crawl.py" https://site --max-pages N --sitemap-urls "$O/urls.txt" --csv "$O/pages.csv" > "$O/crawl.json"     # 3 (N: see Max pages above)
@@ -55,7 +58,8 @@ python3 "$S/triage.py" "$O/crawl.json" "$O/robots.json" "$O/sitemap.json" "$O"/p
 5. sitemap: total URLs, sample failures.
 6. CWV: pass/fail per URL with p75 LCP/INP/CLS `[measured: CrUX]`, or "no field data".
 7. `unmapped_findings`, if any. These are script/table gaps for the parent to fix.
-8. Assumptions: each brief gap you filled, and any missing credentials or access with what each would add.
-9. The list of files written.
+8. Assumptions: each brief gap you filled, the store data you reused with its age, and any missing credentials or access with what each would add.
+9. Store write-back for the caller: `research_store.py ingest crawl "$O/pages.csv"` (one per section crawl).
+10. The list of files written.
 
 Tag measured facts `[measured]`. Never add opinions about content quality or invent metrics.

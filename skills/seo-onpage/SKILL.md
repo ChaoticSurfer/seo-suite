@@ -23,6 +23,15 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | GSC export for this page (queries, clicks, impressions, position) | A connector, or an export in `seo-work/`. It shows what the page already ranks for: never rewrite away from queries that already bring clicks | **Ask — batched at the end.** Carry on without it |
 
 ## Workflow
+0. **Read the research store first** (`seo-research/`, `${CLAUDE_PLUGIN_ROOT}/references/research-store.md`) when the project has one:
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --locale en --format json > seo-work/store-keywords-en.json
+   ```
+   - **The page's queries:** keywords whose `target_url` is this page or whose `demand.gsc_pages` lists it, with their GSC impressions and position. Use each GSC field (`demand.gsc_pages`, `demand.gsc_impressions`, `demand.gsc_position`) only while its own `provenance` date is within the `gsc` TTL (research-store §6). They seed the primary and secondaries (Inputs).
+   - `demand.gsc_pages` lists a page only for the queries it competes for (research-store §2), and never a home page. For a home page, and for the page's weaker queries, read the page's rows in a query+page GSC export (Inputs).
+   - **Step 2's SERP:** reuse the primary query's snapshot (`seo-research/serps/<locale>/<sha1 of the query>.json`) unless it is missing or older than the `serps` TTL in `manifest.json`.
+   - A query whose `demand.gsc_pages` lists 2+ URLs is cannibalisation: hand it to `seo-content`.
 1. **Collect evidence in parallel** (independent runs; write JSON to `seo-work/`):
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/page_audit.py" "$URL" --facts > seo-work/page.json
@@ -48,6 +57,12 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - In code mode, show a unified diff of the template or component. Commit it on a branch and open a PR only at level 2 or above.
    - Change CMS content only at level 4, through an authorised connector.
 7. **Re-run** `page_audit.py` on the changed page (or the local build) and show the finding delta.
+8. **Write back to the store** (skip when the project has none):
+   - A SERP you fetched in step 2 goes in with `ingest serps`, as the two files `seo-serp-researcher` writes. That also adds a primary query the store didn't hold yet.
+   - Record the live page as the owner of the primary query. When the query has a `cluster_id`, pass `--cluster` with it instead of `--keyword` and `--locale`, so the whole cluster follows:
+     ```bash
+     python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" set-status --keyword "$KW" --locale en --status published --url "$URL"
+     ```
 
 ## Checks
 **Title link** (google-rules §3)
@@ -126,7 +141,7 @@ Write `seo-work/onpage-<slug>.md` containing:
    - Rows: title (3 options with px), meta description, H1, H2 outline, intro, internal links in (source page → anchor → sentence), links out, images, schema hand-off, URL.
 3. Remaining `page_audit` findings, ranked by running `triage.py seo-work/page.json`.
 4. What was not verified (e.g. rendered DOM not captured, no GSC data).
-5. **Assumptions:** the page, queries, locale and brand suffix chosen, with the evidence for each. Then the requests batched at the end (missing access, and what each would add), each with a recommendation.
+5. **Assumptions:** the page, queries, locale and brand suffix chosen, with the evidence for each; which store data was reused and how old it was. Then the requests batched at the end (missing access, and what each would add), each with a recommendation.
 
 ## Pitfalls & myths
 - "Titles must be 50–60 characters" and "meta must be 155": these are tool conventions. Google truncates by width and has no limit.

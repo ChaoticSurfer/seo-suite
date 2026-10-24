@@ -41,6 +41,17 @@ The four kinds of target questions:
 - Problem: "how do I …".
 
 ## Workflow
+**Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`):
+```bash
+mkdir -p seo-work
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --locale en --format json > seo-work/store-keywords-en.json
+```
+- **Target questions:** start from the stored keywords of the audience's locale and the `paa` lists in fresh SERP snapshots (`seo-research/serps/<locale>/`, fetched within the 30-day `serps` TTL). Keywords whose `serp_features` include `ai_overview` already show an AI Overview. Collect PAA only for questions with no fresh snapshot: split them into batches of at most 10 and launch one `seo-serp-researcher` agent per batch, in parallel. Give each batch the market and an output path `seo-work/serps-en-<n>.json`, numbered per batch: the agent writes that details file and `seo-work/serps-en-<n>.serps.json` beside it, for step 11. Without a path it returns the table only.
+- **Key pages and competitors:** `money_pages` in `seo-research/site.json`, and `seo-research/competitors.json`.
+- AI-answer observations have no dataset in the store. They stay in `seo-work/`.
+- No store yet (`status` exits with "no research store here"): create it with `init --site URL --locales …` (research-store §9).
+
 1. **Check access, all three in parallel:**
    ```bash
    mkdir -p seo-work
@@ -95,6 +106,7 @@ The four kinds of target questions:
    - Bing Webmaster Tools AI Performance report: citations and grounding queries, preview, CSV export [3rd-party, unverified].
    - GA4 referrals from `chatgpt.com`, `perplexity.ai`, `copilot.microsoft.com`, `gemini.google.com`, `claude.ai`. ChatGPT links often carry `utm_source=chatgpt.com` [observed, verify in data].
 10. **Prioritise:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/triage.py" seo-work/ai-*.json`. Then hand off content fixes to seo-content and outreach to seo-links.
+11. **Write back to the research store:** each PAA batch with `ingest serps seo-work/serps-en-<n>.serps.json --locale en --details seo-work/serps-en-<n>.json`, and each new `keyword_ideas.py` file with `ingest keyword-ideas FILE --locale en`. The frozen query set and the observations stay in `seo-work/`.
 
 ## Checks
 **Crawler purposes** (google-rules §10). The default recommendation is to allow search and user bots. Training bots are a business decision.
@@ -135,7 +147,7 @@ The four kinds of target questions:
 6. **Third-party domains to target.**
 7. **Measurement baseline:** a table per engine of mention rate and citation rate with CI, plus queries never visible.
 8. **Next measurement date.**
-9. **Assumptions:** the key pages, query set, engines and competitors you decided, each with its evidence. Then the questions batched for the user (missing access, the training-bot decision), each with a recommendation.
+9. **Assumptions:** the key pages, query set, engines and competitors you decided, each with its evidence, and which store data was reused and how old it was (e.g. "questions from stored keywords and PAA, SERPs 12 days old"). Then the questions batched for the user (missing access, the training-bot decision), each with a recommendation.
 
 Tag every claim: [measured], [Google doc], [vendor data], [estimate] or [needs data].
 
@@ -152,5 +164,6 @@ Append to `SEO-WORKLOG.md` (format: `${CLAUDE_PLUGIN_ROOT}/references/worklog.md
 - The access decisions made and who approved them.
 - Files changed (robots.txt, meta tags, schema).
 - The frozen query-set path, engines, run count and collection date.
+- Store data reused (with its age) and ingested.
 - Baseline rates with CI.
 - The next measurement date, using the same query set.

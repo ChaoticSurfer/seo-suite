@@ -31,6 +31,14 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | **Existing sets:** GSC Pages export, indexing report counts | A connector, or exports in `seo-work/` | **Ask — batched at the end.** Carry on with the crawl and sitemap |
 
 ## Workflow
+0. **Read the research store first** (`seo-research/`, `${CLAUDE_PLUGIN_ROOT}/references/research-store.md`) when the project has one:
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --locale en --format json > seo-work/store-keywords-en.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export inventory --format csv > seo-work/store-inventory.csv
+   ```
+   - Pattern instances already in the store count towards step 1's samples: each piece of their demand evidence while its own `provenance` date is within its TTL (research-store §6), and their SERP snapshot while it's younger than the `serps` TTL. Sample only the rest.
+   - The inventory gives the existing sets' URLs, titles, word counts and GSC clicks (Inputs): the crawl columns of rows whose `crawled_at` is within the `inventory` TTL, and the GSC clicks of rows whose `gsc_at` is within the `gsc` TTL (research-store §6). Crawl the live site or re-export GSC only for the older rows. Step 4's staging crawl always runs.
 1. **Go/no-go**, before building anything. Answer each with evidence:
    - **Demand:**
      - does the pattern have real queries?
@@ -90,6 +98,13 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - pages with no impressions after about 3–6 months and no unique data become candidates to merge into their hub, noindex, or remove (404/410);
    - improve the data before adding more pages;
    - keep the sitemap to pages you'd defend.
+8. **Write back to the store** (skip when the project has none):
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest keyword-ideas seo-work/pseo-kw-1.json --locale en
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest gsc seo-work/gsc_query_page.csv --as-of "$PERIOD_END"
+   ```
+   - Step 1's samples: `ingest keyword-ideas` for each `keyword_ideas.py` file, `ingest serps` for the SERP-fit sample (the two files `seo-serp-researcher` writes), and `ingest volumes` for a paid lookup.
+   - Step 6's GSC exports with `ingest gsc`, each with `--as-of` set to the last day its period covers (`$PERIOD_END`), and any crawl of the live site with `ingest crawl`. Never step 4's staging crawl: its URLs would land in the site's inventory.
 
 ## Checks
 **Policy boundaries** (google-rules §4, must pass):
@@ -146,7 +161,7 @@ Size and traffic estimates without data stay `[needs data]`.
   - QA gate results on the sample (pass/fail counts, failing URLs);
   - the batch rollout plan (segments, sitemap files, dates, success criteria: indexed %, impressions per page);
   - pruning rules;
-  - **Assumptions:** the pattern, dataset fields, licence, rendering and business value assumed, with the evidence for each. Then the requests batched at the end, each with a recommendation: missing access (repo, database, GSC) and business decisions (whether to build at all, how many pages).
+  - **Assumptions:** the pattern, dataset fields, licence, rendering and business value assumed, with the evidence for each; which store data was reused and how old it was. Then the requests batched at the end, each with a recommendation: missing access (repo, database, GSC) and business decisions (whether to build at all, how many pages).
 - For code: the template/component and sitemap generator changes, as diffs.
 
 ## Pitfalls & myths

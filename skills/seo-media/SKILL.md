@@ -31,6 +31,15 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 | **Search Console:** Performance by search type (Image, Video, News, Discover), the Video indexing report and the Discover report. The Discover report only appears once the site reaches a minimum number of impressions | The Search Console API or exports in the workspace, when available | Run without them. Ask — batched at the end, naming what each adds |
 
 ## Workflow
+0. **Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`), when `seo-research/` exists:
+   ```bash
+   mkdir -p seo-work
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export inventory --format csv > seo-work/store-inventory.csv
+   ```
+   - `seo-research/site.json` → `templates` starts the media-template input. Check it against the pages.
+   - Per template, audit the live URLs (`status` 200) with the most `gsc_clicks` in the inventory.
+   - The checks below still run on the live pages. Note what you reused and its age for *Assumptions* and the work log.
 1. **Inventory, all in parallel:**
    ```bash
    mkdir -p seo-work; i=0
@@ -58,6 +67,7 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
    - Check that section URLs are stable and that the news sitemap exists.
    - Check the transparency pages: about, contact, editorial policy.
 6. **Prioritise:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/triage.py" seo-work/media-*.json`.
+7. **Write back to the research store**, when it exists: add the media templates you found (article, product, gallery, video watch page) to `seo-research/site.json` → `templates`. Media findings stay in `seo-work/`; the store has no dataset for them.
 
 ## Checks
 **Images** (google-rules §3) [Google doc]:
@@ -158,7 +168,7 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 4. **Discover and News eligibility checklist** with pass/fail per item.
 5. **The `triage.py` plan.**
 6. The Search Console reports to watch.
-7. **Assumptions:** the templates, hosts, video platforms and publisher status decided from evidence, and the evidence for each.
+7. **Assumptions:** the templates, hosts, video platforms and publisher status decided from evidence, and the evidence for each, plus the research-store data reused and its age.
 
 ## Pitfalls & myths
 - **Product or hero images set as CSS backgrounds** never appear in Image search.

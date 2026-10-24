@@ -41,6 +41,19 @@ Brand regex example: `acme|acme ?corp|აკმე`.
 
 ## Workflow
 
+**Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`):
+
+```bash
+mkdir -p seo-work
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --format csv > seo-work/store-keywords.csv
+```
+
+- `datasets.gsc` gives the age of the newest GSC data per locale (TTL 7 days). Fresh: reuse the export it came from, the newest GSC file in `seo-work/`, instead of asking for another. Stale or missing: ask for a new export, as in Inputs.
+- The store keeps per-query totals, not daily rows, so A–D still run on the export files.
+- The keywords' `cluster_id` and `target_url` give the cluster grouping for C and the primary page for the cannibalisation decisions in A6.
+- No store yet (`status` exits with "no research store here"): create it with `init --site URL --locales …` (research-store §9).
+
 ### A. Opportunity analysis (GSC/Bing export)
 
 1. Run the analysis:
@@ -152,6 +165,18 @@ Brand regex example: `acme|acme ?corp|აკმე`.
 
   Options: Semrush Position Tracking, Ahrefs Rank Tracker, SE Ranking, or the DataForSEO SERP API for scripted checks (tools.md).
 
+### E. Write back to the research store
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest gsc query_page.csv --as-of "$PERIOD_END"
+```
+
+- Ingest the most complete export of the current period only: `last_28d.csv` in B, `after.csv` in D. A query+page CSV gives every row; a `gsc_analyze.py` JSON gives only its top lists. A Queries.csv without pages needs `--locale` when the store has more than one locale.
+- Set `--as-of` to the last day that export covers (`$PERIOD_END`). Without it the store dates a file by its modification time, so a comparison file saved later would replace the current values (research-store §3).
+- Never ingest the `--compare` file (`prev_28d.csv`, `before.csv`) unless you give it its own `--as-of`.
+- Read the new queries for people's names before the store is committed (research-store §1).
+- A cannibalisation decision that names the primary page of a stored cluster: `set-status --cluster ID --status published --url PRIMARY_URL`.
+
 ## Checks
 
 | Check | Rule | Source |
@@ -188,7 +213,7 @@ Label third-party traffic numbers `[vendor data]` / `[estimate]`. They are model
 2. Drop diagnosis: the tree with ✅/❌ and evidence per branch, the most likely explanation in "consistent with" language, and next actions routed to the right skill.
 3. A KPI/dashboard spec (Looker Studio data sources, fields, filters) or a monthly report draft.
 4. Experiment record (pre-registration + result).
-5. **Assumptions:** the windows, brand regex, data sources and change dates you decided, each with its evidence. Then the questions batched for the user (missing exports or access), each with a recommendation.
+5. **Assumptions:** the windows, brand regex, data sources and change dates you decided, each with its evidence, and which store data was reused and how old it was (e.g. "GSC: store data 5 days old, its export reused"). Then the questions batched for the user (missing exports or access), each with a recommendation.
 
 ## Pitfalls & myths
 
@@ -204,6 +229,7 @@ Label third-party traffic numbers `[vendor data]` / `[estimate]`. They are model
 
 Append to `SEO-WORKLOG.md` (`${CLAUDE_PLUGIN_ROOT}/references/worklog.md`):
 - Exports used (date ranges).
+- Store data reused (with its age) and the GSC export ingested.
 - Scripts run.
 - Findings with evidence tags.
 - Diagnosis verdict.

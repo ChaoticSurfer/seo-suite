@@ -35,6 +35,19 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 
 ## Workflow
 
+**Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`):
+
+```bash
+mkdir -p seo-work
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export clusters --format json > seo-work/store-clusters.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export inventory --format csv > seo-work/store-inventory.csv
+```
+
+- Reuse the clusters (`role`, `target_url`, `interlinks`) for the hubs in A4, `money_pages` in `seo-research/site.json`, and `seo-research/competitors.json` while `status` doesn't list `competitors` as stale.
+- The store keeps no inlinks or click depth, so the A1 crawl always runs. Backlink exports stay in `seo-work/`: the store has no backlink dataset.
+- No store yet (`status` exits with "no research store here"): create it with `init --site URL --locales …` (research-store §9).
+
 ### A. Internal linking (always first: it is fully in your control and free)
 
 1. Run the free checks. These are independent, so run them in parallel:
@@ -62,9 +75,9 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 
 3. From `pages.csv`, rank pages by `inlinks` and `depth`, then compare against the money-page list. A money page that is deep or has few inlinks is the top fix.
 
-4. Design hubs. For each topic cluster (from seo-keywords / seo-strategy):
+4. Design hubs. For each topic cluster (the store's clusters, from seo-keywords / seo-strategy):
    - A pillar/hub page links to every cluster page.
-   - Each cluster page links back to the hub and to 2+ siblings (heuristic).
+   - Each cluster page links back to the hub and to 2+ siblings (heuristic), starting with the cluster's `interlinks`.
    - Breadcrumbs reflect the hierarchy.
 
    Output a link plan: `source URL → target URL → suggested anchor → placement` (in body copy, not the footer).
@@ -121,6 +134,15 @@ Pick 2–3 tactics that suit the business. Every outreach message is a **draft**
 - **Upload a disavow file or file a reconsideration request yourself only with the user's approval for that run** (always gated at every autonomy level, `references/autonomy.md`). By default, prepare the file and the text, and the user submits them.
 - Do not recommend disavowing on the basis of a third-party "toxicity score" alone. Those scores are vendor heuristics.
 
+### E. Write back to the research store
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest crawl seo-work/pages.csv
+```
+
+- Ingest the A1 crawl and the A7 re-crawl, so the next skill gets fresh titles, word counts and HTTP status.
+- When the link plan settles which live page is a cluster's hub or primary page, record it: `set-status --cluster ID --status published --url URL`.
+
 ## Checks
 
 | Check | Rule | Source |
@@ -163,7 +185,7 @@ Label every metric from these tools `[vendor data]`. DR/DA/TF are vendor estimat
 4. **Prospect sheet:** `site, page, contact route (public), angle, why relevant, draft message`. All drafts are clearly marked unsent.
 5. **Disavow recommendation:** usually "none needed", with the reason. If one is needed, the `disavow.txt` draft and the reconsideration text.
 6. Pipe crawl/sitemap JSON through `triage.py seo-work/crawl.json seo-work/sitemap.json` for P0–P3 ordering of the link-related findings.
-7. **Assumptions:** the money pages, brand names, competitors and data sources you decided, each with its evidence. Then the questions batched for the user (missing exports or access), each with a recommendation.
+7. **Assumptions:** the money pages, brand names, competitors and data sources you decided, each with its evidence, and which store data was reused and how old it was (e.g. "clusters and competitors from seo-research, 20 days old"). Then the questions batched for the user (missing exports or access), each with a recommendation.
 
 ## Pitfalls & myths
 
@@ -181,6 +203,7 @@ Label every metric from these tools `[vendor data]`. DR/DA/TF are vendor estimat
 Append to `SEO-WORKLOG.md` (format: `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`):
 - Date and scope.
 - Data sources used, with evidence tags.
+- Store data reused (with its age) and ingested.
 - Paid-tool usage (units/credits spent).
 - Files produced.
 - Drafts awaiting the user's send/approval.

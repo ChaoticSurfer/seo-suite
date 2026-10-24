@@ -22,6 +22,14 @@ say they're experienced.
 - Propose changes as **experiments**: pre-registered metric, control group of pages, ≥4 weeks, equal-length
   windows aligned by weekday. Report "coincides with", never "caused".
 
+**Research store** (`references/research-store.md`)
+- `seo-research/` keeps keywords, SERP snapshots, clusters, competitors, GSC totals and the page inventory per
+  locale, every value with its source and date, versioned with the repo.
+- Start each task from `research_store.py status`. Reuse fresh datasets and refresh only the stale or missing ones
+  (TTLs in days: keywords 90, volumes 30, SERPs 30, GSC 7, inventory 30, competitors 90). Then `ingest` what you
+  fetched.
+- State the reuse and its age in *Assumptions*, e.g. "en SERPs reused, 9 days old; GSC refreshed".
+
 **Challenge myths when they come up**
 - LSI keywords.
 - Word-count targets.
@@ -236,13 +244,16 @@ say they're experienced.
   - `content_score.py --keyword`.
   - `compare_pages.py`.
   - WebSearch for SERP inspection (parallelise with the seo-serp-researcher agent).
+  - `research_store.py`: ingest keyword ideas, SERPs, clusters and GSC data once, then `next-topics` ranks the
+    clusters with no published page [heuristic].
 - **Paid adds:**
   - Search volumes and keyword difficulty (Semrush, Ahrefs, DataForSEO Keywords Data, or Keyword Planner
     with spend).
   - Competitor keyword universes (Semrush Organic Research / Ahrefs Organic Keywords).
   - Cost tactic: pull volumes only for shortlisted cluster head terms. See `## Semrush`, `## Ahrefs`,
     `## DataForSEO` and `## Cost-optimisation playbook` in `references/tools.md`.
-- **Skills:** seo-keywords, seo-content, seo-onpage, seo-programmatic, seo-strategy.
+- **Skills:** seo-keywords, seo-content, seo-blog-builder, seo-blog-review, seo-onpage, seo-programmatic,
+  seo-strategy.
 
 ---
 
@@ -385,6 +396,7 @@ say they're experienced.
 
 - **Weeks 1–2: baseline**
   - Crawl, logs and GSC/GA4 exports. `triage.py` over everything.
+  - `research_store.py init`, then ingest the crawl and GSC exports, so every later step reuses them.
   - Fix P0 (access, indexability, canonical conflicts) at template level.
   - Register KPIs and control pages.
 - **Weeks 3–6: technical and striking distance**
@@ -394,6 +406,7 @@ say they're experienced.
   - Set up the CI gate.
 - **Weeks 7–10: content**
   - Cluster map, then rewrites and merges of decaying or cannibalised pages.
+  - New posts from `next-topics` with seo-blog-builder, in batches the reviewers can sign off.
   - 2–4 high-information-gain assets.
   - Schema only for supported features.
 - **Weeks 11–13: authority and AI**

@@ -1,6 +1,6 @@
 ---
 name: seo-content
-description: Content strategy and quality across many pages. Covers content audits and inventories (keep/update/merge/redirect/delete), content decay, keyword cannibalisation, SERP-derived content briefs, writing or refreshing articles with E-E-A-T signals, helpful-content self-assessment, and safe use of AI writing. Triggers include "content audit", "which pages should we prune", "traffic decaying on old posts", "two pages competing for the same keyword", "write a content brief for X", "refresh this article", "write an SEO blog post", "is our content helpful", "E-E-A-T review" and "can we use AI for content". It is not for a single page's tags (seo-onpage), keyword discovery and clustering (seo-keywords), template-generated page sets (seo-programmatic), or technical crawl issues (seo-technical).
+description: Content strategy and quality across many pages. Covers content audits and inventories (keep/update/merge/redirect/delete), content decay, keyword cannibalisation, SERP-derived content briefs, writing or refreshing articles with E-E-A-T signals, helpful-content self-assessment, and safe use of AI writing. Triggers include "content audit", "which pages should we prune", "traffic decaying on old posts", "two pages competing for the same keyword", "write a content brief for X", "refresh this article", "write an SEO blog post", "is our content helpful", "E-E-A-T review" and "can we use AI for content". It is not for a single page's tags (seo-onpage), keyword discovery and clustering (seo-keywords), keyword-driven blog batches or content calendars (seo-blog-builder), template-generated page sets (seo-programmatic), or technical crawl issues (seo-technical).
 ---
 
 # Content: audit, briefs, writing, refreshes
@@ -16,6 +16,8 @@ Decide what each page should become and write content that earns the click.
 - **Not:**
   - one page's title/meta/links → `seo-onpage`;
   - choosing topics → `seo-keywords`;
+  - a keyword-driven batch of blog posts or a content calendar → `seo-blog-builder` ("write an SEO blog post" on one
+    topic the user chose stays here);
   - thousands of templated pages → `seo-programmatic`.
 
 ## Inputs: decide, don't ask
@@ -27,12 +29,30 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | Business-critical pages | Navigation; pages with forms, cart, checkout, booking or pricing; Product/Service schema | Treat those as Keep until the data says otherwise |
 | GSC exports, last 3 months and the same period a year earlier: Pages, Queries, and a query+page export (API or Looker Studio, needed for cannibalisation) | A connector, or exports in `seo-work/` | **Ask — batched at the end.** Meanwhile build the inventory from the crawl, leave traffic columns `[needs data]`, and mark traffic-based decisions provisional |
 | GA4 landing-page sessions and conversions | A connector or an export | **Ask — batched at the end.** Conversions `[needs data]` |
-| Brief/article: target query and locale | The request, `seo-work/keywords.csv`, GSC; locale from `<html lang>`, ccTLD, hreflang, currency | The copy's language and its main country |
+| Brief/article: target query and locale | The request; the research store's clusters (`next-topics`); `seo-work/keywords.csv`; GSC; locale from `<html lang>`, ccTLD, hreflang, currency | The copy's language and its main country |
 | Brief/article: audience and brand voice | The site's top pages and About page; the SERP's dominant angle | Match the site's highest-traffic pages |
 | Brief/article: author and their real credentials or experience | Bylines, author pages and the About page | **Ask — batched at the end.** Recommend the most relevant existing author; until then the byline is `[needs data]`. Never invent one |
 | Brief/article: facts or data the business owns | Case studies, pricing, stats and product pages on the site | `[needs data]`, listed in the end-of-run requests |
 
 ## Workflow
+**0. Read the research store first** (`seo-research/`, `${CLAUDE_PLUGIN_ROOT}/references/research-store.md`):
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --locale en --format json > seo-work/store-keywords-en.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" next-topics --locale en --limit 10 > seo-work/store-topics-en.json
+```
+- **No store yet:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" init --site "$SITE" --locales en`, with
+  every locale the site publishes, default first. With no topic given and no clusters stored, run `seo-keywords` first.
+- **Audit (A):** still crawl and pull both GSC periods, because the store keeps neither link depth nor an earlier
+  period. Keywords whose `demand.gsc_pages` lists 2+ URLs are early cannibalisation candidates, while that list's own
+  `provenance` date is within the `gsc` TTL (research-store §6). The store lists a page by its own rule
+  (research-store §2: 10+ impressions, 10% of the query's, position 20 or better, never a home page), not by
+  `gsc_analyze.py`'s. So step 4 still works from `gsc_qp.json`.
+- **Brief (B):** with no topic given, take it from `next-topics`. Reuse the cluster's SERP snapshot
+  (`seo-research/serps/<locale>/<sha1 of the head keyword>.json`: page types, features, PAA) unless it is missing or
+  older than the `serps` TTL in `manifest.json`; only then WebSearch it. The cluster's keywords are the secondary
+  queries, and its `interlinks` are the sibling links.
+
 ### A. Content audit and inventory
 1. **Collect evidence in parallel:**
    ```bash
@@ -88,6 +108,23 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - change `dateModified` only for substantive edits.
 5. Score the draft with `content_score.py --file draft.html --base-url https://site/<planned-slug> --keyword "$KW"` and fix the placement and structure gaps.
 6. Deliver as a file or diff. **Commit to the repo or publish to the CMS only per autonomy level (references/autonomy.md).**
+
+### D. Write back to the store
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest crawl seo-work/pages.csv
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest gsc seo-work/gsc_query_page.csv --as-of "$PERIOD_END"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" set-status --cluster en-003 --status briefed
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" set-status --cluster en-003 --status published --url https://example.com/blog/post/
+```
+- **Audit:** ingest the crawl and the current-period GSC CSVs, each with `--as-of` set to the last day its period
+  covers (`$PERIOD_END`). Without it the store dates a file by its modification time, so a year-earlier export saved
+  later would replace the current values: skip that export, or give it its own `--as-of`.
+- **Brief:** save it as `seo-research/briefs/<locale>/<slug>.md` (the `brief` path `next-topics` gives), then set
+  the cluster to `briefed`. A SERP you fetched in B step 1 goes back with `ingest serps`, in the two files
+  `seo-serp-researcher` writes.
+- **Draft or refresh:** `drafted`, with `--url` set to its planned URL, once the file, PR or CMS draft exists;
+  `scheduled` with `--url` once it is queued for a future publish date; `published` with `--url` once it is live. A
+  query with no cluster uses `--keyword "$KW" --locale en` instead of `--cluster`.
 
 ## Checks
 **Decision tree** (thresholds are heuristics; adjust to the site's scale):
@@ -154,9 +191,9 @@ Volumes and difficulty without data are always `[needs data]`.
   - merge groups with the chosen owner URL;
   - the redirect map, to verify with `seo-migration` / `redirect_check.py`;
   - risks.
-- Briefs: `brief-<slug>.md`.
+- Briefs: `seo-research/briefs/<locale>/<slug>.md`.
 - Drafts: `draft-<slug>.md` or HTML, as a diff for repo content.
-- **Assumptions** (in `content-audit.md` or the brief): the scope, critical pages, locale, audience and voice chosen, with the evidence for each. Then the requests batched at the end, each with a recommendation: missing access (GSC, GA4, backlinks) and business decisions (merging or deleting pages that earn traffic or revenue, the byline).
+- **Assumptions** (in `content-audit.md` or the brief): the scope, critical pages, locale, audience and voice chosen, with the evidence for each; which store data was reused and how old it was. Then the requests batched at the end, each with a recommendation: missing access (GSC, GA4, backlinks) and business decisions (merging or deleting pages that earn traffic or revenue, the byline).
 
 ## Pitfalls & myths
 - Deleting low-traffic pages en masse "to boost quality": prune only with evidence. Some low-traffic pages convert or attract links.

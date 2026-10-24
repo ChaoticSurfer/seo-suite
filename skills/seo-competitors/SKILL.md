@@ -38,8 +38,21 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 
 ## Workflow
 
+**Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`):
+
+```bash
+mkdir -p seo-work
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/store-status.json
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export clusters --locale en --format json > seo-work/store-clusters-en.json
+```
+
+- **Keyword set:** the clusters' head keywords for the market's locale, before the Inputs fallbacks.
+- **SERPs:** reuse the fresh snapshots in `seo-research/serps/<locale>/` (fetched within the `serps` TTL of 30 days). Step 1 collects only the set's keywords listed in `gaps.<locale>.needs_serp`.
+- **Competitors:** with fresh SERPs, `seo-research/competitors.json` (`keywords_shared`: the stored SERPs each domain appears in) is the starting count for step 2.
+- No store yet (`status` exits with "no research store here"): create it with `init --site URL --locales …` (research-store §9).
+
 1. **Collect SERPs (parallel).**
-   - Split the keyword set into batches of ~10 and launch one `seo-serp-researcher` agent per batch, in parallel.
+   - Split the keyword set into batches of at most 10 and launch one `seo-serp-researcher` agent per batch, in parallel. Give each batch the market and an output path such as `seo-work/serps-en-1.json`, numbered per batch: the agent writes that details file and `seo-work/serps-en-1.serps.json` beside it, for step 10. Without a path it returns the table only.
    - Each returns, per keyword: top-10 organic URLs, page type (guide / category / product / tool / forum / video / local pack), SERP features (AI Overview, featured snippet, PAA, video, images, shopping, local pack, forums/"Discussions"), and dominant intent.
    - WebSearch results approximate the SERP; they are not a personalised, location-exact Google SERP. Tag them `[measured: WebSearch sample]`.
 2. **Identify SERP competitors.**
@@ -83,6 +96,17 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 9. **Synthesise.**
    - Per keyword: why they win (format, depth, freshness, authority, UX, SERP features), with evidence tags.
    - A short list of actions routed to seo-content / seo-onpage / seo-schema / seo-links / seo-technical.
+10. **Write back to the research store,** once, after the batches:
+
+    ```bash
+    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest serps seo-work/serps-en-1.serps.json --locale en --details seo-work/serps-en-1.json
+    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest keyword-ideas seo-work/kw-<rival-topic>.json --locale en
+    ```
+
+    - One `ingest serps` per `seo-serp-researcher` batch from step 1 (`serps-en-<n>.serps.json` with its details file). It also refreshes `competitors.json`.
+    - One `ingest keyword-ideas` per `keyword_ideas.py` file from step 6.
+    - A paid gap export (keyword, volume and difficulty columns): `ingest volumes FILE --locale en --source semrush` (or `ahrefs`). Before committing Semrush volumes, see research-store §1.
+    - The gap keywords are clustered by seo-keywords, not here.
 
 ## Checks
 
@@ -129,7 +153,7 @@ Never present vendor traffic or keyword numbers as measurements. They are `[vend
 3. **Page comparison summary per priority keyword:** your metrics vs median rival, gap phrases worth covering, missing schema/trust signals, routed actions.
 4. **Gap list:** keywords rivals rank for that you don't (free sample or paid export), clustered and handed to seo-keywords/seo-strategy.
 5. **Change log** for rivals that jumped (Wayback evidence).
-6. **Assumptions:** the keyword set, market, device and competitor choices you decided, each with its evidence. Then the questions batched for the user (missing paid access), each with a recommendation.
+6. **Assumptions:** the keyword set, market, device and competitor choices you decided, each with its evidence, and which store data was reused and how old it was (e.g. "en SERPs: 31 reused at 4–25 days, 9 refreshed"). Then the questions batched for the user (missing paid access), each with a recommendation.
 
 ## Pitfalls & myths
 
@@ -144,6 +168,7 @@ Never present vendor traffic or keyword numbers as measurements. They are `[vend
 
 Append to `SEO-WORKLOG.md` (`${CLAUDE_PLUGIN_ROOT}/references/worklog.md`):
 - Keyword set and market.
+- Store data reused (with its age) and the SERP batches ingested.
 - Competitor list.
 - Comparison files.
 - Gap decisions.

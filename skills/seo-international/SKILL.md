@@ -35,6 +35,14 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 
 `S="${CLAUDE_PLUGIN_ROOT}/scripts"`.
 
+0. **Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`), when `seo-research/` exists:
+   ```bash
+   mkdir -p seo-work
+   python3 "$S/research_store.py" status > seo-work/store-status.json
+   python3 "$S/research_store.py" export keywords --locale ka --format csv > seo-work/store-keywords-ka.csv   # once per locale
+   ```
+   - `seo-research/site.json` → `locales` and `markets` (each market's `hl`, `gl` and `url_prefix`) start the markets and URL-structure inputs. Check them against the pages.
+   - Step 5 reuses every locale whose `keywords` are fresh (90-day TTL) and researches only the locales `status` lists as stale or missing. Note what you reused and its age for *Assumptions* and the work log.
 1. **Per-page check.** Run this for each language version of a key template, in parallel:
    ```bash
    python3 "$S/page_audit.py" https://example.com/en/pricing > seo-work/intl-en.json
@@ -63,7 +71,7 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 4. **Locale-adaptive behaviour.** Fetch the same URL with no `Accept-Language` header; `page_audit.py` sends none, just like Googlebot.
    - If the server redirects by IP or language, Googlebot (mostly from US IPs) may only ever see one version (§6).
    - The fix: separate URLs per locale plus hreflang, and a non-forced language suggestion banner instead of an automatic redirect.
-5. **Per-market keyword research.** Run this per market, in parallel. The local language and country codes matter:
+5. **Per-market keyword research.** Run this per market whose store keywords are stale or missing (step 0), in parallel. The local language and country codes matter:
    ```bash
    python3 "$S/keyword_ideas.py" "ინგლისურის რეპეტიტორი" --hl ka --gl ge > seo-work/kw-ka-ge.json
    python3 "$S/keyword_ideas.py" "english tutor tbilisi" --hl en --gl ge > seo-work/kw-en-ge.json
@@ -74,6 +82,13 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
    python3 "$S/triage.py" seo-work/intl-*.json
    ```
    Map each hreflang issue to the template or generator that emits it. Then fix it in code (diff first) per autonomy level (references/autonomy.md) and re-run step 1.
+7. **Write back to the research store.** Each locale's ideas go in under the store locale that version serves:
+   ```bash
+   python3 "$S/research_store.py" init --site https://example.com --locales en,ka,ru
+   python3 "$S/research_store.py" ingest keyword-ideas seo-work/kw-ka-ge.json --locale ka
+   ```
+   - `init` creates the store (default locale first: the version the root URL serves), adds new locales, and refuses another domain. If it refuses, skip the ingests.
+   - For a locale served on a subdomain or ccTLD, set `markets[locale].url_prefix` in `seo-research/site.json` by hand (`"https://ka.example.com/"`), so the store files that version's URLs under the right locale.
 
 ## Checks
 
@@ -141,7 +156,7 @@ Markets: … · Structure: … · hreflang method: …
 ## Language/translation review per market [estimate] (sampled pages, what's untranslated or machine-like)
 ## Per-market keyword findings (autocomplete [measured]; volumes [needs data] unless a paid/Ads source was used)
 ## Structure recommendation (if asked) with trade-offs
-## Assumptions (markets, fallback, hreflang method, translation process: each decision and its evidence)
+## Assumptions (markets, fallback, hreflang method, translation process: each decision and its evidence; research-store data reused, with its age)
 ## Not verified [needs data]
 ```
 

@@ -1,6 +1,6 @@
 ---
 name: seo-keywords
-description: Keyword research and topic planning. Expands seeds into real queries (Google, Bing and YouTube autocomplete, People Also Ask, related searches, Search Console, forums), classifies intent, clusters keywords by SERP overlap, builds a topical map (pillar + clusters) and a prioritised target list. Triggers include "keyword research for X", "what should we write about", "find keywords for my site", "cluster these keywords", "topical map", "pillar pages", "which keywords should this page target", "keywords in Georgian/German for market Y" and "what are people searching for". It runs free by default and adds Semrush, Ahrefs, DataForSEO or Keyword Planner volumes only for a shortlist. It is not for optimising one page (seo-onpage), writing briefs or articles (seo-content), competitor domain teardowns (seo-competitors) or Search Console traffic diagnosis (seo-analytics).
+description: Keyword research and topic planning. Expands seeds into real queries (Google, Bing and YouTube autocomplete, People Also Ask, related searches, Search Console, forums), classifies intent, clusters keywords by SERP overlap, builds a topical map (pillar + clusters) and a prioritised target list. Triggers include "keyword research for X", "what should we write about", "find keywords for my site", "cluster these keywords", "topical map", "pillar pages", "which keywords should this page target", "keywords in Georgian/German for market Y" and "what are people searching for". It runs free by default and adds Semrush, Ahrefs, DataForSEO or Keyword Planner volumes only for a shortlist. Results go into the shared research store (seo-research/) that every other skill reuses. It is not for optimising one page (seo-onpage), writing briefs or articles (seo-content), blog batches (seo-blog-builder), competitor domain teardowns (seo-competitors) or Search Console traffic diagnosis (seo-analytics).
 ---
 
 # Keyword research, clustering and topical maps
@@ -12,7 +12,8 @@ Find what the audience actually types, group it the way Google groups it, and de
 - **Not:**
   - existing traffic analysis → `seo-analytics`;
   - one page's tags → `seo-onpage`;
-  - turning a cluster into a brief → `seo-content`.
+  - turning a cluster into a brief → `seo-content`;
+  - turning clusters into a blog batch → `seo-blog-builder`.
 
 ## Inputs: decide, don't ask
 Decide each input from evidence, record the choice under *Assumptions*, and carry on (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`).
@@ -36,7 +37,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export clusters --locale en --format json > seo-work/store-clusters-en.json
    ```
    - No store yet: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" init --site "$SITE" --locales en,ka,ru`, default locale first.
-   - Reuse every dataset that `status` doesn't list under `stale` or `missing` for the locale. Run step 1 when `keywords` is stale or missing, or for seeds the store doesn't cover yet; step 3 when `gsc` is; step 6 only for `gaps.<locale>.needs_serp`.
+   - Reuse every dataset that `status` doesn't list under `stale` or `missing` for the locale, except the stale records it lists in `gaps.<locale>` (router rule 7). Run step 1 when `keywords` is stale or missing, or for seeds the store doesn't cover yet; step 3 when `gsc` is, or `stale_gsc` lists rows, and for `stale_gsc_pages` with a query+page export (a Queries.csv has no pages, so it leaves them stale); step 6 only for `gaps.<locale>.needs_serp`; step 8's volume lookup for the shortlisted keywords in `stale_volumes`. Before step 7 maps clusters to pages, re-crawl the sections in `stale_inventory` and `ingest crawl`.
 1. **Expand the seeds in parallel.** Seeds are independent, so run one process per seed (or batch them), then ingest each file:
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/keyword_ideas.py" "english tutor" --hl en --gl gb --sources google,bing,youtube > seo-work/kw-english-tutor.json
@@ -53,7 +54,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - run `gsc_analyze.py Queries.csv --brand "<brand regex>"`;
    - `striking_distance` and `question_queries` are proven demand on the site;
    - mark them `[measured]`;
-   - ingest the CSV itself, which holds every row: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest gsc Queries.csv --locale en` (a query+page export needs no `--locale`).
+   - ingest the CSV itself, which holds every row: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest gsc Queries.csv --locale en --as-of "$PERIOD_END"`, with the last day the export covers (a query+page export needs no `--locale`).
 4. **Clean the list:**
    - de-duplicate (plurals, word order);
    - drop off-topic senses (the classic one is "english teacher" the TV show — check the meaning);
@@ -65,7 +66,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 6. **Cluster by SERP overlap.** This is the Google-grounded method; first-token clusters are only a starting point.
    - For each candidate pair inside a theme, WebSearch both in the target locale and compare the top-10 organic URLs.
    - **4 or more shared URLs → same page.** 2–3 shared → separate pages that interlink. 0–1 → separate topics [heuristic, consistent with common SERP-overlap practice].
-   - **Parallelise:** split the keywords in `gaps.<locale>.needs_serp` into batches of about 10 and give each batch to a `seo-serp-researcher` subagent with an output path such as `seo-work/serps-en-1.json`. Each writes that details file and `seo-work/serps-en-1.serps.json` (`{"keyword": [top10 urls]}`). Ingest every batch, then cluster the locale's whole SERP set (the fresh snapshots already in the store plus the new ones) centrally, so every cluster uses the same rule:
+   - **Parallelise:** split the keywords in `gaps.<locale>.needs_serp` (up to 50 per `status` run, strongest demand first) into batches of about 10 and give each batch to a `seo-serp-researcher` subagent with an output path such as `seo-work/serps-en-1.json`. Each writes that details file and `seo-work/serps-en-1.serps.json` (`{"keyword": [top10 urls]}`). Ingest every batch, then cluster the locale's whole SERP set (the fresh snapshots already in the store plus the new ones) centrally, so every cluster uses the same rule:
      ```bash
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest serps seo-work/serps-en-1.serps.json --locale en --details seo-work/serps-en-1.json
      python3 -c "import glob, json, sys; print(json.dumps({s['keyword']: [r['url'] for r in s['results']] for s in (json.load(open(p, encoding='utf-8')) for p in glob.glob(sys.argv[1] + '/*.json'))}, ensure_ascii=False))" seo-research/serps/en > seo-work/serps-en.json
@@ -74,7 +75,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - Pick the head term per cluster as the one with the broadest SERP and highest demand signal.
 7. **Build the topical map:**
    - pillar pages (broad intent) → cluster pages (specific intents) → supporting FAQs and how-tos;
-   - map each cluster to an existing URL (the store's `export inventory`, crawl CSV / GSC page) or mark it `new`;
+   - map each cluster to an existing URL (the store's `export inventory` and `export posts`, crawl CSV / GSC page) or mark it `new`;
    - one cluster = one primary URL, to avoid cannibalisation.
 8. **Prioritise** with the heuristic below. Then shortlist about 20–50 clusters for volume lookup if a paid source is configured, and run it within the configured budget (references/autonomy.md). Ingest the export: `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest volumes seo-work/semrush-en.csv --locale en --source semrush`.
 9. **Write the decisions back to the store**, so the next skill starts from this map:
@@ -83,7 +84,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest clusters seo-work/clusters-en.json --locale en
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" set-status --keyword "english teacher tv show" --locale en --status skip
      ```
-   - Mark `skip` every keyword step 4 dropped, so no skill picks it up again.
+   - Mark `skip` every keyword step 4 dropped, so no skill picks it up again. A cluster left with only dropped keywords gets `--cluster` and `--status skip` too, or `next-topics` still offers it.
    - Re-run `status`. Whatever is still `missing` or `stale` (volumes without a paid source, GSC without an export) goes into the requests batched at the end.
 
 ## Checks
@@ -156,6 +157,7 @@ Plus `seo-work/topical-map.md`:
 Append an entry to `SEO-WORKLOG.md` per `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`. Include:
 - seeds, locale and date;
 - sources used, with paid units or credits spent and on which terms;
+- the store datasets reused (with their age) and the ingests run;
 - keyword and cluster counts;
 - pages mapped;
 - items `[needs data]`;

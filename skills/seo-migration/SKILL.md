@@ -33,6 +33,16 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 
 ### Phase 1: Inventory (weeks before launch)
 
+0. **Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`), when `seo-research/` exists:
+   ```bash
+   mkdir -p seo-work/migration
+   python3 "$S/research_store.py" status > seo-work/migration/store-status.json
+   python3 "$S/research_store.py" export inventory --format csv > seo-work/migration/store-inventory.csv
+   python3 "$S/research_store.py" export clusters --format json > seo-work/migration/store-clusters.json
+   ```
+   - The inventory's URLs are one more source for step 1, and its `gsc_clicks` one more value signal for step 2. They add to the 16-month Search Console export and don't replace it: the store keeps one period's totals.
+   - Every cluster `target_url` is a page the content plan relies on: map it by hand.
+   - The old-site crawl still runs: the baseline needs `old-crawl.json`, which the store doesn't keep. Note what you reused and its age for *Assumptions* and the work log.
 1. **Collect old URLs** from every source (run in parallel):
    ```bash
    python3 "$S/sitemap_check.py" https://old.example.com --sample 0 --urls-out seo-work/migration/old-sitemap-urls.txt > seo-work/migration/old-sitemap.json
@@ -114,6 +124,13 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
     - **Escalate:** non-brand clicks down >30% at day 14 with positions dropping (not just impressions).
     - **Investigate per URL** (not a rollback): losses concentrated on specific URLs. They're usually mapping errors.
 11. **Keep redirects for at least 1 year, ideally forever.** Keep the old domain registered (§9).
+12. **Write back to the research store**, for URLs on the store's host only (`site.json` → `domain`). `ingest crawl` doesn't check the host, and the store can't follow a move to another host: `init` refuses any host but its own, `www.` aside. For a domain or subdomain move, do only the Phase 1 ingest and say under *Assumptions* that the store still describes the old host.
+    - **Phase 1:** `ingest crawl seo-work/migration/old-pages.csv`, the pre-move inventory.
+    - **Launch:** re-point each cluster in `store-clusters.json` whose `target_url` is an `old` URL in `map.csv` to its `new` URL, passing its current `status` again. Later briefs and posts then link to the new URLs directly, not through redirects (step 6):
+      ```bash
+      python3 "$S/research_store.py" set-status --cluster en-004 --status published --url https://example.com/new/path/
+      ```
+    - **Day 7:** ingest the new site's crawl CSV the same way.
 
 ## Checks
 
@@ -157,7 +174,7 @@ Type: … · Launch: … · URLs inventoried: N (sources: …) · Value-ranked t
 ## Launch-day runbook (who does what; items gated per autonomy level are marked)
 1. Deploy [per autonomy level; DNS changes always gated] · 2. Redirects on [per autonomy level; CDN/edge redirect rules always gated] · 3.–10. …
 ## Monitoring schedule + rollback triggers
-## Assumptions (move type, launch date, URL value ranking, rollback triggers: each decision and its evidence)
+## Assumptions (move type, launch date, URL value ranking, rollback triggers: each decision and its evidence; research-store data reused, with its age)
 ## Not verified [needs data]
 ```
 

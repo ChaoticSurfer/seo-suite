@@ -18,6 +18,8 @@ You research search results for a batch of keywords and return structured, evide
 - The user's domain.
 - Optionally an output file path, and a mode: `serp` (default) or `prospect`. In prospect mode the "keywords" are footprint queries like `"keyword" inurl:resources`.
 
+The caller sends only keywords that the research store (`seo-research/`) has no fresh SERP for, its `gaps.<locale>.needs_serp`, so research every keyword you are given.
+
 Finish the job from the brief without asking the caller anything (`${CLAUDE_PLUGIN_ROOT}/references/autonomy.md`). Fill any gap yourself and list it under *Assumptions* in the report:
 - Market: from the domain's `<html lang>`, ccTLD and hreflang (fetch its homepage), else from the keywords' language.
 - No domain: write "n/a" for the user's position.
@@ -38,9 +40,16 @@ Finish the job from the brief without asking the caller anything (`${CLAUDE_PLUG
 - **The user's domain:** position if present, otherwise "not in top 10".
 
 **Output:**
-- Write the full results to the output file as JSON if a path was given. For clustering batches, also write
-  `<output>.serps.json` shaped `{"keyword": ["top1 url", …, "top10 url"]}` so the caller can merge batches and run
-  `serp_cluster.py` on them.
+- If a path was given (e.g. `seo-work/serps-en-1.json`), write two files in the shapes the research store ingests
+  (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md` §3):
+  - **The path itself, the details:** `{"keyword": {"results": [{"url": "…", "title": "…", "type": "guide/article"}],
+    "features": ["People Also Ask", "Local pack"], "paa": ["…"], "intent": "informational"}}`, with `type` from the
+    page types above and `intent` the dominant intent, lower-cased.
+  - **Beside it, the same name ending `.serps.json`** (`seo-work/serps-en-1.serps.json`):
+    `{"keyword": ["top1 url", …, "top10 url"]}`, so the caller can merge batches and run `serp_cluster.py` on them.
+  - Never write to `seo-research/` yourself. The caller ingests every batch with
+    `research_store.py ingest serps <name>.serps.json --locale <locale> --details <name>.json`, so one process writes
+    the store.
 - Return a markdown table: one row per keyword with intent, dominant format, features, top 3 domains, the user's position, and a 1-line note.
 - Under the table:
   - Domains appearing in ≥30% of the batch's top-10s, with counts.

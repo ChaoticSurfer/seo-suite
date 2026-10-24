@@ -36,6 +36,15 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 
 `S="${CLAUDE_PLUGIN_ROOT}/scripts"`. Run independent checks in parallel. Write this skill's outputs to `seo-work/technical/`, so the triage in step 7 doesn't pick up other skills' JSON from `seo-work/`.
 
+0. **Read the research store first** (`${CLAUDE_PLUGIN_ROOT}/references/research-store.md`), when `seo-research/` exists. Its output goes to `seo-work/`, outside the folder step 7 triages:
+   ```bash
+   mkdir -p seo-work
+   python3 "$S/research_store.py" status > seo-work/store-status.json
+   python3 "$S/research_store.py" export inventory --format csv > seo-work/store-inventory.csv
+   ```
+   - `seo-research/site.json` → `stack` and `templates` start the framework, host and template inputs. Check them against the repo and `--facts`.
+   - Inventory rows with a `status` other than 200 are candidate affected URLs, and their `gsc_clicks` show which ones earn traffic.
+   - The checks below still run: they measure the site as it is now. Note what you reused and its age for *Assumptions* and the work log.
 1. **Access and directives:**
    ```bash
    mkdir -p seo-work/technical
@@ -84,6 +93,12 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
    ```bash
    python3 scripts/robots_check.py --file public/robots.txt --path / | python3 -c "import json, sys; sys.exit(any(f['severity'] in ('critical', 'high') for f in json.load(sys.stdin)['findings']))"
    ```
+10. **Write the crawl back to the research store:**
+    ```bash
+    python3 "$S/research_store.py" init --site https://example.com --locales en
+    python3 "$S/research_store.py" ingest crawl seo-work/technical/pages.csv
+    ```
+    `init` creates the store (the locales found, default first), adds new locales, and refuses another domain. If it refuses, this site isn't the store's: skip the ingest. Record the framework and host you found in `seo-research/site.json` → `stack`.
 
 ## Checks
 
@@ -207,7 +222,7 @@ Read the existing files first and match their style. Show a diff, and write it p
 - **Close with:**
   - A P0–P3 table.
   - "Verified after fix", with before/after script output for anything changed.
-  - Assumptions: the URLs, framework and host decided from evidence, and the evidence for each.
+  - Assumptions: the URLs, framework and host decided from evidence, and the evidence for each, plus the research-store data reused and its age.
   - The open `[needs data]` items.
 
 ## Pitfalls & myths

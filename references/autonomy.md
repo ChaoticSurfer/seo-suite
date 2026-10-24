@@ -15,6 +15,7 @@ and carry on:
 | Market and language | `<html lang>`, ccTLD, hreflang, currency and addresses on the page |
 | Competitors | Domains that rank in the top 10 for the site's head terms (WebSearch) |
 | Keyword seeds | Titles, H1s and nav labels of money pages, plus GSC queries when available |
+| Whether to research again | The research store (`seo-research/`, `references/research-store.md`): `research_store.py status` lists the stale and missing datasets per locale. Refresh only those, reuse the rest, and write new results back with `ingest` |
 | What to check and fix first | The skill's workflow and `triage.py` priorities |
 | Paid data calls | Allowed when inside the configured budget, and only for data free sources can't give (`tools.md`) |
 | Beginner vs expert output | Infer from the user's wording. If unsure, give a plain summary with an expert appendix |
@@ -35,7 +36,7 @@ an assumption plus a note can cover.
 
 | Level | Runs without asking | Still needs the user |
 |---|---|---|
-| **1. Analyse** (default) | All reads: fetches, crawls, scripts, free APIs, paid calls within budget, reports, work log | Any change to the site or any external account |
+| **1. Analyse** (default) | All reads: fetches, crawls, scripts, free APIs, paid calls within budget, reports, work log, research store updates (uncommitted) | Any change to the site or any external account |
 | **2. Fix in code** | Level 1 + edits to the site's repo on a branch, commits, pushing that branch, opening a PR | Merging, deploying |
 | **3. Ship** | Level 2 + merging PRs that pass CI, submitting sitemaps / IndexNow for changed URLs | CMS publishing, account settings |
 | **4. Operate** | Level 3 + CMS drafts/publishing and Search Console sitemap submission through an authorised connector | See "always gated" |
@@ -49,7 +50,8 @@ forbid. The user can approve one of these for one run; that approval doesn't car
 
 - The user enters keys and sign-ins into Claude Code's own configuration: plugin options, `claude mcp add` headers,
   OAuth pages, or environment variables. Never type a password into a website, and never paste keys into chat,
-  logs or files that get committed.
+  logs or files that get committed. The research store is versioned with the repo, so it never holds secrets,
+  raw paid responses or personal data (`references/research-store.md` §1).
 - Prefer API/MCP access over driving a vendor's web UI. It is cheaper, more reliable, and allowed by the vendor's
   terms.
 - If a sign-in page, CAPTCHA or bot challenge appears, stop that step, record it as an access request, and continue
