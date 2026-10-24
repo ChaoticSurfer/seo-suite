@@ -93,7 +93,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" next-topics --locale e
    - Length isn't a target; scope is.
 
 ### C. Writing or refreshing
-1. Draft from the brief. Use only facts the user supplied, citable sources, or data you measured. Mark anything else `[needs data]`.
+1. Write from the brief. Use only facts the user supplied, citable sources, or data you measured. Mark anything else `[needs data]`.
 2. Fact-check every claim, number, date and name. Models don't retrieve facts (google-rules §4).
 3. Add trust signals:
    - a byline linked to an author page (real person, real credentials);
@@ -106,8 +106,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" next-topics --locale e
    - update facts;
    - add the missing subtopics;
    - change `dateModified` only for substantive edits.
-5. Score the draft with `content_score.py --file draft.html --base-url https://site/<planned-slug> --keyword "$KW"` and fix the placement and structure gaps.
-6. Deliver as a file or diff. **Commit to the repo or publish to the CMS only per autonomy level (references/autonomy.md).**
+5. Score the page with `content_score.py --file page.html --base-url https://site/<planned-slug> --keyword "$KW"` and fix the placement and structure gaps.
+6. **Ship it per autonomy level (references/autonomy.md):** a file in `seo-work/` at level 1, a branch and PR at level 2, merged once CI passes at level 3, published through an authorised CMS connector at level 4. Level 3 merges, and level 4 publishes, only a page with a named human sign-off (`reviewed_by`, `reviewed_at`), as in `seo-blog-builder`. Without it the PR stays open, the page stays `drafted`, and the report asks for the sign-off. A page with an open `[needs data]` marker stays unpublished until it is filled. Below the level an action needs, stop there and say which level or credential would finish it.
+7. **Once it is live** (level 3 and above): check it with `page_audit.py` (status 200, indexable), submit its URL to IndexNow when the site serves its key file, and set its store status (D). Re-check its GSC position 6–8 weeks later (Log the work).
 
 ### D. Write back to the store
 ```bash
@@ -122,9 +123,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" set-status --cluster e
 - **Brief:** save it as `seo-research/briefs/<locale>/<slug>.md` (the `brief` path `next-topics` gives), then set
   the cluster to `briefed`. A SERP you fetched in B step 1 goes back with `ingest serps`, in the two files
   `seo-serp-researcher` writes.
-- **Draft or refresh:** `drafted`, with `--url` set to its planned URL, once the file, PR or CMS draft exists;
-  `scheduled` with `--url` once it is queued for a future publish date; `published` with `--url` once it is live. A
-  query with no cluster uses `--keyword "$KW" --locale en` instead of `--cluster`.
+- **Written or refreshed:** `drafted` (written, not yet live), with `--url` set to its planned URL, once the file or
+  PR exists; `scheduled` with `--url` once it is queued for a future publish date; `published` with `--url` once it
+  is live. A query with no cluster uses `--keyword "$KW" --locale en` instead of `--cluster`.
 
 ## Checks
 **Decision tree** (thresholds are heuristics; adjust to the site's scale):
@@ -192,7 +193,7 @@ Volumes and difficulty without data are always `[needs data]`.
   - the redirect map, to verify with `seo-migration` / `redirect_check.py`;
   - risks.
 - Briefs: `seo-research/briefs/<locale>/<slug>.md`.
-- Drafts: `draft-<slug>.md` or HTML, as a diff for repo content.
+- Pages: `<slug>.md` or HTML in `seo-work/` at level 1, a PR at level 2, merged at level 3, or published through the CMS connector at level 4, with the live URL and its submission.
 - **Assumptions** (in `content-audit.md` or the brief): the scope, critical pages, locale, audience and voice chosen, with the evidence for each; which store data was reused and how old it was. Then the requests batched at the end, each with a recommendation: missing access (GSC, GA4, backlinks) and business decisions (merging or deleting pages that earn traffic or revenue, the byline).
 
 ## Pitfalls & myths

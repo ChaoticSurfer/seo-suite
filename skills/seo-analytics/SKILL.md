@@ -211,7 +211,7 @@ Label third-party traffic numbers `[vendor data]` / `[estimate]`. They are model
    - Top CTR fixes.
    - Cannibalisation decisions.
 2. Drop diagnosis: the tree with ✅/❌ and evidence per branch, the most likely explanation in "consistent with" language, and next actions routed to the right skill.
-3. A KPI/dashboard spec (Looker Studio data sources, fields, filters) or a monthly report draft.
+3. A KPI/dashboard spec (Looker Studio data sources, fields, filters) or the monthly report.
 4. Experiment record (pre-registration + result).
 5. **Assumptions:** the windows, brand regex, data sources and change dates you decided, each with its evidence, and which store data was reused and how old it was (e.g. "GSC: store data 5 days old, its export reused"). Then the questions batched for the user (missing exports or access), each with a recommendation.
 

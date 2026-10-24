@@ -96,8 +96,8 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
    4. Run `robots_check.py` on the new host. Googlebot must be allowed on `/`.
    5. Run `page_audit.py` on the homepage plus one URL per template. There must be no `noindex`, and canonicals must be self-referencing.
    6. Run `sitemap_check.py` on the new host.
-   7. Submit the new sitemap in Search Console per autonomy level (references/autonomy.md): at level 4 through an authorised connector, otherwise the user submits it. Keep the old sitemap available for a while so Google re-crawls the redirects.
-   8. For a domain change only, the user runs the **Change of Address** tool. It's always gated at every autonomy level (references/autonomy.md): submit it yourself only with the user's approval for this run, and preferably let the user do it. Its rules:
+   7. Submit the new sitemap in Search Console per autonomy level (references/autonomy.md): at level 4 through an authorised connector. Below level 4, or without the connector, say that level 4 with the connector would submit it. Keep the old sitemap available for a while so Google re-crawls the redirects.
+   8. For a domain change only, file a **Change of Address** in Search Console. It's always gated at every autonomy level (references/autonomy.md): list it (old and new property) as an item in the end-of-run approval batch, and once the user approves it in chat, file it in the user's signed-in Search Console browser session (it has no API) and log it. Its rules:
       - Domain-level properties.
       - The same owner on both properties.
       - A 301 on the homepage.
@@ -106,7 +106,7 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 
       Not used for http→https, www, or path-only changes.
    9. Optionally use IndexNow for Bing and Yandex, per autonomy level (references/autonomy.md), since it submits URLs to third parties.
-   10. Prepare a change list for the external links the user controls (social profiles, Business Profile, directories) for the owner to apply. These are external accounts, and Business Profile edits are always gated at every autonomy level (references/autonomy.md): edit one yourself only with the user's approval for this run. Draft outreach for the most valuable backlinks; sending it is always gated at every autonomy level (references/autonomy.md), so send nothing unless the user approves each message for this run.
+   10. Prepare each change to the external links the user controls (social profiles, Business Profile, directories): the account, the current and the new URL. These are external accounts, and Business Profile edits are always gated at every autonomy level (references/autonomy.md), so each change is an item in the end-of-run approval batch. Make only the approved ones, through the connected account (the Business Profile API for the profile), and log them; for an account with no connector, ask for that access. Prepare outreach to the sites behind the most valuable backlinks the same way: each message, with its recipient and text, is an approval-batch item, sent through the user's connected email only once the user approves that message for this run.
 
 ### Phase 5: Monitoring
 

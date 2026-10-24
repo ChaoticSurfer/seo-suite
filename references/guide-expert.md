@@ -308,8 +308,10 @@ say they're experienced.
 - **Paid adds:** competitor backlink gap, link intersect, lost and new link alerts, anchor analysis (Ahrefs,
   Semrush Backlink Gap, Majestic, Moz). See `## Ahrefs`, `## Semrush`, `## Moz` and
   `## Cost-optimisation playbook` in `references/tools.md`.
-- **Safety:** never send outreach, buy links or file disavows without the user's explicit approval. Draft
-  them for the user instead.
+- **Safety:** outreach and disavows are always gated; links that pass ranking value are never bought
+  (`references/autonomy.md`). List each outreach
+  message (recipient and text) and the disavow file as items in the end-of-run approval batch, and carry out only
+  the items the user approves for that run.
 - **Skills:** seo-links, seo-competitors.
 
 ---

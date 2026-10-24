@@ -124,7 +124,8 @@ The `seo-automation` skill uses this file. Plans and prices for buying decisions
   re-read the schema once, then fetch a small unfiltered set and filter it locally [semrush-kw-skill].
 - **Prefer the MCP over the raw API** when the MCP covers the data. Semrush's llms.txt tells agents to [semrush-llms].
 
-### UI-only: write steps for the human, never drive the UI
+### UI-only: no API, so never drive the UI
+Use an API equivalent where one exists, otherwise leave the feature out and say so in the report.
 - Keyword Strategy Builder [semrush-ksb]; SEO Writing Assistant [semrush-swa]; Topic Research [semrush-tr].
 - Keyword Magic Tool groups and subgroups, personal keyword difficulty (PKD), Backlink Audit Toxicity Score, and the
   Site Audit "Markup" and "Internal Linking" thematic reports [semrush-backlink-skill].

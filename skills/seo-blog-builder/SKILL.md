@@ -1,6 +1,6 @@
 ---
 name: seo-blog-builder
-description: Keyword-driven blog builder. Reads the shared research store (seo-research/) first and refreshes only stale keyword, SERP and inventory data, picks the next topics from keyword clusters, briefs each from its SERP, then writes people-first posts with real bylines, cited sources, BlogPosting schema and internal links from the topical map, plus native versions per language (that locale's own keywords, the store glossary, seo-blog-review checks). Delivers drafts or PRs per autonomy level in weekly batches sized to review capacity. Triggers include "write blog posts", "build our blog", "content calendar from keywords", "next blog topics", "weekly blog batch" and "write in Georgian/Russian too". Not for keyword research alone (seo-keywords), one article on a chosen topic or a refresh (seo-content), reviewing existing posts (seo-blog-review) or template page sets (seo-programmatic).
+description: Keyword-driven blog builder. Reads the shared research store (seo-research/) first and refreshes only stale keyword, SERP and inventory data, picks the next topics from keyword clusters, briefs each from its SERP, then writes people-first posts with real bylines, cited sources, BlogPosting schema and internal links from the topical map, plus native versions per language (that locale's own keywords, the store glossary, seo-blog-review checks). Ships each post per autonomy level, up to publishing it at level 3 and above, then submits its URL and schedules indexing and ranking checks, in weekly batches sized to review capacity. Triggers include "write blog posts", "build our blog", "content calendar from keywords", "next blog topics", "weekly blog batch" and "write in Georgian/Russian too". Not for keyword research alone (seo-keywords), one article on a chosen topic or a refresh (seo-content), reviewing existing posts (seo-blog-review) or template page sets (seo-programmatic).
 ---
 
 # Blog builder: from keyword clusters to reviewed posts
@@ -47,13 +47,13 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 `S="${CLAUDE_PLUGIN_ROOT}/scripts"`, `W="seo-work/blog-builder/$(date +%F)"`; `$LOC` is a locale code and `$CID` a
 cluster id. Run independent steps in parallel:
 - **Main thread:** every `seo-serp-researcher` batch (at most 10 keywords, one locale per batch), every `ingest` and
-  `set-status`, and the `seo-content-reviewer` agents once the drafts exist. Subagents can't launch agents, and one
-  process writes the store (router rule 7).
-- **One subagent per topic** only for work that writes files: its brief, its draft and its `compare_pages.py` run.
+  `set-status`, and the `seo-content-reviewer` agents once the posts are written. Subagents can't launch agents, and
+  one process writes the store (router rule 7).
+- **One subagent per topic** only for work that writes files: its brief, its post and its `compare_pages.py` run.
 
 1. **Read the store, then refresh only what is missing or stale.**
    ```bash
-   mkdir -p "$W"/{compare,translation,text,score,built,drafts}
+   mkdir -p "$W"/{compare,translation,text,score,built,posts}
    python3 "$S/research_store.py" status > "$W/store-status.json"
    python3 "$S/research_store.py" export clusters --locale "$LOC" --format json > "$W/clusters-$LOC.json"
    python3 "$S/research_store.py" export keywords --locale "$LOC" --format json > "$W/keywords-$LOC.json"
@@ -72,7 +72,7 @@ cluster id. Run independent steps in parallel:
      | `clusters` | `serp_cluster.py` on the locale's merged `{keyword: [urls]}` maps | `ingest clusters FILE --locale LOC` |
      | `gsc`, or `stale_gsc`, `stale_gsc_pages` | A new GSC export, through `gsc_analyze.py` or as the CSV itself | A query+page export: `ingest gsc FILE --as-of LAST_DAY`, the last day its period covers (each row's locale comes from its page URL). A Queries.csv without a page column: add `--locale LOC`, one export per locale |
      | `inventory`, or `stale_inventory` | A crawl: `crawl.py` with `--csv "$W/pages.csv"` (`--path-prefix` for one section) | `ingest crawl "$W/pages.csv"` |
-     | `posts` | The site's existing and queued posts: the CMS's posts export (a connector, or WordPress's REST JSON), or for a repo a CSV of each post file's URL or slug, locale, title, status and publish date | `ingest posts FILE` (`--locale LOC` only for rows with neither a locale nor a URL) |
+     | `posts` | The site's existing and queued posts: a CSV of each post's URL or slug, locale, title, status (a store status, or empty) and publish date, from the repo's post files or read through the CMS connector | `ingest posts FILE` (`--locale LOC` only for rows with neither a locale nor a URL) |
      | `volumes`, or `stale_volumes` (optional, paid) | Head terms of the shortlisted clusters only, within budget (Data) | `ingest volumes FILE --locale LOC --source NAME` |
 
    - **Close the loop on earlier batches.** The store inventory has no indexability column, so check each `drafted`
@@ -84,6 +84,10 @@ cluster id. Run independent steps in parallel:
      A noindexed version (shipped unreviewed, step 5) stays `drafted` and counts towards the review backlog. One
      that went live and indexable without a human sign-off, or with gates failing, is still `published`, and the
      report lists it (Checks).
+   - **Pick up held-back posts.** For each `drafted` cluster that is not live, find its post: the open PR whose
+     branch starts with `seo/blog-` (`gh pr list --state open --json headRefName,url`), the repo file of a version
+     shipped `noindex` (step 5), or else the newest file for its slug under `seo-work/blog-builder/*/posts/<locale>/`.
+     Re-run the Checks gates on it, the human sign-off included, and ship it per step 4's levels once all pass.
    - Note each dataset you reused and its age (`updated_at` in `manifest.json`), for *Assumptions*.
 2. **Pick the topics.**
    ```bash
@@ -163,8 +167,8 @@ cluster id. Run independent steps in parallel:
    - **Internal links**, only to same-language URLs that are 200 in `inventory.csv` and indexable (the inventory has
      no indexability column: read `indexable` in a crawl CSV, or `summary.indexable` from `page_audit.py`):
      - the cluster post links up to its pillar with a descriptive anchor, and the pillar gets a link down to the post.
-       That is an edit to a live page, so it follows the autonomy levels below: a suggested diff in `$W/` at level 1,
-       the PR at levels 2–3, a CMS edit only at level 4;
+       That is an edit to a live page, so it follows the autonomy levels below: the change in `$W/` at level 1, the
+       post's PR at levels 2–3, a CMS edit at level 4;
      - siblings from the cluster's `interlinks` (SERP overlap of 2–3);
      - one or two money pages from `site.json` where the reader's next step is a lead or a sale;
      - links to pages that aren't live yet wait for step 7.
@@ -172,20 +176,23 @@ cluster id. Run independent steps in parallel:
      names are descriptive in that language (review §6). An image the business must supply is `[needs image: …]`. AI
      images carry IPTC `trainedAlgorithmicMedia` (review §1, row 26).
    - **Disclosure** where readers would reasonably wonder how the post was made, using the review §3 templates.
-   - **Deliver in the site's format, per autonomy level:**
+   - **Ship it in the site's format, per autonomy level:**
 
-     | Site | Deliverable |
+     | Site | What the run writes |
      |---|---|
-     | Repo with Markdown or MDX posts | A new file beside the newest post, with exactly its front-matter keys. A draft flag only if the repo already uses one (Hugo or Docusaurus `draft: true`, Jekyll `published: false`) |
-     | WordPress or a headless CMS, through an authorised connector | A CMS draft at level 4. Below level 4: the post as a file, plus the field values to paste |
+     | Repo with Markdown or MDX posts | A new file beside the newest post, with exactly its front-matter keys. If the repo uses a draft flag (Hugo or Docusaurus `draft`, Jekyll `published`), set it so the post goes live on merge |
+     | A CMS, through an authorised connector | The post, published through the connector at level 4. Below level 4: the post as a file in `$W/posts/<locale>/`, and the report says level 4 would publish it |
      | Static HTML | A file built from an existing post's template |
 
-     - **Level 1:** files in `$W/drafts/<locale>/`.
-     - **Levels 2–3:** a branch `seo/blog-<date>` and a PR left open. Merging a post PR publishes the post, so this
-       skill never merges one.
-     - **Level 4:** publish only a post that passes every gate in Checks and has a named human sign-off
-       (`reviewed_by`, `reviewed_at`). Otherwise leave it as a CMS draft. A post queued for a future publish date is
-       `scheduled` (step 7).
+     - **Level 1:** files in `$W/posts/<locale>/`. The run stops there and says level 2 would open the PR.
+     - **Level 2:** a branch `seo/blog-<date>` and a PR, left open. The report says level 3 would merge it.
+     - **Level 3:** level 2, then merge the PR once CI passes and every source post in it passes every gate in Checks,
+       with a named human sign-off (`reviewed_by`, `reviewed_at`). Merging publishes the posts. Versions still
+       waiting for their native reviewer ship as in step 5.
+     - **Level 4:** level 3, and on a CMS, publish each post that passes the same gates through the connector.
+     - A post that fails a gate, or has no sign-off yet, stays `drafted` (written, not yet live): in the open PR, or
+       as a file in `$W/posts/<locale>/` for a CMS. The report names the gate, and the next run checks it again and
+       ships it once it passes. A post queued for a future publish date is `scheduled` (step 7).
 5. **Other locales: localise, don't translate the keyword.**
    - Each version targets **that locale's own cluster** for the topic, from `export clusters --locale`, and uses its
      head keyword as the target query. Never a translation of the source keyword (review §7). With no matching
@@ -199,13 +206,13 @@ cluster id. Run independent steps in parallel:
    - **Local examples, prices and cases** come only from the user, the site's own pages or a cited source, as in step
      4. Where none exists, the version gets a `[needs first-hand detail: …]` marker instead, and the open-marker gate
      (Checks) applies to every language version.
-   - **Review before delivery** with `seo-blog-review` steps 4 and 5, run on the drafts:
+   - **Review before shipping** with `seo-blog-review` steps 4 and 5, run on the written versions:
      ```bash
      python3 "$S/translation_check.py" --files en:"$EN_FILE" ka:"$KA_FILE" ru:"$RU_FILE" --base-url "$SITE/{lang}/blog/$SLUG/" --source en > "$W/translation/$SLUG.json"
      python3 "$S/ai_text_check.py" --file "$KA_FILE" > "$W/text/ka-$SLUG.json"
      ```
      `--base-url` follows the site's URL pattern and can vary only by `{lang}`. With a slug in each audience's
-     language, canonical and hreflang findings on the drafts (such as `translation-canonical-not-self`) are therefore
+     language, canonical and hreflang findings on the files (such as `translation-canonical-not-self`) are therefore
      expected. Check the URL wiring after the build with `translation_check.py --urls en:URL ka:URL ru:URL`.
      After both scripts, run the LLM reviewer pass on every version, with the review §11 reviewer brief and never
      the translation prompt's framing. Fix every critical and major error, re-run both scripts, and record the pass
@@ -218,41 +225,49 @@ cluster id. Run independent steps in parallel:
    - **hreflang for the cluster.** Every version lists all indexable versions of the post, itself, and `x-default`
      pointing at the source, emitted the way the site already emits hreflang (`seo-international`). A version without a
      native reviewer's sign-off ships `noindex`, out of the sitemap and out of its siblings' hreflang, until it is
-     reviewed (review §2, §6). If the template has no per-post robots field, keep that version out of the PR and
-     deliver it as a file for the reviewer.
-6. **Score and gate every draft.**
+     reviewed (review §2, §6). If the template has no per-post robots field, keep that version out of the PR, as a
+     file in `$W/posts/<locale>/` for the reviewer, and ship it in a later run once they sign it off.
+6. **Score and gate every post.**
    ```bash
    python3 "$S/content_score.py" --file "$W/built/$LOC-$SLUG.html" --base-url "$PLANNED_URL" --keyword "$TARGET_QUERY" > "$W/score/$LOC-$SLUG.json"
    python3 "$S/ai_text_check.py" --file "$SOURCE_FILE" > "$W/text/$LOC-$SLUG.json"
    ```
-   - `content_score.py --file` reads HTML only. Score the page the site's own build produces, or an HTML draft; check
-     a Markdown-only draft by hand. In `ka` and `ru` its placement counts are rough (review §7).
-   - From the main thread, once the drafts exist, give each source-language post to the `seo-content-reviewer` agent
-     (one per post, in parallel) with its target query and the brief's competitor URLs, and apply its edits.
-   - Run the gates in **Checks**. A post that fails one stays a draft, and the failure goes in the report.
-7. **Write back to the store.**
+   - `content_score.py --file` reads HTML only. Score the page the site's own build produces, or an HTML file; check
+     a Markdown-only post by hand. In `ka` and `ru` its placement counts are rough (review §7).
+   - From the main thread, once the posts are written, give each source-language post to the `seo-content-reviewer`
+     agent (one per post, in parallel) with its target query and the brief's competitor URLs, and apply its edits.
+   - Run the gates in **Checks**. A post that fails one stays `drafted`, and the failure goes in the report.
+7. **Submit, verify and write back to the store.**
    ```bash
    python3 "$S/research_store.py" set-status --cluster "$CID" --status drafted --url "$PLANNED_URL"
    python3 "$S/research_store.py" set-status --cluster "$CID" --status scheduled --url "$PLANNED_URL"
+   python3 "$S/page_audit.py" "$LIVE_URL" > "$W/live-$LOC-$SLUG.json"
    python3 "$S/research_store.py" set-status --cluster "$CID" --status published --url "$LIVE_URL"
    python3 "$S/crawl.py" "$SITE" --max-pages 2000 --csv "$W/pages.csv" > "$W/crawl.json"
    python3 "$S/research_store.py" ingest crawl "$W/pages.csv"
    ```
-   - `drafted`, with its planned URL, once the file, PR or CMS draft exists. Step 1 of a later run checks that URL.
-     `scheduled`, with its URL, once it is queued to go live on a set date: a CMS post with a future publish date at
-     level 4, or a merged PR whose post carries a future date. `next-topics` never proposes a `scheduled` cluster
-     again. `published`, with its URL, once it is live and indexable: now at level 4, or when a later run's step 1
-     finds it so. A noindexed version stays `drafted`.
+   - **Once a post is live (level 3 and above):** check it with `page_audit.py` (`summary.status` 200,
+     `summary.indexable` true). Then submit its URL to IndexNow, when the site serves its key file, and the sitemap
+     that lists it (Search Console sitemap submission at level 4, through the connector). With Search Console
+     access, URL Inspection confirms Google's view.
+   - `drafted` (written, not yet live), with its planned URL, once the file or PR exists. Step 1 of a later run
+     checks that URL. `scheduled`, with its URL, once it is queued to go live on a set date: a CMS post with a future
+     publish date at level 4, or a merged PR whose post carries a future date. `next-topics` never proposes a
+     `scheduled` cluster again. `published`, with its URL, once it is live and indexable: in this run at level 3 or
+     4, or when a later run's step 1 finds it so. A noindexed version stays `drafted`.
    - After a post goes live, crawl and ingest, so the inventory and the next batch's internal links include it. Then
-     add the links that were waiting for it, by level as in step 4: suggested diffs in `$W/` at level 1, a PR at
-     levels 2–3, CMS edits only at level 4.
+     add the links that were waiting for it, by level as in step 4: the changes in `$W/` at level 1, a PR at level
+     2, merged at level 3, CMS edits at level 4.
+   - **Schedule the checks:** indexing at the next weekly run's step 1, and each post's GSC position for its target
+     query 4–8 weeks after it went live (Cadence). With no weekly schedule loaded yet, ask for the one-time OK to
+     load pipeline B10 (`seo-automation`), batched at the end.
    - Write the batch report (Output) and the work-log entry.
 
 ## Cadence and scheduled runs
 - **Weekly batch.** One run a week, N topics per locale (default 4). Small, steady batches beat bursts: publishing
   velocity per language is one of the scaled-content signals `seo-blog-review` checks (review §2).
-- **Review capacity sets the pace.** When a locale already has more than N drafts waiting for review, the run writes
-  briefs only for that locale and says so. Unreviewed pages never pile up.
+- **Review capacity sets the pace.** When a locale already has more than N `drafted` posts waiting for review, the
+  run writes briefs only for that locale and says so. Unreviewed pages never pile up.
 - **Calendar.** Each report lists the next four weeks of topics per locale from `next-topics`, so the user can correct
   the plan before it's written.
 - **Research refresh follows the store's TTLs.** Step 1 re-fetches only stale or missing data, so most weekly runs
@@ -269,7 +284,8 @@ cluster id. Run independent steps in parallel:
   seo-work/automation/inbox.md, each with a recommendation.
   ```
   - Add `"Edit(./seo-research/**)"` to the recipe's `--allowedTools`. At level 2 and above, add the git and
-    `gh pr create` rules `seo-automation` lists. At level 4 only, add the CMS connector's draft and publish tools.
+    `gh pr` rules `seo-automation` lists, at level 3 its `seo/*` merge rule and the `--admin` deny rule, and at level 4
+    the CMS connector's publish tools.
   - In a scheduled run, a paid call the guard would ask about is denied and lands in `inbox.md`. The run carries on
     with free data.
   - A scheduled prompt is not the user. It never approves a gated action or a new language.
@@ -285,7 +301,7 @@ thresholds are [heuristic]; the policies are google-rules §4 and review §1–3
 | Intent | Guide/article, listicle, news and forum/ugc results are the majority of the typed results; with fewer than 5 typed, the head keyword's intent fits (step 2) | Snapshot `results[].type` [measured: WebSearch sample] |
 | One URL per cluster | No live page owns the cluster: its `target_url`, whatever set it, isn't a 200 inventory row (step 2) | `inventory.csv`, `clusters.json` |
 | Unique value | The post has something the top 5 lack, from a real source | The brief's unique-value line, found in the post |
-| No open markers | `grep -n "\[needs " <draft>` prints nothing, for every language version (`ai_text_check.py` doesn't flag these markers) | grep |
+| No open markers | `grep -n "\[needs " <post file>` prints nothing, for every language version (`ai_text_check.py` doesn't flag these markers) | grep |
 | Facts | Every number, date, price and name has a cited source or a user fact, and every cited URL resolves | Fetches |
 | Leftovers | No `ai-text-model-leftover`, `ai-text-placeholder` or `ai-text-hidden-instructions`; every `ai-text-unsupported-stat` resolved | `ai_text_check.py` |
 | Byline | A real person or the organisation, with an author page | The post |
@@ -309,7 +325,7 @@ really changes (review §6). Re-translating doesn't refresh dates.
 - the research store and the bundled scripts;
 - autocomplete per locale (`keyword_ideas.py`), and SERPs and PAA through WebSearch (`seo-serp-researcher`);
 - GSC exports, and competitor structure (`compare_pages.py`);
-- Claude for drafting, translating and the LLM review pass.
+- Claude for writing, translating and the LLM review pass.
 
 **What paid adds (never required):**
 - **A native-speaker reviewer per language.** It is the one input Google staff point to for translations (review §1,
@@ -327,8 +343,9 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
 ## Output
 - `seo-research/<brief>`: one brief per topic and locale, at the `brief` path `next-topics` gives, versioned with the
   repo.
-- Drafts in the site's format: `$W/drafts/<locale>/` at level 1, a PR at levels 2–3, CMS drafts or published posts at
-  level 4.
+- Posts in the site's format: `$W/posts/<locale>/` at level 1, an open PR at level 2, merged and live at level 3,
+  published through the CMS connector at level 4. Each live post has its URL submitted and its checks scheduled
+  (step 7).
 - Store updates: cluster statuses, glossary rows for approved terms and brand names, and the inventory after
   publication.
 - `$W/batch.md`:
@@ -336,7 +353,7 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
   # Blog batch: <site>, <date>
   Locales · topics per locale · autonomy level · store data reused (dataset, age) and refreshed
   ## Posts
-  | Locale | Cluster | Target query | Planned URL | Status | Gates failed | Placement | Review (llm_reviewed / human) | Open markers | Links added |
+  | Locale | Cluster | Target query | Planned URL | Status | Submitted (IndexNow, sitemap) | Gates failed | Placement | Review (llm_reviewed / human) | Open markers | Links added |
   ## Passed over: topic → reason (landing-page intent → seo-content, existing page → refresh, has a post, no demand in locale)
   ## Terms settled, pending native review: locale, term, translation, why
   ## Calendar: the next four weeks of topics per locale
@@ -357,6 +374,7 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
   - the byline and the author's credentials, when unknown;
   - a native reviewer per language, and their verdict on the terms pending review;
   - GSC access, and a budget for volumes;
+  - for each post the run stopped short of publishing, the level or credential that would finish it;
   - any language the data suggests but nobody asked for.
 
 ## Pitfalls & myths
@@ -380,7 +398,8 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
 Append an entry to `SEO-WORKLOG.md` per `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`. Include:
 - the store datasets reused (with their age) and refreshed;
 - the topics picked per locale and why, and those passed over;
-- the posts briefed, drafted and published per locale, with URLs or PR links, and the autonomy level;
+- the posts briefed, drafted and published per locale, with URLs or PR links, the URLs submitted, and the autonomy
+  level;
 - the gates failed and the markers still open;
 - paid units spent;
 - what wasn't verified (e.g. "no native reviewer for ka", "GSC not provided");

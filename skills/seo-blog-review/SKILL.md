@@ -160,11 +160,13 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 
    - Write `$W/translation-pipeline-fixes.md`. For each change give the evidence (count, example error lines), the
      exact diff to the prompt, glossary or QA script, and the metric the next batch should move.
-   - Level 1: diffs in the report. Level ≥ 2: a branch and PR with the pipeline changes (references/autonomy.md).
-10. **Corrections to existing posts are drafted, never published by this skill:**
-    - Write them as diffs to the content files, or as CMS drafts at level 4.
-    - They wait for the user or the language reviewer at every autonomy level, because an unreviewed fix recreates
-      the problem it fixes.
+   - Level 1: the diffs in the report, and the report says level 2 would open them as a PR. Level 2: a branch and PR
+     with the pipeline changes. Level 3: merged once CI passes (references/autonomy.md).
+10. **Corrections to existing posts ship per autonomy level, after the language reviewer signs them off:**
+    - Write them as changes to the content files: in `$W/corrections/` at level 1, on a branch with a PR at level 2.
+    - Level 3 merges the PR, and level 4 publishes through an authorised CMS connector, only once the language's
+      reviewer has signed off each corrected version (`reviewed_by`, `reviewed_at`), because an unreviewed fix
+      recreates the problem it fixes. Until then the correction stays in its open PR or file, and the report says so.
     - Noindexing, or removing from hreflang, a version that earns clicks is a business decision: **ask, batched at
       the end**, with a recommendation.
 11. **Write back to the store** (skip when the project has none):
@@ -258,7 +260,8 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 - `$W/posts.csv` (inventory and sample), `$W/errors.jsonl` (one line per error), `$W/triage.json`,
   `$W/translation-pipeline-fixes.md`, `$W/glossary-additions.csv` (`term, lang, approved, rejected_variants,
   example_url`).
-- Corrections as diffs or a PR, or as CMS drafts at level 4. Nothing is published by this skill.
+- Corrections in `$W/corrections/` at level 1, a PR at level 2, merged at level 3 or published through the CMS
+  connector at level 4 once the language's reviewer signs them off.
 - **Assumptions:**
   - the source language;
   - the blog URL patterns;
@@ -301,7 +304,7 @@ Append an entry to `SEO-WORKLOG.md` per `${CLAUDE_PLUGIN_ROOT}/references/worklo
 - the unreviewed share;
 - the top error classes;
 - the pipeline changes proposed or merged, and at which autonomy level;
-- the corrections drafted (none published by this skill);
+- the corrections made, and which went live, at which autonomy level;
 - paid units spent;
 - what wasn't verified (e.g. "no review evidence found", "GSC not provided");
 - the re-check date. The next batch is the real test: compare its per-class error rates with this one, or re-check

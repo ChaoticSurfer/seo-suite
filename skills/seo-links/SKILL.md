@@ -1,6 +1,6 @@
 ---
 name: seo-links
-description: Internal linking and off-page link work. Use for "fix internal linking", "find orphan pages", "which pages need more links", "hub pages / topic clusters linking", "anchor text audit", "backlink audit", "who links to us", "link building ideas", "link prospecting", "broken link building", "unlinked brand mentions", "digital PR", "should we disavow", "toxic links", "manual action for unnatural links", "backlink gap vs competitors". Works free (crawl CSV, Search Console Links export, Bing Webmaster, Ahrefs Webmaster Tools) and says exactly when Ahrefs/Semrush/Majestic/Moz are worth paying for. Drafts outreach; never sends it. Not for crawl/index/redirect bugs (seo-technical), migrations (seo-migration), local citations (seo-local), or competitor content gaps (seo-competitors).
+description: Internal linking and off-page link work. Use for "fix internal linking", "find orphan pages", "which pages need more links", "hub pages / topic clusters linking", "anchor text audit", "backlink audit", "who links to us", "link building ideas", "link prospecting", "broken link building", "unlinked brand mentions", "digital PR", "should we disavow", "toxic links", "manual action for unnatural links", "backlink gap vs competitors". Works free (crawl CSV, Search Console Links export, Bing Webmaster, Ahrefs Webmaster Tools) and says exactly when Ahrefs/Semrush/Majestic/Moz are worth paying for. Prepares each outreach message and sends only the ones the user approves. Not for crawl/index/redirect bugs (seo-technical), migrations (seo-migration), local citations (seo-local), or competitor content gaps (seo-competitors).
 ---
 
 # Links: internal architecture and off-page authority
@@ -84,7 +84,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export inventory --for
 
 5. For anchor text, use descriptive anchors that vary naturally. No "click here", no exact-match stuffing on every link (google-rules §3).
 
-6. For template-level fixes, change the nav, breadcrumbs, related-posts and footer components once rather than editing hundreds of pages. In a codebase, find the components and propose diffs; apply them per autonomy level (`references/autonomy.md`).
+6. For template-level fixes, change the nav, breadcrumbs, related-posts and footer components once rather than editing hundreds of pages. In a codebase, find the components and change them per autonomy level (`references/autonomy.md`).
 
 7. Re-crawl after the changes and compare the inlink and depth columns.
 
@@ -101,11 +101,11 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export inventory --for
    - Fetch the target URLs from the "top linked pages" export and find any that return 404 or chain-redirect.
    - Fix with a one-hop 301 to the closest equivalent page, never mass-redirecting to the homepage (google-rules §9), as a redirect-map diff applied per autonomy level (`references/autonomy.md`).
    - Verify with `redirect_check.py map.csv`.
-4. Unlinked mentions: WebSearch `"Brand Name" -site:example.com` and variants (product names, founder names, `intitle:"brand"`). List the pages that mention the brand without linking. Draft a polite link request for each.
+4. Unlinked mentions: WebSearch `"Brand Name" -site:example.com` and variants (product names, founder names, `intitle:"brand"`). List the pages that mention the brand without linking. Write a polite link request to each, as an approval-batch item (C).
 
 ### C. Off-page: earn new links
 
-Pick 2–3 tactics that suit the business. Every outreach message is a **draft** for the user to review and send; sending is always gated at every autonomy level (`references/autonomy.md`), so send a message only with the user's approval for that run:
+Pick 2–3 tactics that suit the business. Outreach is always gated at every autonomy level (`references/autonomy.md`). Prepare each message exactly (recipient, public contact route, subject, text) and list it in the end-of-run approval batch. Send only the messages the user approves in chat for that run, through the user's connected email account, and log each one. Without a connected account, ask for one. Never send a message without that approval. The tactics:
 
 - **Digital PR / data studies.** Original data, surveys or tools that journalists cite. Plan the asset, the angle and the target publications.
 - **Resource and links pages.** Footprints:
@@ -128,10 +128,10 @@ Pick 2–3 tactics that suit the business. Every outreach message is a **draft**
   - (a) Search Console shows a **manual action for unnatural links**, or
   - (b) there is a clear paid or link-scheme pattern you or a previous agency created that is likely to trigger one.
 - Process:
-  1. Try removal outreach first (draft it).
+  1. Try removal outreach first, as approval-batch items (C).
   2. Then disavow at domain level (`domain:spam.example`).
   3. Then file a reconsideration request documenting the cleanup.
-- **Upload a disavow file or file a reconsideration request yourself only with the user's approval for that run** (always gated at every autonomy level, `references/autonomy.md`). By default, prepare the file and the text, and the user submits them.
+- **Disavow files and reconsideration requests are always gated at every autonomy level** (`references/autonomy.md`). Prepare the `disavow.txt` and the request text, and list each as an item in the end-of-run approval batch. Once the user approves them in chat, upload the file and file the request in Search Console in the user's signed-in browser session (neither has an API), then log both. A scheduled run only lists them.
 - Do not recommend disavowing on the basis of a third-party "toxicity score" alone. Those scores are vendor heuristics.
 
 ### E. Write back to the research store
@@ -182,10 +182,10 @@ Label every metric from these tools `[vendor data]`. DR/DA/TF are vendor estimat
 1. **Internal link plan** (`seo-work/internal-links.csv`): `source, target, anchor, placement, reason`, ordered by money-page impact.
 2. **Template changes** (nav, breadcrumbs, related posts) as concrete diffs if there is a codebase.
 3. **Reclamation list:** `linked 404 URL → redirect target`, plus the redirect map ready for `redirect_check.py`.
-4. **Prospect sheet:** `site, page, contact route (public), angle, why relevant, draft message`. All drafts are clearly marked unsent.
-5. **Disavow recommendation:** usually "none needed", with the reason. If one is needed, the `disavow.txt` draft and the reconsideration text.
+4. **Prospect sheet:** `site, page, contact route (public), angle, why relevant, message, status` (awaiting approval, or sent on a date). Each message is an approval-batch item.
+5. **Disavow recommendation:** usually "none needed", with the reason. If one is needed, the `disavow.txt` and the reconsideration text as approval-batch items, and whether they were filed.
 6. Pipe crawl/sitemap JSON through `triage.py seo-work/crawl.json seo-work/sitemap.json` for P0–P3 ordering of the link-related findings.
-7. **Assumptions:** the money pages, brand names, competitors and data sources you decided, each with its evidence, and which store data was reused and how old it was (e.g. "clusters and competitors from seo-research, 20 days old"). Then the questions batched for the user (missing exports or access), each with a recommendation.
+7. **Assumptions:** the money pages, brand names, competitors and data sources you decided, each with its evidence, and which store data was reused and how old it was (e.g. "clusters and competitors from seo-research, 20 days old"). Then the questions batched for the user (missing exports or access), each with a recommendation, and the approval batch (outreach messages, disavow items).
 
 ## Pitfalls & myths
 
@@ -206,6 +206,6 @@ Append to `SEO-WORKLOG.md` (format: `${CLAUDE_PLUGIN_ROOT}/references/worklog.md
 - Store data reused (with its age) and ingested.
 - Paid-tool usage (units/credits spent).
 - Files produced.
-- Drafts awaiting the user's send/approval.
+- Messages sent and disavow items filed on approval, with dates, and the items still awaiting approval.
 - Decisions (e.g. "no disavow, no manual action").
 - What to re-measure, and when (re-crawl inlinks in 2 weeks; referring domains monthly).

@@ -1,6 +1,6 @@
 ---
 name: seo-local
-description: Use for local and maps visibility — "local SEO", "Google Business Profile", "rank in Google Maps / the map pack", "near me searches", "NAP consistency", "local citations", "how to get more Google reviews", "location pages", "service area business", "multi-location SEO", "our listing got suspended", "Apple Maps / Bing Places". Covers Business Profile optimisation within Google's guidelines, ethical review strategy, NAP and citations, LocalBusiness schema, location and service-area pages, local rank checks and local links. It drafts changes; the owner applies them in their own profile. Not for: general on-page work (seo-onpage), schema syntax (seo-schema), language or country targeting (seo-international), link building beyond local (seo-links).
+description: Use for local and maps visibility — "local SEO", "Google Business Profile", "rank in Google Maps / the map pack", "near me searches", "NAP consistency", "local citations", "how to get more Google reviews", "location pages", "service area business", "multi-location SEO", "our listing got suspended", "Apple Maps / Bing Places". Covers Business Profile optimisation within Google's guidelines, ethical review strategy, NAP and citations, LocalBusiness schema, location and service-area pages, local rank checks and local links. Profile edits, listing corrections and review requests go to the end-of-run approval batch, and Claude carries out only the approved ones. Not for: general on-page work (seo-onpage), schema syntax (seo-schema), language or country targeting (seo-international), link building beyond local (seo-links).
 ---
 
 # Local SEO
@@ -64,7 +64,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - `geo` to at least 5 decimals, `openingHoursSpecification`, `url` of the location page.
    - `parentOrganization` → `@id` of the Organization.
    - **No `aggregateRating` for your own business on your own site.** Self-serving reviews are ineligible.
-4. **Business Profile checklist.** Draft the changes and let the owner apply them. Profile edits are always gated at every autonomy level (references/autonomy.md): edit the profile yourself only with the user's approval for that run.
+4. **Business Profile checklist.** Profile edits are always gated at every autonomy level (references/autonomy.md). List each change (field, current value, new value) as an item in the end-of-run approval batch. Make only the changes the user approves in chat for that run, through the Business Profile API, then re-read the profile to confirm them and log them. Without API access, ask for it (Google must approve it first). Never automate business.google.com.
    - **Name:** the real-world name only. No taglines, cities, keywords or phone numbers.
    - **Categories:** as few and as specific as possible, describing what the business *is*. Check which primary category the competitors in the map pack use.
    - **Hours:** regular and special hours. Omit them for appointment-only businesses.
@@ -77,9 +77,9 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - **No gating** (asking only happy customers), no incentives, no employee or fake reviews.
    - Reply to every review, negative ones especially: factual, polite, no customer personal data.
    - Report clearly fake reviews through the profile tools.
-   - Draft request templates only; messages to real people are always gated at every autonomy level (references/autonomy.md), and these go to the business's own customers, so the owner sends them. **Never send review requests or contact real customers yourself.** Any test sends use only the user's approved test numbers and invalid fake emails.
+   - Review requests are messages to real people, always gated at every autonomy level (references/autonomy.md). Prepare the request text, the review link and the channel, and list each send (its recipient list and message) as an item in the end-of-run approval batch. **Never send a review request, or any message to a customer, without the user's explicit approval of that item in chat for that run.** Send only the approved items, through the business's connected account, and log the count, channel and date, never the contact details. Any test sends use only the user's approved test numbers and invalid fake emails.
 6. **Citations and NAP:**
-   - List where the business already appears and draft the corrections against the ground truth (name, address format, phone, URL) for the owner to apply. These listings are external accounts, and Business Profile edits are always gated at every autonomy level (references/autonomy.md): edit a listing yourself only with the user's approval for that run.
+   - List where the business already appears and prepare each correction against the ground truth (name, address format, phone, URL): the listing, the field, the current and the new value. These listings are external accounts, so each correction is an item in the end-of-run approval batch (references/autonomy.md). Make only the approved ones, through the listing's connected account (the Business Profile API for Google), and log them. A listing with no connected account goes in the requests, with the access it needs.
    - Core everywhere: Google Business Profile, Apple Business Connect, Bing Places, Facebook, and the main maps app in that country.
    - Country-specific directories: find them by running WebSearch for "<category> <city>". List those that actually rank or that the competitors in the map pack use, rather than assuming. For Georgia (.ge), verify which local directories and maps apps rank for the category before recommending any.
    - NAP consistency is an industry convention, not a stated Google rule (google-rules §7).
@@ -155,14 +155,14 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 
 ## Output
 1. **Eligibility and risk summary.**
-2. **Profile change list**, as current → proposed, to be applied by the owner.
+2. **Profile change list**, as current → new, each an approval-batch item, and which ones were applied through the API.
 3. **NAP mismatch table**, by source with the exact strings.
 4. **Location-page fixes**, with the content to add per page, plus city-swap results.
 5. **LocalBusiness JSON-LD** per location.
-6. **Review plan**, with templates only.
+6. **Review plan**: the request text, link and channel, and each send as an approval-batch item.
 7. **Citation targets** with evidence that they rank.
 8. **Measurement baseline** (profile and Search Console numbers as given by the user, tagged [measured]).
-9. **Assumptions:** the ground-truth details, services × areas, competitors and market assumed, with the evidence for each; which store data was reused and how old it was. Then the requests batched at the end, each with a recommendation: missing access (Business Profile, Search Console, on-location searches) and the owner's calls (which NAP string is real).
+9. **Assumptions:** the ground-truth details, services × areas, competitors and market assumed, with the evidence for each; which store data was reused and how old it was. Then the requests batched at the end, each with a recommendation: missing access (Business Profile, Search Console, on-location searches) and the owner's calls (which NAP string is real). Then the approval batch: profile edits, listing corrections and review-request sends, one item each.
 
 ## Pitfalls & myths
 - **Keyword-stuffing the profile name** may help briefly, but it is a guideline violation and a common cause of suspension.
@@ -175,7 +175,8 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 ## Log the work
 Append to `SEO-WORKLOG.md` (format: `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`). Include:
 - Locations covered.
-- Profile changes proposed vs applied by the owner, with dates.
+- Profile changes and listing corrections applied on approval, with dates, and those still awaiting approval.
+- Review requests sent on approval: count, channel and date, never contact details.
 - NAP fixes per source.
 - Pages and schema changed.
 - The baseline metrics and where they came from.

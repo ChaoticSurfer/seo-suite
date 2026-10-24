@@ -117,7 +117,7 @@ Autocomplete proves a query is typed, **not how often**.
 **The free path covers:** real query wording, question mining, intent from live SERPs, clustering by SERP overlap, your own impressions (GSC), and relative demand.
 
 **What paid tools add (never required), and how to spend little:**
-- **Google Ads Keyword Planner** (free with an Ads account): volume **ranges** for free; exact volumes only with active spend. It's the cheapest volume source. Paste only the shortlisted head terms.
+- **Google Ads Keyword Planner** (free with an Ads account): volume **ranges** for free; exact volumes only with active spend. It's the cheapest volume source. Query only the shortlisted head terms.
 - **Semrush / Ahrefs:** estimated volume, keyword difficulty, clickstream-based clicks per search, a competitor's ranking keywords (the fastest gap finder), and SERP history.
   - Justified when you need competitor keyword sets or difficulty at scale.
   - Cost tactics: query only cluster head terms, limit rows, use one database/country, export once and cache (tools.md `## Semrush`, `## Ahrefs`, `## Cost-optimisation playbook`).

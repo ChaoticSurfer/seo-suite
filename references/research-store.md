@@ -78,8 +78,8 @@ plus inventory rows with GSC clicks.
 - **`target_url`** is set by `set-status --url`, and then stays. Otherwise it is the first page of
   `demand.gsc_pages`, or none, recomputed on every write. So the newest GSC export with pages decides it, in any
   ingest order, and a newer export in which no page qualifies clears it.
-- **`status`** is one of `planned`, `briefed`, `drafted`, `scheduled`, `published`, `skip`. `scheduled` means the
-  post is written and queued in the CMS.
+- **`status`** is one of `planned`, `briefed`, `drafted`, `scheduled`, `published`, `skip`. `drafted` means the
+  post is written but not live yet; `scheduled`, that it is written and queued in the CMS.
 - **`intent`** starts as a wording-based guess, whose patterns are English only. Its `provenance` source says whose:
   `keyword_ideas` when `keyword_ideas.py` suggested the keyword, `wording-guess` when the store made the guess for a
   keyword first seen in another input (GSC, volumes, SERPs, clusters). A guess is dated `first_seen`: the date of the
@@ -210,22 +210,22 @@ naming the cluster and the missing keyword or cluster: restore it from git histo
   Features are normalised to `ai_overview`, `local_pack`, `people_also_ask` and so on. `paa` items are question
   strings, or vendor objects, of which only the question is kept (`question`, else `title`, as in DataForSEO's
   `people_also_ask_element`). Questions and titles are trimmed to 200 characters.
-- **Posts** (`ingest posts`): a CSV or TSV, or JSON (a list of posts, or `{"posts": […]}`). Columns are matched by
-  name, including WordPress and Ghost names and `seo-blog-review`'s post inventory; other columns are ignored:
+- **Posts** (`ingest posts`): a CSV or TSV, or JSON (a list of posts, or `{"posts": […]}`; the columns below must
+  hold text or null). Columns are matched by name, as plain names or as `seo-blog-review`'s post inventory has them;
+  other columns are ignored:
 
   | Field | Column names |
   |---|---|
-  | URL | `url`, `link`, `permalink`, `address` |
-  | slug | `slug`, `post_name` (default: the URL's last path segment) |
+  | URL | `url`, `address` |
+  | slug | `slug` (default: the URL's last path segment) |
   | locale | `locale`, `lang`, `language` (default: from the URL as in §2; else `--locale`; else the only locale). A code with a region (`en-GB`, an hreflang code) counts as its language (`en`) unless the store has that region as a locale |
-  | title | `title`, `post_title`; a WordPress REST `{"rendered": "…"}` title is unescaped |
-  | status | `status`, `post_status` |
-  | publish date | `publish_date`, `publish date`, `date`, `post_date`, `published_at`, `date_published` (must start `YYYY-MM-DD`) |
+  | title | `title` |
+  | status | `status` |
+  | publish date | `publish_date`, `publish date`, `date`, `date_published` (must start `YYYY-MM-DD`) |
 
-  Each row needs a URL or a slug. Statuses are the store's (`planned` to `published`, not `skip`) or the CMS's:
-  `publish` → `published`, `future` → `scheduled`, `draft` and `pending` → `drafted`. An empty status is `scheduled`
-  when the publish date is after the export's date, else `published`. Any other status (`private`, `trash`) fails
-  with its row number: leave those rows out of the export.
+  Each row needs a URL or a slug. A status is one of the store's (`planned` to `published`, not `skip`), or empty.
+  An empty status is `scheduled` when the publish date is after the export's date, else `published`. Any other
+  status fails with its row number: give the row a store status, or leave it out of the export.
 
 ## 4. What each ingest updates
 

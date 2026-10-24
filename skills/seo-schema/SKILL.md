@@ -64,8 +64,8 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 6. **Place the markup for the stack** (see Placement), per autonomy level (references/autonomy.md). Remove duplicate emitters, e.g. a theme and a plugin both emitting Product.
 7. **Validate:**
    - Re-run `page_audit.py` on staging or production, or with `--file` on the rendered HTML.
-   - List the [Rich Results Test](https://search.google.com/test/rich-results) (Google eligibility) and the [Schema Markup Validator](https://validator.schema.org/) (vocabulary) in the report for the user to run. Both are manual. There is no confirmed public Rich Results API (google-rules §11).
-   - The URL Inspection API (free, 2,000 calls/day/site) reports detected rich results for indexed URLs.
+   - After the change is live and recrawled, the URL Inspection API (free, 2,000 calls/day/site) reports the rich results Google detected on each indexed URL and their issues (`richResultsResult`). Record them as `[measured]`; that closes the check without a person.
+   - The [Rich Results Test](https://search.google.com/test/rich-results) and the [Schema Markup Validator](https://validator.schema.org/) have no public API (google-rules §11), so unattended runs never drive them. They are Reserve: use them in a session the user watches, for a type `page_audit.py` doesn't cover or a page not indexed yet.
 8. **Prioritise:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/triage.py" seo-work/schema-*.json`.
 9. **Monitor:** Search Console → Enhancements (one report per type), Merchant listings and Product snippets. Counts update over days to weeks after recrawl.
 10. **Write back to the research store**, when it exists: record the templates and how each one emits markup (server-rendered, plugin, GTM) in `seo-research/site.json` → `templates` and `stack`, so the next skill doesn't rediscover them. Markup findings stay in `seo-work/`; the store has no dataset for them.
@@ -178,7 +178,7 @@ Replace every `{{…}}` with a value visible on the page. If there's no value, d
 ## Data: free vs paid
 - **Free (enough for most sites):**
   - `page_audit.py`, `render_diff.py`, `triage.py`.
-  - Rich Results Test, Schema Markup Validator.
+  - Rich Results Test, Schema Markup Validator (no API: watched sessions only).
   - Search Console enhancement and merchant-listing reports.
   - URL Inspection API (2,000/day/site).
 - **Screaming Frog** (paid licence; free tier is 500 URLs): validates structured data across a whole crawl, including JS rendering.
@@ -213,5 +213,5 @@ Append an entry to `SEO-WORKLOG.md` in the project root, using the format in `${
 - The templates and URLs touched.
 - Types added, changed or removed.
 - Evidence files (`seo-work/schema-*.json`).
-- Validation results (Rich Results Test pass/fail, as the user reports them).
+- Validation results (`page_audit.py` schema findings, the rich results URL Inspection detected, and Rich Results Test or Schema Markup Validator pass/fail when a watched session ran them).
 - The Search Console report to recheck, and the recheck date (about 2–4 weeks).

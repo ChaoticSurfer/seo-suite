@@ -34,7 +34,6 @@ import csv
 import datetime as dt
 import glob
 import hashlib
-import html
 import io
 import json
 import os
@@ -71,15 +70,14 @@ VOLUME_HEADERS = {  # Semrush, Ahrefs, DataForSEO and Keyword Planner export nam
     "volume": {"volume", "search volume", "search_volume", "avg. monthly searches", "avg monthly searches"},
     "difficulty": {"difficulty", "keyword difficulty", "keyword_difficulty", "kd"},
 }
-POST_HEADERS = {  # plain CSV names, WordPress (export and REST API), Ghost and seo-blog-review's post inventory
-    "url": {"url", "link", "permalink", "address"},
-    "slug": {"slug", "post_name"},
+POST_HEADERS = {  # plain CSV names and seo-blog-review's post inventory
+    "url": {"url", "address"},
+    "slug": {"slug"},
     "locale": {"locale", "lang", "language"},
-    "title": {"title", "post_title"},
-    "status": {"status", "post_status"},
-    "publish_date": {"publish_date", "publish date", "date", "post_date", "published_at", "date_published"},
+    "title": {"title"},
+    "status": {"status"},
+    "publish_date": {"publish_date", "publish date", "date", "date_published"},
 }
-POST_STATUS_ALIASES = {"publish": "published", "future": "scheduled", "draft": "drafted", "pending": "drafted"}
 GSC_MIN_IMPRESSIONS = 10  # below this a GSC query, or a page's part of it, is too thin to count: the query is skipped
 COMPETING_PAGE_SHARE = 0.1  # as in gsc_analyze.cannibalization: a page with >=10% of a query's impressions competes
 GSC_TARGET_MAX_POSITION = 20  # a page GSC ranks lower than this for a query doesn't compete for it yet
@@ -1112,7 +1110,7 @@ def words_of(text: str) -> tuple[str, ...]:
 
 def read_posts_export(path: str) -> list[dict]:
     """Rows of a posts export, renamed to the POST_HEADERS names: a CSV or TSV, or JSON (a list of posts, or
-    {"posts": […]}). A title object's "rendered" text is used, as the WordPress REST API returns it."""
+    {"posts": […]})."""
     if not path.endswith(".json"):
         return read_table(path, POST_HEADERS, key_columns=("url", "slug"))[0]
     data = read_json(path)
@@ -1126,8 +1124,6 @@ def read_posts_export(path: str) -> list[dict]:
             canonical = next((c for c, aliases in POST_HEADERS.items() if key.strip().lower() in aliases), None)
             if canonical is None:
                 continue
-            if isinstance(value, dict) and isinstance(value.get("rendered"), str):
-                value = html.unescape(value["rendered"])
             require(isinstance(value, (str, type(None))), path, f"row {number} {key}", "text")
             row[canonical] = value or ""
         rows.append(row)
@@ -1145,14 +1141,13 @@ def post_date(value: str, path: str, where: str) -> str:
 
 
 def post_status(value: str, publish_date: str, as_of_day: str, path: str, where: str) -> str:
-    """A store status, or a CMS one (publish, future, draft, pending). Empty: scheduled when the publish date is after
-    the export's date, else published (an export lists existing posts)."""
-    status = POST_STATUS_ALIASES.get(value.strip().lower(), value.strip().lower())
+    """A store status, or empty: scheduled when the publish date is after the export's date, else published (an export
+    lists existing posts)."""
+    status = value.strip().lower()
     if not status:
         return "scheduled" if publish_date > as_of_day else "published"
     accepted = [s for s in STATUSES if s != "skip"]
-    require(status in accepted, path, f"{where} status {value!r}",
-            f"one of {', '.join(accepted + sorted(POST_STATUS_ALIASES))}; leave out other rows (private, trash)")
+    require(status in accepted, path, f"{where} status {value!r}", f"one of {', '.join(accepted)}, or empty")
     return status
 
 

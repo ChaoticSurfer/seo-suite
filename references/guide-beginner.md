@@ -26,9 +26,11 @@ Load this guide when the user is new to SEO: they say they "don't know SEO", ask
 - **Research once, reuse it.** Keyword and search research is saved in a `seo-research/` folder in their project
   (`references/research-store.md`). Say so in one sentence the first time, so they know later tasks (blog posts,
   page fixes) build on it instead of starting over.
-- **Change their site only per autonomy level (`references/autonomy.md`).** At the default level, code changes
-  go to them as a diff for approval before anything is applied. CDN settings and Search Console settings (other
-  than sitemap submission) always need their OK first.
+- **Change their site only per autonomy level (`references/autonomy.md`).** At the default level, Claude reports
+  each fix and says which level would make it (level 2 opens a pull request; level 3 merges it). Messages to real
+  people (emails, review requests), Business Profile and Merchant Center edits, CDN and DNS settings, Search Console
+  actions other than sitemap submission, and the rest of `autonomy.md`'s always-gated list always need their OK
+  first: Claude lists each one at the end of the run and carries out only the ones they approve.
 
 ---
 
@@ -219,8 +221,8 @@ higher. It is a big factor in local "near me" results too.
 
 **How to do it yourself (free)**
 1. Open Search Console → *Links* to see who already links to you.
-2. List 10 partners, suppliers or associations that could list you. Ask Claude to draft polite emails.
-   **You** send them.
+2. List 10 partners, suppliers or associations that could list you. Claude writes a polite email to each and
+   shows you every one, with who it goes to. It sends only the ones you approve, from your connected email.
 3. Search your brand name in quotes. Note any mentions without a link.
 4. Ask Claude to find your broken pages that have links, and redirect them.
 
@@ -330,12 +332,14 @@ data" → **seo-analytics**. It finds "almost ranking" searches and pages with l
 
 **Days 31–60: content**
 7. Publish or rewrite the 3 best pages for those topics, with first-hand experience, photos and a clear
-   next step. For blog posts, **seo-blog-builder** drafts them from the saved research; you review them.
+   next step. For blog posts, **seo-blog-builder** writes them from the saved research, checks them and, once
+   you or your reviewer sign each one off, publishes it at the level you set and tells search engines.
 8. Add an About page, author bios and real contact details (trust).
 9. Start asking every recent customer for a review, all the same way, with a direct link (not only the happy ones).
 
 **Days 61–90: reputation and review**
-10. Contact 10 partners or associations for listings or links (Claude drafts, you send).
+10. Contact 10 partners or associations for listings or links (Claude writes each email and sends the ones you
+    approve).
 11. Redirect any old broken URLs that other sites link to.
 12. Compare Search Console's last 28 days with the start. Ask "what should I do next?" → **seo-strategy**.
 

@@ -27,7 +27,11 @@ and carry on:
    Then list exactly what each missing access would add.
 2. **Business decisions:** markets or languages to enter, positioning, deleting or merging pages that earn traffic
    or revenue, and spend above the budget.
-3. **Actions above the configured level** (below).
+3. **Actions above the configured level** (below). The run finishes everything up to that level, stops at the
+   boundary and says which level or credential would finish it (for example, level 2: the pull request is open;
+   level 3 merges it).
+4. **The approval batch:** each always-gated action the run prepared (below), one item each, with exactly what will
+   happen and through which account. Claude carries out only the items the user approves in chat.
 
 Never ask "should I continue?", never ask to confirm a read-only step, and never stop a run to ask something that
 an assumption plus a note can cover.
@@ -39,12 +43,25 @@ an assumption plus a note can cover.
 | **1. Analyse** (default) | All reads: fetches, crawls, scripts, free APIs, paid calls within budget, reports, work log, research store updates (uncommitted) | Any change to the site or any external account |
 | **2. Fix in code** | Level 1 + edits to the site's repo on a branch, commits, pushing that branch, opening a PR | Merging, deploying |
 | **3. Ship** | Level 2 + merging PRs that pass CI, submitting sitemaps / IndexNow for changed URLs | CMS publishing, account settings |
-| **4. Operate** | Level 3 + CMS drafts/publishing and Search Console sitemap submission through an authorised connector | See "always gated" |
+| **4. Operate** | Level 3 + publishing to a CMS and Search Console sitemap submission through an authorised connector | See "always gated" |
 
-**Always gated, at every level:** messages to real people (outreach emails, DMs, review requests are drafted, never
-sent), buying links or reviews, disavow files, deleting content that earns traffic, Change of Address, CDN/WAF and
-DNS changes, Google Business Profile and Merchant Center edits, spend above budget, and anything a vendor's terms
-forbid. The user can approve one of these for one run; that approval doesn't carry over to the next.
+**Never, at any level and not even with approval:** buying reviews, buying links that pass ranking value (a paid
+link is fine only with `rel="sponsored"` or `nofollow`, and the user buys it), and anything a vendor's terms forbid
+(`skills/seo-automation` §D). The run reports these as risks and prepares no action for them.
+
+**Always gated, at every level:** messages to real people (outreach emails, DMs, review requests), disavow files,
+deleting content that earns traffic, Change of Address, CDN/WAF and DNS changes, Google Business Profile and
+Merchant Center edits, and spend above budget.
+- The run prepares each one as an exact action (the recipients and message text, the values, or the file) and lists
+  it in the end-of-run approval batch (What to ask, item 4).
+- Once the user approves specific items in chat, Claude carries them out through the connected account and logs what
+  was done: the user's email for messages, the Business Profile API for profile edits, the CDN's or registrar's
+  account for its rules, and Search Console in the user's signed-in browser session for a disavow file or Change of
+  Address, which have no API. Without a connector, the run asks for that credential. Spend above budget is the
+  exception: the credit guard allows it only once the user raises the budget or `ask_above_pct` (below).
+- Approval is per item and per run, and never carries over. A message to a real person is never sent without it.
+- A scheduled run lists these items in `seo-work/automation/inbox.md` and carries out none of them: a scheduled
+  prompt is not the user.
 
 ## Credentials
 

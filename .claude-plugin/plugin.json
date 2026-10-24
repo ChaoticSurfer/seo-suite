@@ -27,7 +27,7 @@
     "autonomy_level": {
       "type": "number",
       "title": "Autonomy level (1-4)",
-      "description": "1 Analyse (default): reads only. 2 Fix in code: edits, commits and PRs on a branch. 3 Ship: also merges PRs that pass CI and submits sitemaps/IndexNow. 4 Operate: also CMS and Search Console changes through an authorised connector. Outreach, disavows, DNS/CDN, GBP and over-budget spend are always gated. See references/autonomy.md.",
+      "description": "1 Analyse (default): reads only. 2 Fix in code: edits, commits and PRs on a branch. 3 Ship: also merges PRs that pass CI and submits sitemaps/IndexNow. 4 Operate: also publishing to a CMS and Search Console sitemap submission through an authorised connector. Outreach, disavows, Change of Address, DNS/CDN, GBP and Merchant Center edits and over-budget spend are always gated: each is listed for approval and carried out only once approved. See references/autonomy.md.",
       "default": 1,
       "min": 1,
       "max": 4

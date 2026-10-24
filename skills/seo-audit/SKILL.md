@@ -29,7 +29,7 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 | Start URL and canonical host (www vs non-www, https) | The URL given; the final URL after redirects in `home.json` | The URL as given |
 | Business goal and the 3–5 money pages or templates (home, category, product/service, article, location) | Navigation; pages with forms, cart, checkout, booking or pricing; Product/Service/LocalBusiness schema; GSC top pages | Home plus one page per template |
 | Site size (sets `--max-pages`) | `total_urls` in `sitemap.json` | 300; above 2,000, crawl in sections |
-| Repo | The site's code in this workspace: fixes become diffs | No repo: fixes as instructions. Repo access: ask — batched at the end |
+| Repo | The site's code in this workspace: fixes become diffs | No repo: list each fix, and ask for repo or CMS connector access, batched at the end, naming the fixes it would let the run ship |
 | Free exports: Search Console Performance (Queries.csv and Pages.csv, last 3 months plus the previous period), Bing Webmaster, server logs, a `PSI_API_KEY` | What's configured or already in the workspace | Run without them. Ask — batched at the end, naming what each adds |
 | Paid tools (Semrush, Ahrefs, Screaming Frog licence) | Only what's already configured, within the paid-data budget | None; never required |
 

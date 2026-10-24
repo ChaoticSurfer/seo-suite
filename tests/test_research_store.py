@@ -1025,9 +1025,9 @@ class PostsTest(StoreCase):
         become = self.cluster_of("how to become an english tutor")
         export = self.input_file("posts.csv", "URL,Title,Status,Publish date\n"
                                               "https://example.com/blog/become-an-english-tutor/,"
-                                              "How to Become an English Tutor in 2026,publish,2026-09-01\n"
-                                              "https://example.com/blog/tutor-jobs/,English tutor jobs in London,draft,\n"
-                                              "https://other-site.test/blog/x/,Elsewhere,publish,\n")
+                                              "How to Become an English Tutor in 2026,published,2026-09-01\n"
+                                              "https://example.com/blog/tutor-jobs/,English tutor jobs in London,drafted,\n"
+                                              "https://other-site.test/blog/x/,Elsewhere,published,\n")
         summary = self.cli("ingest", "posts", export)
         self.assertEqual((summary["added"], summary["skipped_other_site"], summary["without_cluster"]), (2, 1, 0))
         report = self.cli("next-topics", "--locale", "en")
@@ -1054,9 +1054,8 @@ class PostsTest(StoreCase):
         export = self.input_file("posts.json", [
             {"slug": "english-tutor-near-me", "locale": "en", "title": "Find a tutor near you", "status": "",
              "publish_date": later},
-            {"link": "https://example.com/ka/blog/%E1%83%99%E1%83%A3%E1%83%A0%E1%83%A1%E1%83%94%E1%83%91%E1%83%98/",
-             "title": {"rendered": "ინგლისური ენის კურსები &amp; ფასები"}, "status": "future",
-             "date": later + "T09:00:00"},
+            {"url": "https://example.com/ka/blog/%E1%83%99%E1%83%A3%E1%83%A0%E1%83%A1%E1%83%94%E1%83%91%E1%83%98/",
+             "title": "ინგლისური ენის კურსები & ფასები", "status": "scheduled", "date": later + "T09:00:00"},
         ])
         self.assertEqual(self.cli_in(directory, "ingest", "posts", export)["without_cluster"], 2)
         self.cli_in(directory, "ingest", "clusters", self.files["clusters"], "--locale", "en")
@@ -1075,9 +1074,9 @@ class PostsTest(StoreCase):
 
     def test_a_post_at_a_cluster_target_covers_it_and_newer_exports_win(self):
         cluster = self.cluster_of("english tutor")
-        older = self.input_file("old.csv", "url,title,status\nhttps://example.com/tutors/,Our lessons,draft\n",
+        older = self.input_file("old.csv", "url,title,status\nhttps://example.com/tutors/,Our lessons,drafted\n",
                                 age_days=3)
-        newer = self.input_file("new.csv", "url,title,status\nhttps://example.com/tutors/,Our lessons,publish\n")
+        newer = self.input_file("new.csv", "url,title,status\nhttps://example.com/tutors/,Our lessons,published\n")
         self.cli("ingest", "posts", newer)
         self.assertEqual(self.cli("ingest", "posts", older)["kept_newer"], 1)
         self.assertEqual(self.cli("export", "posts", "--format", "json")[0]["status"], "published")
@@ -1106,10 +1105,26 @@ class PostsTest(StoreCase):
         self.assertIn("locale 'de' is not in this store", stderr)
         self.assertNotIn("de-de", stderr)
 
+    def test_cms_column_and_status_names_are_not_read(self):
+        # only plain columns, seo-blog-review's inventory and the store's own statuses are read
+        export = self.input_file("cms.csv", "url,post_title,post_status,post_date,published_at\n"
+                                            "https://example.com/blog/a/,A post,draft,2026-09-01,2026-09-01\n")
+        self.cli("ingest", "posts", export)
+        post = self.cli("export", "posts", "--format", "json")[0]
+        self.assertEqual((post["title"], post["status"], post["publish_date"]), ("", "published", ""))
+        for status in ("publish", "future", "draft", "pending", "private", "trash"):
+            with self.subTest(status=status):
+                rows = self.input_file(f"{status}.csv", f"url,status\nhttps://example.com/blog/b/,published\n"
+                                                        f"https://example.com/blog/c/,{status}\n")
+                self.assertIn(f"row 2 status {status!r} must be one of planned, briefed, drafted, scheduled, published",
+                              self.cli_fails("ingest", "posts", rows))
+        wordpress = self.input_file("wp.csv", "post_name,link,permalink\na,https://example.com/blog/a/,"
+                                              "https://example.com/blog/a/\n")
+        self.assertIn("no url or slug column", self.cli_fails("ingest", "posts", wordpress))
+        rest = self.input_file("rest.json", [{"url": "https://example.com/blog/d/", "title": {"rendered": "D"}}])
+        self.assertIn("row 1 title must be text", self.cli_fails("ingest", "posts", rest))
+
     def test_bad_posts_exports_fail_with_a_message(self):
-        trash = self.input_file("trash.csv", "url,status\nhttps://example.com/blog/a/,publish\n"
-                                             "https://example.com/blog/b/,trash\n")
-        self.assertIn("row 2", self.cli_fails("ingest", "posts", trash))
         slug_only = self.input_file("slug.csv", "slug,title\nsome-post,Some post\n")
         self.assertIn("pass --locale", self.cli_fails("ingest", "posts", slug_only))
         self.assertEqual(self.cli("ingest", "posts", slug_only, "--locale", "ka")["added"], 1)
