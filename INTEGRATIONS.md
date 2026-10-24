@@ -31,6 +31,7 @@ planned. Checked 2026-10-24. Prices change often; [references/tools.md](referenc
 - [Which source answers which question](#which-source-answers-which-question)
 - [What to connect, by budget](#what-to-connect-by-budget)
 - [Every credential and where it goes](#every-credential-and-where-it-goes)
+- [What leaves your machine](#what-leaves-your-machine)
 - [Check your setup](#check-your-setup)
 - [Advice only: not connected](#advice-only-not-connected)
 - [Planned, not built yet](#planned-not-built-yet)
@@ -294,7 +295,7 @@ Details: [references/autonomy.md](references/autonomy.md).
 
 | Source | How seo-suite gets the data | Notes |
 |---|---|---|
-| **Google Search Console** | Your exports (Performance → Export), read by `gsc_analyze.py`. Or Claude works in Search Console itself in the built-in browser or Claude in Chrome, signed in as you. With the Ahrefs connector, its `gsc` tools also read Search Console data at 0 units (except `gsc-anonymous-queries`), in sessions you watch | Google publishes no Search Console MCP server. With access set up (OAuth, or a service account added as a property user), the Search Console API gives up to 25,000 rows per request and the URL Inspection API 2,000 checks a day per site. A community server can wrap them (see [free servers](#free-servers-you-can-add-yourself)). For big sites, have an owner turn on the bulk export to BigQuery early: it needs Google Cloud billing and has no row cap, but does not backfill. The Search generative AI report has no API, so it is exported in the browser |
+| **Google Search Console** | Your exports (Performance → Export), read by `gsc_analyze.py`. Or Claude works in Search Console itself in the built-in browser or Claude in Chrome, signed in as you. With the Ahrefs connector, its `gsc` tools also read Search Console data at 0 units (except `gsc-anonymous-queries`), in sessions you watch | Google publishes no Search Console MCP server. With access set up (OAuth, or a service account added as a property user), the Search Console API gives up to 25,000 rows per request and the URL Inspection API 2,000 checks a day per site. A community server can wrap them (see [free servers](#free-servers-you-can-add-yourself)). For big sites, have an owner turn on the bulk export to BigQuery early: it needs Google Cloud billing and has no row cap, but does not backfill. The Search generative AI report has no API, so it is exported in the browser. **Data warning:** a Google logging error made impressions, CTR and average position unreliable from 2025-05-13 to 2026-04-27 (clicks were not affected), so don't compare those metrics across that window ([Google's notice](https://support.google.com/webmasters/answer/6211453)) |
 | **Google Analytics 4** | Google's official `analytics-mcp` server, which you add yourself after signing in with `gcloud` | Read-only unless started with `--allow-write`. The plugin never adds that flag |
 | **Bing Webmaster Tools** | Performance exports, which `gsc_analyze.py` reads by matching Bing's column names to Search Console's. Or Bing's API, with a key from Settings → API Access, through a community MCP server you choose to trust | The plugin has no built-in Bing API client. Bing powers Copilot, so its data matters for AI search too |
 | **Google Keyword Planner** | Your export (a UTF-16 CSV), read by `research_store.py ingest volumes`, which keeps ranges such as "1K – 10K" as written | Ranges unless the Ads account spends. The same command reads Semrush, Ahrefs and DataForSEO volume exports. Google's official Google Ads MCP has no Keyword Planner |
@@ -302,6 +303,7 @@ Details: [references/autonomy.md](references/autonomy.md).
 | **Bing Places, Apple Business Connect** | The owner's dashboards | Listing corrections are drafted for the owner to apply |
 | **Google Merchant Center** | Read-only, through a connector or an export: diagnostics, the feed source and a sample of about 20 top products | Feed data overrides page markup, so seo-ecommerce checks that feed, page and markup match. Edits always need your OK |
 | **IndexNow** | Changed URLs are submitted at autonomy level 3 or higher. First the site must serve a key (8–128 letters, digits or dashes) as a UTF-8 text file `{key}.txt` at its root. seo-suite has no IndexNow setting, so the key file is part of the site | Up to 10,000 URLs per request. Reaches Bing, Yandex, Seznam, Naver, Yep and others. Google does not use IndexNow |
+| **Cloudflare AI Crawl Control** | Read in your Cloudflare dashboard: Security Settings → Bot traffic → AI bot policies | With Bot Preference Sync on and an AI policy set to block, Cloudflare puts its own rules at the top of your robots.txt. They disallow Amazonbot, Applebot-Extended, Bytespider, CCBot, ClaudeBot, Google-Extended, GPTBot and meta-externalagent, and add `Content-signal: search=yes, ai-train=no, use=reference`. `robots_check.py` evaluates the live file, so it sees these rules, but it doesn't yet say Cloudflare added them. Available on all plans |
 | **Google Indexing API** | Not used | Only for JobPosting and livestream (BroadcastEvent) pages. It is not a way to get ordinary pages indexed |
 
 ### Verifying you own the site
@@ -416,6 +418,21 @@ Why each paid tool is worth it, and how to spend less: [references/tools.md](ref
 | IndexNow | A key you make up: 8–128 letters, digits or dashes | A text file `{key}.txt` at the site root |
 | Ahrefs Free | None | It has no API or MCP. Use it in its own interface |
 
+## What leaves your machine
+
+| Destination | What is sent | When |
+|---|---|---|
+| The sites you audit, yours or competitors' | Ordinary page requests (URLs) | Every crawl, page audit, robots, sitemap, redirect or comparison check |
+| Google PageSpeed Insights | The page URL, and your key if set | `psi.py` |
+| Google and Bing autocomplete | Your seed phrases, with the language and country | `keyword_ideas.py` |
+| Your DNS resolver | IP addresses of hits claiming to be Googlebot or Bingbot | `log_analyze.py --verify-dns` only |
+| Semrush, Ahrefs, DataForSEO and other vendors you connect | The query Claude sends: domains, URLs or keywords | Paid calls, only within your budgets |
+| Google (GA4, Search Console) and other accounts you connect | Requests made with your sign-in | Only when you have connected them |
+| Anthropic | Everything Claude reads or writes in the session, as for any Claude Code use | Always |
+
+The credit guard's ledger and cache, the research store and the work log are local files. The research store goes
+further only if you commit it to a repo.
+
 ## Check your setup
 
 - **Servers:** `claude mcp list` shows each server. One that needs signing in again shows as failed.
@@ -459,6 +476,17 @@ The docs explain what these are for and when they are worth paying for, but the 
   search snapshots on a schedule, plus Ahrefs Rank Tracker in sessions you watch.
 - **Competitor modules:** share of voice, competitor sitemap diffs, and Wayback change history as scripts. Today these
   are manual steps in the seo-competitors skill.
+
+**Under consideration, not yet decided.** These came out of a review of other Claude Code SEO plugins (claude-seo,
+geo-seo-claude, seomachine and the older seo-skills), keeping only ideas with evidence behind them:
+
+- A read-only **Search Console API fetcher** (`webmasters.readonly` scope) that writes the same CSVs `gsc_analyze.py`
+  reads, so mid-size sites aren't limited by the 1,000-row export.
+- **WordPress drafts** for autonomy level 4, through an Application Password on a Contributor account, which can save
+  drafts but not publish.
+- An **IndexNow submitter** that checks the key file before sending, since level 3 promises IndexNow.
+- **CrUX LCP subparts and the full 40-week history** in `psi.py`, using the same Google key.
+- A **crawl diff** between runs, which the weekly technical monitor needs.
 
 ## How it works inside Claude Code
 
