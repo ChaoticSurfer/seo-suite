@@ -1,6 +1,6 @@
 # Verified search rules (checked 2026-10-24)
 
-Primary sources: Google Search Central (developers.google.com/search, /crawling), web.dev, Bing Webmaster blog,
+Primary sources: Google Search Central (developers.google.com/search, /crawling), web.dev, Bing Webmaster blog and guidelines,
 vendor bot docs. "upd" = the page's own last-updated stamp at check time. Items in §12 are NOT verified —
 do not state them as fact. Re-verify anything older than ~6 months before relying on it for a client.
 
@@ -25,6 +25,9 @@ Eligibility ≠ guaranteed indexing. (essentials/technical, upd 2025-12-18)
   `max-snippet:n` (0 none, -1 unlimited), `max-image-preview:none|standard|large`, `max-video-preview:n`,
   `notranslate`, `noimageindex`, `unavailable_after:<date>`. `data-nosnippet` attribute on span/div/section.
 - Ignored by Google: `noarchive`, `nocache`, `nositelinkssearchbox`.
+- Bing uses them for Copilot (Bing Webmaster Guidelines §10; undated page, rewritten around 2026-02, read 2026-10-24):
+  `NOARCHIVE` keeps content out of Copilot answers and grounding results; `NOCACHE` limits Copilot to the URL, title
+  and snippet.
 - Most restrictive wins when combined. Meta robots is read even outside `<head>` (2026-03-24).
 - Use X-Robots-Tag for PDFs/images/video.
 - noindex is only seen if crawlable — **never disallow a URL you want removed by noindex**.
@@ -89,7 +92,7 @@ Yep, Internet Archive, Amazonbot. **Google does not participate.**
   Descriptive alt (not stuffed); descriptive filenames; near relevant text; stable URLs; preferred image via
   primaryImageOfPage/og:image; `max-image-preview:large` for big previews.
 - **Links:** each important page needs ≥1 internal link; descriptive anchors (no "click here");
-  `rel=sponsored|ugc|nofollow` on outbound as appropriate (hints).
+  `rel=sponsored|ugc|nofollow` on outbound as appropriate (hints — Search Central blog 2019-09, "Evolving nofollow").
 - **URLs:** hyphens not underscores; readable words; percent-encode; one case; no session IDs or `#` content;
   avoid parameter/filter explosions and infinite calendars.
 
@@ -98,10 +101,18 @@ Yep, Internet Archive, Amazonbot. **Google does not participate.**
 - **Helpful content** (upd 2026-10-05): original info/analysis, complete coverage, worth bookmarking/citing,
   visible author expertise, no easily checked errors. Red flags: mass topics, summarising others with no added value,
   trend chasing, fake freshness (date changes), targeting word counts — **no preferred length**.
+  The helpful content *system* was folded into core ranking in March 2024 (ranking systems guide, upd 2025-12-10).
 - **E-E-A-T** isn't a direct factor; **trust matters most**; YMYL gets more weight. Who/How/Why:
-  real bylines (no fake authors or AI headshots), disclose automation where readers would expect, made for people.
+  real bylines (no fake authors or AI headshots; don't make AI the author), disclose automation where readers would
+  expect it (**recommended, not required**), made for people.
 - **AI content** (upd 2026-10-01): allowed; mass low-value AI pages = scaled content abuse. Fact-check; review AI
   titles/meta/schema/alt. Merchant Center: AI images need IPTC `TrainedAlgorithmicMedia`; label AI product text.
+- **Machine/AI translation:** allowed. Scaled content abuse names translating only as an automated transformation of
+  scraped content used to make many pages "where little value is provided to users" (spam policies, upd 2026-08-28).
+  **2025-06-11:** the advice to block auto-translated pages with robots.txt was removed, "a docs-only change, no change
+  in behavior" (Search Central updates log). Staff guidance, not policy (office hours, June 2024): have a native
+  speaker review and fix low-quality auto-translations (Illyes); no markup labels a translation, so noindex one you
+  are not happy with (Mueller).
 - **Spam policies** (upd 2026-08-28): cloaking, doorway abuse, expired domain abuse, hidden text & link abuse,
   keyword stuffing, link spam, machine-generated traffic, malware/malicious practices (incl. **back-button hijacking**,
   2026-04-13), misleading functionality, **scaled content abuse**, scraping, sneaky redirects, thin affiliation,
@@ -128,7 +139,9 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
   (applicableCountry, returnPolicyCategory, merchantReturnDays). Feed > Content API > MC settings > markup.
 - ProductGroup: productGroupID, variesBy, hasVariant/isVariantOf.
 - Review: author, itemReviewed, reviewRating.ratingValue. AggregateRating: ratingValue + ratingCount|reviewCount.
-  **Self-serving reviews** (a business reviewing itself on its own site) are ineligible.
+  **Self-serving reviews** (a business reviewing itself on its own site) are ineligible. **No fake or undisclosed
+  incentivised reviews** (money, discounts, vouchers, free products) on the page or in markup
+  (structured-data/review-snippet, upd 2026-09-08).
 - BreadcrumbList: ≥2 ListItems with position, name, item (item optional on last).
 - Organization: R none; rec name, url, logo (≥112×112), sameAs, contactPoint, address, legalName, vatID.
 - LocalBusiness: R name, address; rec geo (≥5 decimals), openingHoursSpecification, telephone (+country code), url, priceRange.
@@ -144,6 +157,11 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
 - Codes: ISO 639-1 language (+ ISO 15924 script) + optional ISO 3166-1 region. **`UK`, `EU`, `UN` invalid → en-GB.**
   Region alone invalid. `x-default` for unmatched users.
 - Google detects language from visible content — ignores `lang` attr and URL.
+- Localized versions are duplicates **only if the main content stays untranslated** (localized-versions, upd 2026-09-21).
+- With hreflang, the canonical points at a page **in the same language**, or the best substitute language if none
+  exists — never at another language version (consolidate-duplicate-urls, upd 2026-07-10).
+- **Partial clusters are fine:** some languages can be left out on some pages; Google still processes the pairs that
+  point to each other (localized-versions).
 - Geo signals: ccTLD, hreflang, local address/phone/currency, links, GBP. Prefer ccTLD/subdomain/subfolder over params.
 - Googlebot crawls mostly from US IPs with **no Accept-Language** → use separate locale URLs, not locale-adaptive serving.
 
@@ -169,6 +187,10 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
 - Verify all variants of old and new; copy disavow; check manual actions; map every URL (sitemaps, logs, analytics,
   links report, CMS, images/CSS/JS).
 - Server-side **301/308**, one hop; never mass-redirect to home; **keep redirects ≥1 year**.
+- Permanent redirects don't lose PageRank. Many old URLs redirected to one irrelevant URL (e.g. home) may be treated
+  as a soft 404. Google crawls the new site more heavily after a move, so make sure the server has capacity.
+  Change one thing at a time (domain, then CMS, then layout), not all at once.
+  (crawling-indexing/site-move-with-url-changes, upd 2026-08-20)
 - New site: self-canonicals, updated hreflang/internal links, new sitemap. Expect weeks of fluctuation.
 - **Change of Address tool**: domain/subdomain changes only (not http→https, paths, www, CDN); same owner;
   homepage 301 in place; forwards signals **180 days**; keep old domain ≥1 year.
@@ -187,7 +209,7 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
   ClaudeBot (training) · **Claude-SearchBot** (search) · Claude-User · **PerplexityBot** (search index) ·
   Perplexity-User (generally ignores robots) · CCBot · Applebot / Applebot-Extended (training opt-out, no crawling) ·
   **Bingbot** (Bing + Copilot; no separate AI bot).
-- Known about source selection (vendor studies, directional): ChatGPT search overlaps Bing's top 10 far more than
+- Known about source selection (vendor studies, directional): ChatGPT search overlaps Bing's top results far more than
   Google's; AI Overview citations correlate with organic rank; engines overlap little with each other.
   GEO paper (KDD 2024): citations, quotations and statistics raised visibility up to ~40% on its benchmark.
 - Practical: be indexed in Bing; allow search bots separately from training bots.
@@ -201,11 +223,12 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
 - **Bing Webmaster Tools API:** key; URL submission quota per site (check GetUrlSubmissionQuota).
 - **Google Trends API:** alpha, application-only (2025-07). **Indexing API:** JobPosting/BroadcastEvent only.
 - Rich Results Test: no public API found. Mobile-Friendly Test retired Dec 2023.
+- **GSC vs GA4** (upd 2026-01-07): totals won't match (attribution, canonical URLs, consent, missing tags, non-HTML
+  files, PT time zone, bots); the general trends should be similar.
 
 ## 12. Not verified — do not hard-code
 
 PSI quota numbers · sitemap ping deprecation date · mobile-first "after 2024-07-05" cutoff · FAQ removal from
-GSC report/RRT/API · Bing nocache/noarchive behaviour in 2026 and BWT AI Performance details · Bing guideline
-specifics · dynamic rendering wording · Indexing API quotas · CrUX eligibility thresholds · News transparency
-policy details · all vendor AI-citation statistics · NAP as a Google rule · INP exact switch date ·
-whether rel=nofollow/sponsored/ugc are still described as hints.
+GSC report/RRT/API · BWT AI Performance details · Bing guideline specifics, except those §1 and §10 state (e.g.
+Copilot's NOARCHIVE/NOCACHE handling) · dynamic rendering wording · Indexing API quotas · CrUX eligibility thresholds ·
+News transparency policy details · all vendor AI-citation statistics · NAP as a Google rule · INP exact switch date.

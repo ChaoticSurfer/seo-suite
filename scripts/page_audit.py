@@ -16,12 +16,14 @@ import urllib.parse
 
 from schema_rules import validate_json_ld
 from seo_lib import (
-    GOOGLEBOT_HTML_INDEX_BYTES, SEVERITY_ORDER, TITLE_MAX_PX, Finding, PageFacts, extract_page, fetch, googlebot_robots_directives,
-    is_indexable, load_local, print_json, registrable_host, robots_noindex, sort_findings, title_pixel_width,
+    COMMON_CODE_MISTAKES, GOOGLEBOT_HTML_INDEX_BYTES, ISO_639_1, SEVERITY_ORDER, TITLE_MAX_PX, Finding, PageFacts, extract_page,
+    fetch, googlebot_robots_directives, is_indexable, load_local, print_json, registrable_host, robots_noindex, sort_findings,
+    title_pixel_width,
 )
 
 # Google supports ISO 639-1 (2-letter) languages and ISO 3166-1 alpha-2 regions only: not es-419, fil or a region alone.
-# A region-only code that looks like a language (gb, us) still passes; it needs a check by hand.
+# The language part is also checked against ISO 639-1, which catches country codes used as languages (ge, ua, jp). A
+# country code that is also a language (se is Northern Sami, not Swedish) still passes; it needs a check by hand.
 HREFLANG_PATTERN = re.compile(r"^(x-default|[a-z]{2}(-[a-z]{4})?(-[a-z]{2})?)$", re.I)
 INVALID_HREFLANG_REGIONS = {"uk": "GB", "eu": None, "un": None}  # reserved codes Google ignores
 GENERIC_ANCHORS = {"click here", "here", "read more", "more", "learn more", "this", "link", "continue"}
@@ -102,9 +104,14 @@ def audit_page(f: PageFacts, from_file: bool = False) -> list[Finding]:
         codes = [h["hreflang"] for h in f.hreflang]
         for code in codes:
             region = code.split("-")[-1].lower() if "-" in code else ""
+            language = code.split("-")[0].lower()
             if not HREFLANG_PATTERN.match(code) or region in INVALID_HREFLANG_REGIONS:
                 fix = INVALID_HREFLANG_REGIONS.get(region)
                 add("hreflang-invalid", "high", f"Invalid hreflang '{code}'" + (f" (use -{fix})" if fix else ""))
+            elif code.lower() != "x-default" and language not in ISO_639_1:
+                fix = COMMON_CODE_MISTAKES.get(language)
+                add("hreflang-invalid", "high", f"Invalid hreflang '{code}': '{language}' is not an ISO 639-1 language code"
+                    + (f"; it is a country code, the language code is '{fix}'" if fix else ""))
         if len(codes) != len(set(c.lower() for c in codes)):
             add("hreflang-duplicate", "medium", "Duplicate hreflang values")
         if not any(h["href"].rstrip("/") == f.final_url.rstrip("/") for h in f.hreflang):

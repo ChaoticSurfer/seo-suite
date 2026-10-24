@@ -574,6 +574,20 @@ def is_indexable(facts: PageFacts) -> bool:
     return facts.status == 200 and not robots_noindex(googlebot_robots_directives(facts.meta_robots, facts.x_robots_tag))
 
 
+# ---------------------------------------------------------------- language codes (hreflang, lang)
+
+ISO_639_1 = set("""aa ab ae af ak am an ar as av ay az ba be bg bh bi bm bn bo br bs ca ce ch co cr cs cu cv cy da de dv dz
+ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu hy hz ia id ie ig ii ik io is it iu ja jv
+ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb lg li ln lo lt lu lv mg mh mi mk ml mn mr ms mt my na nb nd ne ng nl nn
+no nr nv ny oc oj om or os pa pi pl ps pt qu rm rn ro ru rw sa sc sd se sg si sk sl sm sn so sq sr ss st su sv sw ta te tg
+th ti tk tl tn to tr ts tt tw ty ug uk ur uz ve vi vo wa wo xh yi yo za zh zu""".split())
+# Country codes used by mistake as language codes. kr (Kanuri), ee (Ewe), se (Northern Sami), am (Amharic) and
+# si (Sinhala) are real languages, so those count as mistakes only when the page reads as the suggested language.
+COMMON_CODE_MISTAKES = {"ge": "ka", "ua": "uk", "gr": "el", "jp": "ja", "cz": "cs", "dk": "da", "cn": "zh", "vn": "vi",
+                        "kr": "ko", "ee": "et", "se": "sv", "rs": "sr", "al": "sq", "am": "hy", "by": "be", "kz": "kk",
+                        "si": "sl", "ir": "fa", "il": "he"}
+
+
 # ---------------------------------------------------------------- SERP display
 
 # Arial advance widths (units per 1000 em). Google renders desktop title links in ~20px Arial
