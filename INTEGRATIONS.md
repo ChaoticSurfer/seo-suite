@@ -19,6 +19,7 @@ planned. Checked 2026-10-24. Prices change often; [references/tools.md](referenc
 - [Where to start](#where-to-start)
 - [Terms used here](#terms-used-here)
 - [At a glance](#at-a-glance)
+- [Main stack](#main-stack)
 - [Rules every integration follows](#rules-every-integration-follows)
 - [Built in: no accounts, no keys](#built-in-no-accounts-no-keys)
 - [Paid SEO data: connector plugins](#paid-seo-data-connector-plugins)
@@ -95,28 +96,214 @@ with `claude`, `gcloud` or `npx` are run in your computer's terminal.
 | **Advice only** | Covered in the docs, with no connection |
 | **Planned** | Not built yet |
 
-| Tool | Level | Used for | What you do | Cost |
-|---|---|---|---|---|
-| Any website (yours or a competitor's) | Built in | Crawls, page audits, robots.txt, sitemaps, redirects, rendering checks, page comparisons | Nothing | Free |
-| Google PageSpeed Insights API | Built in | Lab speed audits and real-user Core Web Vitals | Nothing. Add a free key only if the shared quota runs out | Free |
-| Google, Bing and YouTube autocomplete | Built in | Keyword ideas | Nothing | Free. Unofficial public endpoints, rate-limited |
-| Your server's access logs | Built in | Which bots crawl what, fake Googlebots, sitemap URLs never crawled | Supply the log files | Free |
-| Semrush | Connector | Competitors' keywords and traffic, keyword volume and difficulty | Install the connector, sign in, set `semrush_monthly_units` | A Semrush plan that includes API units |
-| Ahrefs | Connector | Backlinks, competitor link profiles, organic keywords | Install the connector, sign in, lower the key's cap in Ahrefs, set `ahrefs_monthly_units` | Lite plan ($129/mo) or higher |
-| DataForSEO | Connector | Bulk keyword volumes, search result snapshots, backlinks, AI-answer data | Install the connector, enter the API login, set a daily limit at DataForSEO, set `dataforseo_monthly_usd` | Pay as you go, $50 minimum top-up |
-| Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly, Lumar | Add it yourself | Traffic estimates, rank tracking, volumes, question research, AI-answer tracking, crawling | Add the vendor's MCP server (named after the vendor), set `other_monthly_usd` | The vendor's own plan |
-| Screaming Frog | Your licence | Large crawls with JavaScript rendering | CLI for scheduled crawls, MCP in sessions you watch | £199/year. Free mode crawls 500 URLs and has no MCP |
-| Sitebulb | Your licence | Reading finished crawls (its MCP is read-only and can't start crawls) | Add its MCP server (OAuth) | A Sitebulb plan |
-| Google Search Console | Your account | Clicks, queries, positions, indexing | Export Performance reports, or let Claude use Search Console in the browser | Free |
-| Google Analytics 4 | Your account | What organic visitors do and whether they convert | Sign in with `gcloud` and add Google's `analytics-mcp` server | Free |
-| Bing Webmaster Tools | Your account | Bing search data and your backlinks | Export reports | Free |
-| Google Keyword Planner | Your account | Search volume ranges | Export the shortlist's volumes | Free with a Google Ads account |
-| Google Business Profile, Merchant Center | Your account | Local and shopping visibility | Share exports or read-only access | Free |
-| IndexNow | Your account | Telling Bing, Yandex and others that a page changed | Host a key file at your site's root | Free |
-| Live search results | Web | Who ranks, what the results page shows, People Also Ask | Nothing | Free |
-| ChatGPT, Perplexity, Google AI Overviews and AI Mode, Copilot, Claude, Gemini | Web | Whether AI answers mention or cite you | Nothing, or collect answers yourself | Free (DataForSEO for automatic sampling) |
-| Wayback Machine | Web | Old versions of pages | Nothing | Free |
-| Rich Results Test, Schema Markup Validator | Web (by hand) | A final check of structured data | Run them yourself | Free |
+The Stack column gives each tool's label in the [Main stack](#main-stack): "default" is the free stack every run
+starts with, and "paid" is the small and big lists that apply once paid tools are set up.
+
+| Tool | Level | Used for | What you do | Cost | Stack |
+|---|---|---|---|---|---|
+| Any website (yours or a competitor's) | Built in | Crawls, page audits, robots.txt, sitemaps, redirects, rendering checks, page comparisons | Nothing | Free | Main in every list |
+| Google PageSpeed Insights API | Built in | Lab speed audits and real-user Core Web Vitals | Nothing. Add a free key only if the shared quota runs out | Free | Main (paid lists); Cross-check in the default stack, lab against CrUX field |
+| Google, Bing and YouTube autocomplete | Built in | Keyword ideas | Nothing | Free. Unofficial public endpoints, rate-limited | Default: Cross-check (Google, Bing). Paid: Cross-check (Bing), Reserve (Google). YouTube: Reserve |
+| Your server's access logs | Built in | Which bots crawl what, fake Googlebots, sitemap URLs never crawled | Supply the log files | Free | Main in every list |
+| Semrush | Connector | Competitors' keywords and traffic, keyword volume and difficulty | Install the connector, sign in, set `semrush_monthly_units` | A Semrush plan that includes API units | Reserve |
+| Ahrefs | Connector | Backlinks, competitor link profiles, organic keywords | Install the connector, sign in, lower the key's cap in Ahrefs, set `ahrefs_monthly_units` | Lite plan ($129/mo) or higher | `domain-rating-free` (to build): Main (default), Cross-check (small, big). REST v3 on Standard (to build): Cross-check (big). Lite, Site Audit, the GSC endpoints and the MCP: Reserve, the MCP only in sessions you watch |
+| DataForSEO | Connector | Bulk keyword volumes, search result snapshots, backlinks, AI-answer data | Install the connector, enter the API login, set a daily limit at DataForSEO, set `dataforseo_monthly_usd` | Pay as you go, $50 minimum top-up | Main (small, big); labels per API in [references/tools.md](references/tools.md#dataforseo). Reserve (default) |
+| Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly, Lumar | Add it yourself | Traffic estimates, rank tracking, volumes, question research, AI-answer tracking, crawling | Add the vendor's MCP server (named after the vendor), set `other_monthly_usd` | The vendor's own plan | SE Ranking Data API (to build): Main (small). In the big list it splits by market: Main for the GE pairs and the markets DataForSEO Labs lacks, and Cross-check in the markets Labs covers. Reserve (default). SE Ranking's other APIs and the other vendors: Reserve |
+| Screaming Frog | Your licence | Large crawls with JavaScript rendering | CLI for scheduled crawls, MCP in sessions you watch | £199/year. Free mode crawls 500 URLs and has no MCP | Big: Main (licensed CLI). Small and the default stack: Reserve |
+| Sitebulb | Your licence | Reading finished crawls (its MCP is read-only and can't start crawls) | Add its MCP server (OAuth) | A Sitebulb plan | Reserve |
+| Google Search Console | Your account | Clicks, queries, positions, indexing | Export Performance reports, or let Claude use Search Console in the browser | Free | The API (to build): Main (default, small, big); in the default Technical list, URL Inspection is a Cross-check against `crawl.py`. Bulk export to BigQuery: Main (default, big), Reserve (small). Search generative AI report, Links and Crawl Stats exports: Reserve, use when a person exports them |
+| Google Analytics 4 | Your account | What organic visitors do and whether they convert | Sign in with `gcloud` and add Google's `analytics-mcp` server | Free | Main in every list. AI referrals: Main (default), Cross-check (small, big) |
+| Bing Webmaster Tools | Your account | Bing search data and your backlinks | Export reports | Free | The API (client to build): Main (default, small, big). Crawl methods: Cross-check (default, small, big). Positions: Cross-check (default), Main (small, big). Keyword API: Cross-check (default), Reserve (small, big). AI Performance export: Reserve, use when a person exports it |
+| Google Keyword Planner | Your account | Search volume ranges | Export the shortlist's volumes | Free with a Google Ads account | Reserve |
+| Google Business Profile, Merchant Center | Your account | Local and shopping visibility | Share exports or read-only access | Free | Main in every list where they apply (Business Profile client to build) |
+| IndexNow | Your account | Telling Bing, Yandex and others that a page changed | Host a key file at your site's root | Free | Main in every list (submitter to build) |
+| Live search results | Web | Who ranks, what the results page shows, People Also Ask | Nothing | Free on a Claude subscription; an API-key run pays Anthropic's web search fee (up to 8 searches a call) | WebSearch samples: Main (default), Cross-check (small, big) |
+| ChatGPT, Perplexity, Google AI Overviews and AI Mode, Copilot, Claude, Gemini | Web | Whether AI answers mention or cite you | Nothing, or collect answers yourself | Free stack: GA4 AI referrals and SerpApi Free. Paid: official APIs through `ai_probe` (planned); DataForSEO SERP and AI Mode for Google AI answers ([Main stack](#main-stack)) | `ai_probe` (to build): Main (small, big), Reserve (default). Checks by hand: Reserve. Never automated in the apps |
+| Wayback Machine | Web | Old versions of pages | Nothing | Free | Cross-check in every list; Reserve for a site move |
+| Rich Results Test, Schema Markup Validator | Web (by hand) | A final check of structured data | Run them yourself | Free | Reserve |
+
+## Main stack
+
+The ranked core of tools that lets a run do SEO end to end with no person in the loop once credentials are given. The
+full tables are in [references/tools.md](references/tools.md#main-stack): why each tool is there, how a run drives it,
+what it costs a month, what each cross-check compares, and the condition for every Reserve tool.
+
+- **Main:** in the ranked core stack for that list (the default free stack, or the paid list for that site size).
+- **Cross-check:** runs alongside a Main tool because it measures the same thing differently. Agreement raises
+  confidence. Disagreement sends the item to a re-check before the run acts on it.
+- **Reserve:** a good tool that is not in the stack, brought in under a stated condition ("use when …").
+- **(to build):** the vendor's route is official and allowed for unattended runs, but seo-suite has no client for it
+  yet, or the credit guard can't price it yet.
+
+**Default: big website, free only.** Every run starts here, at every site size: the most thorough stack that costs
+$0. The page count sets only its depth: up to 2,000 URLs the run covers every URL, and above that it works in
+sections and samples. Free means $0 to run. API keys for free quotas (PageSpeed Insights, CrUX, Search Console, Bing
+Webmaster Tools) count as free; pay-per-call APIs (OpenAI, Anthropic, Perplexity, DataForSEO) don't. The small and big
+paid lists below take over only when budgets or credentials for paid tools are set, or when you ask. The full tables,
+quotas, billing-account notes and what free can't answer are in
+[references/tools.md](references/tools.md#default-big-website-free-only).
+
+- **Keywords and competitors**
+  1. Research store (`research_store.py`).
+  2. Search Console API (to build): measured demand per query, page and country.
+  3. Search Console bulk export to BigQuery: needs a Cloud project with billing, $0 within BigQuery's free tier.
+  4. WebSearch samples (`seo-serp-researcher`): who wins each head term, and People Also Ask. At most 200 searches per
+     session (per turn in `claude -p`); $0 on a Claude subscription.
+  5. Competitor sitemap inventory (to build: polite mode): what competitors publish.
+  6. `compare_pages.py`: our page against the pages that win.
+  7. CrUX popularity rank (BigQuery, with a card on the project): each competitor's size band.
+- **Backlinks**
+  1. Bing Webmaster Tools API (to build): Bing's own sample of our links.
+  2. Ahrefs `domain-rating-free` (to build): Domain Rating for up to 1,000 targets a call, at 0 units.
+  3. Common Crawl web graph (to build: graph reader): who links to competitors, at domain level.
+- **Technical**
+  1. `crawl.py`: the whole site, or per section above 2,000 URLs.
+  2. `sitemap_check.py`: the URL inventory that sets the depth.
+  3. `robots_check.py`: robots.txt and the AI-bot matrix, also before deploy.
+  4. `page_audit.py`: one URL per template, and the CI gate.
+  5. `redirect_check.py`: redirect maps and shipped redirect fixes.
+  6. `schema_rules.py`: Google's rich-result rules.
+  7. CrUX API and History API (to build): real-user Core Web Vitals.
+  8. `render_diff.py`: what changes after JavaScript.
+  9. Chrome headless (`--dump-dom`): the rendered DOM in scheduled runs.
+  10. `log_analyze.py`: what bots actually fetch.
+  11. Chrome DevTools MCP: traces behind a poor INP or LCP.
+  12. IndexNow (to build): changed URLs to Bing, Yandex and others.
+- **Rank and AI answers**
+  1. Search Console API (to build): our own positions and clicks.
+  2. Search Console bulk export to BigQuery.
+  3. SerpApi Free (to build: collector): 250 Google rank snapshots a month for the money tier, with AI Overview and
+     AI Mode.
+  4. GA4 AI-referral sessions: the free AI-answer signal.
+  5. Google Search Status Dashboard feed: dates of Google updates.
+- **Measurement, local and indexing**
+  1. Search Console API (to build): Search Analytics, URL Inspection, sitemap submission.
+  2. Search Console bulk export to BigQuery.
+  3. Google Analytics 4 (`analytics-mcp`).
+  4. Bing Webmaster Tools API (to build).
+  5. IndexNow (to build).
+  6. Google Business Profile APIs (to build: client): local businesses only, after Google approves access.
+  7. Merchant API: stores only.
+  8. Google Search Status Dashboard feed (shared with Rank).
+- **Cross-checks:** Google suggestions against Search Console queries, Bing suggestions, the Bing keyword API (to
+  build) and the Wayback Machine for keywords. Moz API Free and a live `page_audit.py` check for links. URL Inspection
+  (to build) against `crawl.py` and the sitemap, `psi.py` lab against CrUX field, and Bing crawl data (to build) for
+  technical. Bing Webmaster positions (to build) against Search Console for rank. Microsoft Clarity for measurement.
+
+**Size.** Small is up to 2,000 indexable URLs: the sitemap total across every locale folder, subdomain and ccTLD. Big
+is more. Markets, competitors, keywords and locations multiply the costs but don't change the class.
+
+**Small sites, paid.** Main costs about $15–20 a month, pay per use, with no subscription.
+
+- **Keywords and competitors**
+  1. Research store (`research_store.py`): reuse, gaps, a source and date for every value.
+  2. Search Console API (to build): measured demand per query, page and country.
+  3. DataForSEO Google Ads volumes: Google's numbers, exact for Georgia and its cities.
+  4. DataForSEO SERP API: who wins each keyword, SERP features, People Also Ask.
+  5. DataForSEO Google Autocomplete: keyword ideas through an official API.
+  6. SE Ranking Data API (to build: guard prices): competitor keywords and gaps, with a Georgia database.
+  7. `compare_pages.py`: our page against the pages that win.
+- **Backlinks**
+  1. DataForSEO Backlinks API: new and lost links, the link gap, prospect scoring.
+  2. Bing Webmaster Tools API (to build): Bing's own sample of our links, free.
+- **Technical**
+  1. `crawl.py`: the whole site, raw HTML.
+  2. `sitemap_check.py`: the URL inventory that sets the size class.
+  3. `robots_check.py`: robots.txt and the AI-bot matrix, also before deploy.
+  4. `page_audit.py`: one URL per template, and the CI gate.
+  5. `redirect_check.py`: redirect maps and shipped redirect fixes.
+  6. Search Console URL Inspection API (to build): Google's index verdict per URL.
+  7. `schema_rules.py`: Google's rich-result rules.
+  8. `psi.py`: Lighthouse lab audits.
+  9. CrUX API and History API (to build): real-user Core Web Vitals.
+  10. `render_diff.py`: what changes after JavaScript.
+  11. Chrome headless (`--dump-dom`): the rendered DOM in scheduled runs.
+  12. `log_analyze.py`: what bots actually fetch.
+  13. Chrome DevTools MCP: traces behind a poor INP or LCP.
+  14. IndexNow (to build): changed URLs to Bing, Yandex and others.
+- **Rank and AI answers**
+  1. Search Console API (to build): our own positions and clicks.
+  2. DataForSEO Google organic SERP API: rank snapshots, competitors, AI Overview citations.
+  3. `ai_probe` (to build): ChatGPT, Claude and Perplexity answers through their official APIs.
+  4. DataForSEO Google AI Mode API: AI Mode answers and citations (no Georgian).
+  5. Bing Webmaster Tools API (to build): Bing positions, all markets.
+  6. Google Search Status Dashboard feed: dates of Google updates.
+- **Measurement, local and indexing**
+  1. Search Console API (to build): Search Analytics, URL Inspection, sitemap submission.
+  2. Google Analytics 4 (`analytics-mcp`): what organic visitors do and whether they convert.
+  3. Bing Webmaster Tools API (to build): Bing's own data.
+  4. IndexNow (to build): the run tells the engines itself.
+  5. Google Business Profile APIs (to build: client): local businesses only, after Google approves access.
+  6. Merchant API: stores only.
+  7. DataForSEO Google Maps geo-grid: map-pack rank, local businesses only.
+  8. Google Search Status Dashboard feed (shared with Rank).
+- **Cross-checks:** DataForSEO Labs (markets it covers, not Georgia), Bing suggestions from `keyword_ideas.py`,
+  competitor sitemaps (to build), WebSearch samples and the Wayback Machine for keywords. Moz API Free, Ahrefs
+  `domain-rating-free` (to build) and a live `page_audit.py` check for links. Bing crawl data (to build) and DataForSEO
+  On-Page for technical. SerpApi Free (to build: collector) and GA4 AI referrals for rank. Microsoft Clarity for
+  measurement.
+
+**Big sites, paid.** Main costs about $140–200 a month, with Screaming Frog as the only licence. Main + Cross-check
+is about $400–710, with Ahrefs Standard as the one SEO subscription.
+
+- **Keywords and competitors**
+  1. Research store.
+  2. Search Console API (to build).
+  3. Search Console bulk export to BigQuery, read through Google's BigQuery MCP.
+  4. DataForSEO Google Ads volumes.
+  5. DataForSEO SERP API.
+  6. SE Ranking Data API (to build: guard prices): the Georgian and non-Labs markets.
+  7. DataForSEO Labs: the markets it covers.
+  8. DataForSEO Google Autocomplete.
+  9. `compare_pages.py`.
+- **Backlinks**
+  1. DataForSEO Backlinks API.
+  2. Bing Webmaster Tools API (to build).
+- **Technical**
+  1. Screaming Frog SEO Spider (licensed), through its command line.
+  2. `crawl.py` per section, until a Screaming Frog adapter feeds `triage.py`.
+  3. `sitemap_check.py`.
+  4. `robots_check.py`.
+  5. `log_analyze.py`.
+  6. Search Console URL Inspection API (to build): changed URLs and samples.
+  7. CrUX API and History API (to build).
+  8. `psi.py`.
+  9. `page_audit.py`.
+  10. `redirect_check.py`.
+  11. `schema_rules.py`.
+  12. `render_diff.py`.
+  13. Chrome headless (`--dump-dom`).
+  14. Chrome DevTools MCP.
+  15. IndexNow (to build).
+- **Rank and AI answers**
+  1. Search Console API (to build).
+  2. Search Console bulk export to BigQuery.
+  3. DataForSEO Google organic SERP API.
+  4. `ai_probe` (to build).
+  5. DataForSEO Google AI Mode API.
+  6. Bing Webmaster Tools API (to build).
+  7. Google Search Status Dashboard feed.
+- **Measurement, local and indexing**
+  1. Search Console API (to build).
+  2. Search Console bulk export to BigQuery.
+  3. Google Analytics 4.
+  4. Bing Webmaster Tools API (to build).
+  5. IndexNow (to build).
+  6. Google Business Profile APIs (to build: client; local businesses only).
+  7. Merchant API (stores only).
+  8. DataForSEO Google Maps geo-grid (local businesses only).
+  9. Google Search Status Dashboard feed.
+- **Cross-checks:** Ahrefs API v3 through REST, to build (backlinks, Rank Tracker, Brand Radar with Claude, AI Overview
+  and AI Mode data only, and keyword difficulty), SE Ranking in Labs markets, DataForSEO Clickstream, the CrUX
+  popularity rank, Bing suggestions, competitor sitemaps, WebSearch samples and the Wayback Machine. Ahrefs
+  `domain-rating-free` (to build) and a live `page_audit.py` check for links. DataForSEO On-Page and Bing crawl data
+  for technical. DataForSEO Bing SERPs and GA4 AI referrals for rank. Local Falcon (local) and Microsoft Clarity for
+  measurement.
+
+Semrush, Moz for big sites, SerpApi Free for big sites (use when there is no Ahrefs plan), Similarweb, AlsoAsked,
+Yext and the person-assisted exports (the Search generative AI report, the Links report and Bing's AI Performance
+report) are Reserve. In the default free stack, every paid tool is Reserve, brought in when its budget or credentials
+are set or you ask.
 
 ## Rules every integration follows
 
@@ -130,9 +317,11 @@ with `claude`, `gcloud` or `npx` are run in your computer's terminal.
     rate-limited.
   - Claude may use your own Search Console, Bing Webmaster Tools and site in the browser, lightly and with you
     present.
-- **Some actions always need you,** whatever the autonomy level: messages to real people, buying links or reviews,
-  disavow files, deleting pages that earn traffic, Change of Address, DNS and CDN changes, Google Business Profile and
-  Merchant Center edits, and spending above budget. The full list is in [references/autonomy.md](references/autonomy.md).
+- **Some actions always need your OK,** whatever the autonomy level: messages to real people, disavow files,
+  deleting pages that earn traffic, Change of Address, DNS and CDN changes, Google Business Profile and Merchant
+  Center edits, and spending above budget. The run prepares each one exactly and lists it at the end; Claude carries
+  out the items you approve. Buying reviews or ranking links, and anything a vendor's terms forbid, are never done.
+  The full list is in [references/autonomy.md](references/autonomy.md).
 
 ## Built in: no accounts, no keys
 
@@ -189,8 +378,10 @@ Vendor details:
 - **Ahrefs.**
   - Signing in creates an Ahrefs API key with a monthly cap of 200,000 units. Lower it to your budget in Ahrefs under
     Account settings → API keys, and turn off pay-as-you-go units under Limits & usage so overage is never charged.
-  - Ahrefs' terms forbid scripted use of its MCP server, so Ahrefs is used only in sessions you are watching.
-    Scheduled runs use DataForSEO for links and rankings instead.
+  - Ahrefs' terms forbid scripted use of its MCP server, so Ahrefs' MCP is used only in sessions you are watching.
+    Scheduled runs reach Ahrefs only through the REST v3 client (to build:
+    [build order](references/tools.md#build-order) item 8), for `domain-rating-free` and the big-site cross-checks,
+    never through the MCP. Until that client exists, scheduled runs use DataForSEO for links and rankings.
 - **DataForSEO.**
   - Also set a daily spending limit in DataForSEO's dashboard (API Settings). Calls over it fail instead of costing
     more.
@@ -230,10 +421,15 @@ estimated above 1,000 units (5%) is held for your decision.
 
 **Suggested starting budgets for one site:**
 
-- Semrush: up to 20,000 of the 50,000 units your plan includes.
-- Ahrefs: up to 20,000 (Lite includes 200,000).
-- DataForSEO: $10. The scheduled pipelines cost about $5–6 a month for one site.
-- Other vendors: 0 until you connect one.
+- **The default free stack needs no budget.** It makes no paid calls, so every budget can stay at 0.
+- **The paid stacks:** use the Small or Big values in
+  [references/tools.md](references/tools.md#credit-guard-changes-the-stack-needs). `dataforseo_monthly_usd` is 25
+  small and 270 big. `other_monthly_usd` is 12 small and 35 big, for SE Ranking and `ai_probe`, after the credit guard
+  changes listed there. `ahrefs_monthly_units` is 0 small, and up to 320,000 of Ahrefs Standard's 800,000 big, read
+  by the REST client.
+- **Semrush is Reserve.** Leave `semrush_monthly_units` at 0 unless you already pay for a plan. Then use up to 20,000
+  of the 50,000 units it includes.
+- **Today:** the scheduled pipelines in the seo-automation skill cost about $5–6 a month in DataForSEO for one site.
 
 What it does on each call:
 
@@ -270,8 +466,9 @@ after the vendor so the guard recognises it:
 - Screaming Frog's MCP (v24 or newer) needs a paid licence, and the app running or the Claude Desktop extension.
   Scheduled crawls use the Screaming Frog command line (`--headless`) instead.
 - Screaming Frog and Sitebulb document no Claude Code command.
-- AlsoAsked has no MCP server we could confirm, only a REST API with an API key, so the guard covers it only if you
-  add a server whose name contains `alsoasked`.
+- AlsoAsked has an official MCP server at `https://alsoasked.com/mcp`, with a browser sign-in, on the Pro plan only
+  (its REST API is Pro only too). Add it as `claude mcp add --transport http --scope user alsoasked
+  https://alsoasked.com/mcp`, then `claude mcp login alsoasked`, so the guard recognises the name.
 
 More detail: [references/paid-tools-automation.md](references/paid-tools-automation.md).
 
@@ -285,7 +482,7 @@ By default Claude only reads and reports. To allow more, set the `autonomy_level
 | **1. Analyse** (default) | Reads only: fetches, crawls, free tools, paid calls within budget, reports |
 | **2. Fix in code** | Level 1, plus edits to your site's code on a separate branch, sent as a pull request |
 | **3. Ship** | Level 2, plus merging pull requests that pass CI, and submitting sitemaps and IndexNow for changed URLs |
-| **4. Operate** | Level 3, plus CMS drafts and publishing, and Search Console sitemap submission, through a connected account |
+| **4. Operate** | Level 3, plus publishing to a CMS and Search Console sitemap submission through an authorised connector |
 
 Anything above your level waits for your OK. No level covers requesting indexing in Search Console, so that always
 needs your OK. Some actions always need you, whatever the level (see [Rules](#rules-every-integration-follows)).
@@ -300,11 +497,15 @@ Details: [references/autonomy.md](references/autonomy.md).
 | **Bing Webmaster Tools** | Performance exports, which `gsc_analyze.py` reads by matching Bing's column names to Search Console's. Or Bing's API, with a key from Settings → API Access, through a community MCP server you choose to trust | The plugin has no built-in Bing API client. Bing powers Copilot, so its data matters for AI search too |
 | **Google Keyword Planner** | Your export (a UTF-16 CSV), read by `research_store.py ingest volumes`, which keeps ranges such as "1K – 10K" as written | Ranges unless the Ads account spends. The same command reads Semrush, Ahrefs and DataForSEO volume exports. Google's official Google Ads MCP has no Keyword Planner |
 | **Google Business Profile** | An authorised connector, or exports and screenshots from the owner. The public listing is read with web search | Performance (searches, calls, directions, website clicks) needs owner access. The Business Profile API needs Google's approval. Profile edits always need your OK, and business.google.com is never automated |
-| **Bing Places, Apple Business Connect** | The owner's dashboards | Listing corrections are drafted for the owner to apply |
+| **Bing Places, Apple Business** | The owner's dashboards | Listing corrections are exact items in the end-of-run approval batch. The owner applies them, because Bing Places and Apple Business have no public API for it |
 | **Google Merchant Center** | Read-only, through a connector or an export: diagnostics, the feed source and a sample of about 20 top products | Feed data overrides page markup, so seo-ecommerce checks that feed, page and markup match. Edits always need your OK |
 | **IndexNow** | Changed URLs are submitted at autonomy level 3 or higher. First the site must serve a key (8–128 letters, digits or dashes) as a UTF-8 text file `{key}.txt` at its root. seo-suite has no IndexNow setting, so the key file is part of the site | Up to 10,000 URLs per request. Reaches Bing, Yandex, Seznam, Naver, Yep and others. Google does not use IndexNow |
 | **Cloudflare AI Crawl Control** | Read in your Cloudflare dashboard: Security Settings → Bot traffic → AI bot policies | With Bot Preference Sync on and an AI policy set to block, Cloudflare puts its own rules at the top of your robots.txt. They disallow Amazonbot, Applebot-Extended, Bytespider, CCBot, ClaudeBot, Google-Extended, GPTBot and meta-externalagent, and add `Content-signal: search=yes, ai-train=no, use=reference`. `robots_check.py` evaluates the live file, so it sees these rules, but it doesn't yet say Cloudflare added them. Available on all plans |
 | **Google Indexing API** | Not used | Only for JobPosting and livestream (BroadcastEvent) pages. It is not a way to get ordinary pages indexed |
+
+Each source's label is in the [At a glance](#at-a-glance) table. The three it doesn't list are Reserve: Bing Places
+and Apple Business, use when the owner corrects listings or exports insights; Cloudflare AI Crawl Control, use when
+the site is on Cloudflare; and the Google Indexing API, use for JobPosting or BroadcastEvent pages only.
 
 ### Verifying you own the site
 
@@ -324,13 +525,13 @@ A DNS record needs your approval at every level, because DNS changes are always 
 None of these is bundled. The credit guard has no opinion on them because they cost nothing, so your permission rules
 decide.
 
-| Server | What it adds | Notes |
-|---|---|---|
-| Chrome DevTools MCP (official) | Performance traces (for example, the long tasks behind a poor INP) and a Lighthouse audit of your own pages. The audit has no performance category | `claude mcp add chrome-devtools --scope user npx chrome-devtools-mcp@latest`. Use it only on your own site |
-| Microsoft Clarity MCP (official) | Your Clarity project's data | The project admin creates the token. 10 requests per project per day, covering the last 1–3 days, so run it as one fixed daily job |
-| Google Ads MCP (official) | Read-only Google Ads data | It has no Keyword Planner |
-| Bing Webmaster Tools, community (`zizzfizzix/mcp-server-bwt`) | Bing query and page stats | Uses your Bing API key. Third-party code |
-| Search Console, community (`AminForou/mcp-gsc`) | The Search Console API | OAuth or a service account. Third-party code holding your Search Console access: audit it and pin a version. Destructive tools are off by default |
+| Server | What it adds | Notes | Stack |
+|---|---|---|---|
+| Chrome DevTools MCP (official) | Performance traces (for example, the long tasks behind a poor INP) and a Lighthouse audit of your own pages. The audit has no performance category | `claude mcp add chrome-devtools --scope user npx chrome-devtools-mcp@latest`. Use it only on your own site | Main in every list |
+| Microsoft Clarity MCP (official) | Your Clarity project's data | The project admin creates the token. 10 requests per project per day, covering the last 1–3 days, so run it as one fixed daily job | Cross-check in every list |
+| Google Ads MCP (official) | Read-only Google Ads data | It has no Keyword Planner | Reserve: use when the site runs Google Ads |
+| Bing Webmaster Tools, community (`zizzfizzix/mcp-server-bwt`) | Bing query and page stats | Uses your Bing API key. Third-party code | Reserve: use until the plugin's Bing client exists |
+| Search Console, community (`AminForou/mcp-gsc`) | The Search Console API | OAuth or a service account. Third-party code holding your Search Console access: audit it and pin a version. Destructive tools are off by default | Reserve: use until the plugin's Search Console fetcher exists |
 
 ## Public web sources
 
@@ -340,11 +541,18 @@ decide.
 - **AI answers.** A frozen set of questions is asked 3–5 times per engine (ChatGPT, Perplexity, Google AI Overviews
   and AI Mode, Copilot, Claude, Gemini), and the answers are logged for `ai_visibility.py`, which reports mention and
   citation rates with confidence intervals.
-  - You can collect them yourself, or Claude can in the built-in browser, using only sessions you already have. It
-    never creates accounts and stops at any CAPTCHA.
-  - Automatic sampling runs through the DataForSEO connector: the AI-visibility pipeline in the seo-automation skill
-    samples weekly with DataForSEO's LLM Scraper (about $0.18 a week for 25 questions × 2 engines × 3 runs) and adds
-    LLM Mentions monthly.
+  - Only you check the apps, by hand. Claude never drives chatgpt.com, perplexity.ai, gemini.google.com, claude.ai or
+    Copilot. The [Main stack](references/tools.md#rank-and-ai-answer-visibility) keeps these manual checks as
+    Reserve: 5 prompts before the first client report, logged as surface "app".
+  - Today, the AI-visibility pipeline (B8) in the seo-automation skill still samples weekly through the DataForSEO
+    connector with DataForSEO's LLM Scraper (about $0.18 a week for 25 questions × 2 engines × 3 runs), and adds LLM
+    Mentions monthly. This conflicts with the Main stack's rule: the LLM Scraper collects its answers from
+    chatgpt.com and gemini.google.com, so they aren't stored for analysis, and of LLM Mentions only the `google`
+    platform data qualifies. The pipeline is to move to `ai_probe` ([build order](references/tools.md#build-order)
+    item 5).
+  - The [Main stack](#main-stack) keeps the LLM Scraper as Reserve, only for a one-off parity check of a few prompts
+    that the owner explicitly approves, labelled "vendor-scraped" and kept out of trend lines. The planned `ai_probe`,
+    which uses the engines' official APIs, is the Main route.
 - **Wayback Machine.** Its free CDX API shows how competitors' pages, and your own, looked before. It also recovers old
   URLs during a site move.
 - **Google Search Status Dashboard.** seo-analytics checks `status.search.google.com` to see whether a traffic drop
@@ -362,7 +570,8 @@ decide.
   | A scheduled task in the Claude Desktop app. It runs while the app is open and the Mac is awake | Yes, from your local setup | Anything, while the app is open |
   | A cloud routine (`/schedule`) on Anthropic's servers. Your Mac can be off | **No.** Cloud sessions load no plugins, so there is no credit guard | Free pipelines only |
 
-  Scheduled runs never use Ahrefs. A `claude -p` run can't do an OAuth sign-in, so finish every sign-in first.
+  Scheduled runs never use Ahrefs' MCP: they reach Ahrefs only through the REST v3 client (to build: build order
+  item 8). A `claude -p` run can't do an OAuth sign-in, so finish every sign-in first.
 - **Permission rules.** seo-automation proposes allow, ask and deny rules for the connected vendors' free and read-only
   tools. Paid tools stay unlisted, so the credit guard decides. After your one-time OK, it merges the rules into
   `~/.claude/settings.json`, because a plugin can't ship them itself. Scheduled runs set
@@ -371,35 +580,40 @@ decide.
   `git` and `gh`. From level 3, pull requests that pass CI can be merged. seo-technical can also add a CI job that
   downloads each key template's preview HTML and runs the page audit on it, failing on high-severity findings. A
   protected Vercel preview needs the `x-vercel-protection-bypass` header, with the secret stored in CI.
-- **Your CMS and Search Console (level 4).** At autonomy level 4, Claude can save CMS drafts or publish, and submit
-  sitemaps in Search Console, through a connector you have authorised. Below level 4, CMS changes are drafted for you
-  to apply.
+- **Your CMS and Search Console (level 4).** At autonomy level 4, Claude publishes to your CMS and submits sitemaps in
+  Search Console through a connector you have authorised. Below level 4, the run finishes everything up to its level
+  and says which level or credential would finish the job (for example, at level 2 the pull request is open, and
+  level 3 merges it).
 
 ## Which source answers which question
 
+The free column gives the default free stack's Main tools, and the paid column the paid lists' Main tools. Both note
+their cross-checks. Ranks are in the [Main stack](#main-stack); every Reserve condition is in
+[references/tools.md](references/tools.md#main-stack).
+
 | Question | Free source | Paid, when free isn't enough |
 |---|---|---|
-| Broken pages, redirects, titles, canonicals, duplicates | `crawl.py`, `page_audit.py`, `redirect_check.py` | Screaming Frog for sites over ~2,000 URLs or that rely on JavaScript |
-| Is content there only after JavaScript runs? | `render_diff.py` with a page rendered in the browser | — |
-| Speed and Core Web Vitals, yours or a competitor's | `psi.py` (Lighthouse lab audit plus field data) | — |
-| Structured data | `page_audit.py`, then the Rich Results Test by hand | — |
-| Your own queries, clicks and positions | Search Console export → `gsc_analyze.py` (16 months of data) | — |
-| How bots crawl your site | `log_analyze.py` on your access logs | — |
-| Keyword ideas | `keyword_ideas.py` (no volumes) | — |
-| Search volume and difficulty | Keyword Planner ranges | DataForSEO Keywords Data for cheap bulk volumes. Semrush or Ahrefs for difficulty and results-page context together |
-| Competitors' keywords and traffic | — | Semrush (strongest), Ahrefs |
-| Your own backlinks | Ahrefs Free, Search Console *Links*, Bing Webmaster Tools | — |
-| Competitors' backlinks | — | Ahrefs Lite or higher, or DataForSEO Backlinks pay per use |
-| Rank tracking | Search Console positions | DataForSEO search snapshots for competitors and other locales |
-| Visibility in AI answers | A frozen question set + `ai_visibility.py` | DataForSEO LLM endpoints, Ahrefs Brand Radar or Otterly |
-| What a page looked like before | Wayback Machine CDX API | — |
+| Broken pages, redirects, titles, canonicals, duplicates | `crawl.py` (per section above 2,000 URLs), `sitemap_check.py`, `page_audit.py`, `redirect_check.py` | Big sites: Screaming Frog (licensed CLI). Cross-check: DataForSEO On-Page, a second crawl from other IPs |
+| Is content there only after JavaScript runs? | `render_diff.py`, with the DOM from Chrome headless | Big sites: Screaming Frog renders whole sections. Cross-check: DataForSEO On-Page with JavaScript or browser rendering |
+| Speed and Core Web Vitals, yours or a competitor's | CrUX API and History API (to build) for field data, and Chrome DevTools MCP traces. Cross-check: `psi.py` lab audits | — (the paid lists use the same free tools, with `psi.py` as Main) |
+| Structured data | `page_audit.py` and `schema_rules.py`. The Rich Results Test by hand is Reserve | Big sites: Screaming Frog's structured-data validation. Cross-check: DataForSEO On-Page microdata errors |
+| Your own queries, clicks and positions | Search Console API (to build; 16 months of data) and the bulk export to BigQuery (needs Cloud billing). Until the fetcher exists: exports → `gsc_analyze.py` | — |
+| How bots crawl your site | `log_analyze.py` on your access logs. Cross-check: Bing Webmaster crawl data (to build) | — |
+| Keyword ideas | Search Console queries and WebSearch samples (People Also Ask). Cross-check: `keyword_ideas.py` Google and Bing suggestions (no volumes) | DataForSEO Google Autocomplete. Cross-check: Bing suggestions |
+| Search volume and difficulty | Search Console impressions (measured demand, not volumes). Cross-check: Bing keyword API counts (to build) | DataForSEO Google Ads volumes; difficulty from SE Ranking (to build) and, outside Georgia, DataForSEO Labs (Main on big sites, a cross-check on small). Big cross-checks: Ahrefs Standard and DataForSEO Clickstream |
+| Competitors' keywords and traffic | Competitor sitemap inventory (to build), WebSearch samples, `compare_pages.py`, and the CrUX popularity rank for each competitor's size band | SE Ranking Data API (to build), and DataForSEO Labs outside Georgia (Main on big sites, a cross-check on small). Big cross-checks: Ahrefs Standard, and SE Ranking in Labs markets |
+| Your own backlinks | Bing Webmaster Tools API (to build). Cross-checks: Moz API Free and a live `page_audit.py` check. Ahrefs Free and the Search Console Links report are Reserve, exported by a person | DataForSEO Backlinks API. Big cross-check: Ahrefs Standard |
+| Competitors' backlinks | Common Crawl web graph (to build), domain level, and Ahrefs `domain-rating-free` (to build) for authority | DataForSEO Backlinks API. Big cross-check: Ahrefs Standard |
+| Rank tracking | Search Console positions, and SerpApi Free (to build) snapshots for the money tier. Cross-check: Bing Webmaster positions | DataForSEO Google organic SERP snapshots for competitors and other locales. Cross-checks: SerpApi Free (small), Ahrefs Rank Tracker (big) |
+| Visibility in AI answers | GA4 AI-referral sessions, and SerpApi Free for AI Overview and AI Mode. Checks by hand are Reserve | `ai_probe` (to build) and DataForSEO Google AI Mode and AI Overview. Big cross-check: Ahrefs Brand Radar's Claude, AI Overview and AI Mode data |
+| What a page looked like before | Wayback Machine CDX API (a Cross-check for competitor history) | — |
 
 ## What to connect, by budget
 
 | Budget | Stack |
 |---|---|
-| $0/mo | Search Console, Bing Webmaster Tools, GA4, a PageSpeed key, Ahrefs Free, Screaming Frog free mode, and seo-suite's scripts |
-| ~$130–200/mo | Add **one** of Ahrefs Lite ($129, for link-heavy work) **or** Semrush SEO ($139) or Starter ($199) (for keyword- and competitor-heavy work), plus a $50 DataForSEO top-up for bulk volumes and search results, which lasts months at the scheduled pipelines' few dollars a month |
+| $0/mo | Search Console, Bing Webmaster Tools, GA4, a PageSpeed key, Ahrefs Free, Screaming Frog free mode, and seo-suite's scripts. For unattended runs this is the [default free stack](#main-stack) |
+| ~$130–200/mo | Add **one** of Ahrefs Lite ($129, for link-heavy work) **or** Semrush Starter ($199) (for keyword- and competitor-heavy work; the $139 SEO plan lists no MCP access, so a run can't use it), plus a $50 DataForSEO top-up for bulk volumes and search results, which lasts months at the scheduled pipelines' few dollars a month |
 | ~$500+/mo | Ahrefs Standard **or** Semrush Pro+, plus a Screaming Frog licence, a DataForSEO wallet, and an AI tracker (Brand Radar or Otterly Standard) if AI visibility is a goal you report on |
 
 Why each paid tool is worth it, and how to spend less: [references/tools.md](references/tools.md).
@@ -447,43 +661,66 @@ further only if you commit it to a repo.
 ## Advice only: not connected
 
 The docs explain what these are for and when they are worth paying for, but the plugin has no connection to them.
+The Stack column gives each one's label in the [Main stack](#main-stack); every Reserve condition is in
+[references/tools.md](references/tools.md#main-stack).
 
-| Tool | What the docs say it is good for |
-|---|---|
-| Moz | Domain Authority, Page Authority and Spam Score, when someone reports in them. Moz documents an MCP server, but the plugin has not checked or wired it |
-| Majestic | Trust Flow and Citation Flow. API on its API plan only, no MCP |
-| SpyFu | Historical paid-search and competitor ads |
-| AnswerThePublic | Question and phrase lists. No API listed |
-| Google Trends | Relative interest over time. Its API is in alpha |
-| Ahrefs Brand Radar, Semrush AI Visibility, Peec AI, Profound | Paid trackers of brand mentions in AI answers |
-| Semrush Sensor | Algorithm volatility, to see whether a drop is industry-wide (free page) |
-| Looker Studio | Free dashboards on Search Console and GA4 |
-| Ahrefs Free (formerly Ahrefs Webmaster Tools) | Your own site's backlinks and audit, in its own interface |
-| Screaming Frog free mode | Crawling up to 500 URLs, to cross-check the plugin's crawler |
-| Screaming Frog Log File Analyser | A desktop app for very large logs. `log_analyze.py` covers the core questions |
-| YouTube Studio, vidIQ, TubeBuddy | YouTube analytics and keyword tools for a channel strategy |
-| BrightLocal, Yext, Semrush Listing Management | Citation audits and listing distribution for multi-location businesses |
-| Local Falcon | Map-pack rankings on a grid of locations |
-| Botify, Conductor | Enterprise crawling and SEO platforms |
+| Tool | What the docs say it is good for | Stack |
+|---|---|---|
+| Moz | Domain Authority, Page Authority and Spam Score, when someone reports in them. Moz has an official MCP server, in beta on paid API plans for account owners (`https://api.moz.com/mcp/v1/data`, OAuth or a Bearer API key). The plugin hasn't wired it, and the credit guard doesn't recognise Moz. In the [Main stack](#main-stack) the free API tier is a backlink cross-check for small sites | API Free tier: Cross-check (default and small backlinks). Big sites and Moz Pro: Reserve |
+| Majestic | Trust Flow and Citation Flow. API on its API plan only, no MCP | Reserve |
+| SpyFu | Historical paid-search and competitor ads | Reserve |
+| AnswerThePublic | Question and phrase lists. No API listed | Reserve |
+| Google Trends | Relative interest over time. Its API is in alpha | Reserve |
+| Ahrefs Brand Radar, Semrush AI Visibility, Peec AI, Profound | Paid trackers of brand mentions in AI answers | Brand Radar: Cross-check (big, paid, to build). The others: Reserve |
+| Semrush Sensor | Algorithm volatility, to see whether a drop is industry-wide (free page) | Reserve |
+| Looker Studio | Free dashboards on Search Console and GA4 | Reserve |
+| Ahrefs Free (formerly Ahrefs Webmaster Tools) | Your own site's backlinks and audit, in its own interface | Reserve |
+| Screaming Frog free mode | Crawling up to 500 URLs, to cross-check the plugin's crawler | Reserve |
+| Screaming Frog Log File Analyser | A desktop app for very large logs. `log_analyze.py` covers the core questions | Reserve |
+| YouTube Studio, vidIQ, TubeBuddy | YouTube analytics and keyword tools for a channel strategy | Reserve |
+| BrightLocal, Yext, Semrush Listing Management | Citation audits and listing distribution for multi-location businesses | Reserve |
+| Local Falcon | Map-pack rankings on a grid of locations | Cross-check (big, paid, local businesses). Reserve (small) |
+| Botify, Conductor | Enterprise crawling and SEO platforms | Reserve |
 
 ## Planned, not built yet
 
-- **Direct AI-answer checks through the engines' own APIs,** OpenAI first, then Gemini: a fixed question set, several
-  runs each, fed to `ai_visibility.py`. They use the APIs because OpenAI's terms forbid automated extraction from the
-  ChatGPT app. API answers can differ from what the app shows.
-- **A rank-tracking script** that stores positions and compares runs. Today the rank-tracking pipeline in the
-  [seo-automation skill](skills/seo-automation/SKILL.md) uses Search Console positions from exports and DataForSEO
-  search snapshots on a schedule, plus Ahrefs Rank Tracker in sessions you watch.
-- **Competitor modules:** share of voice, competitor sitemap diffs, and Wayback change history as scripts. Today these
-  are manual steps in the seo-competitors skill.
+The order, and which categories each item unblocks, is the [build order](references/tools.md#build-order) in
+references/tools.md. This list follows it:
+
+1. A read-only **Search Console API fetcher** (`webmasters.readonly` scope) for Search Analytics, URL Inspection and
+   Sitemaps. It writes the same CSVs `gsc_analyze.py` reads, so mid-size sites aren't limited by the 1,000-row export.
+2. A **Bing Webmaster Tools API client** for the query, page, link, crawl and keyword methods.
+3. **Credit guard changes:** an SE Ranking price table and a budget per vendor, row limits per endpoint, and the
+   missing price rows (AI Mode, Maps, Clickstream and others).
+4. An **IndexNow submitter** that checks the key file before sending, since level 3 promises IndexNow.
+5. **`ai_probe`:** direct AI-answer checks through the official APIs of OpenAI, Anthropic and Perplexity: a fixed
+   question set, several runs each, fed to `ai_visibility.py`. They use the APIs because OpenAI's terms forbid automated
+   extraction from the ChatGPT app. API answers can differ from what the app shows. Gemini is Reserve: answers grounded
+   with Google Search are never stored for analysis, because its terms forbid it, and the API without grounding is
+   brought in only when GA4 shows gemini.google.com at 10% or more of AI-referral sessions for two months [heuristic].
+   With it, **a rank-tracking script** (the rank-snapshot store) that stores positions and compares runs. Today the
+   rank-tracking pipeline in the [seo-automation skill](skills/seo-automation/SKILL.md) uses Search Console positions
+   from exports and DataForSEO search snapshots on a schedule, plus Ahrefs Rank Tracker in sessions you watch.
+6. **CrUX LCP subparts and the full 40-week history** in `psi.py`, through the CrUX API and History API, using the
+   same Google key.
+7. A **polite competitor inventory:** competitor sitemap diffs that honour robots.txt, send one request at a time per
+   host, and stop on 403, 429 or a challenge.
+8. An **Ahrefs REST v3 client** for the big-site cross-checks and the free `domain-rating-free` endpoint.
+9. A **Screaming Frog CSV adapter** for `triage.py` and the research store, and a **CDN log converter** for
+   `log_analyze.py`.
+10. A **SerpApi collector** for the Free plan's 250 searches a month.
+11. A **Common Crawl graph reader** for the free domain-level link graph.
+12. A **Google Business Profile client** for local businesses.
+
+Also planned, outside the build order:
+
+- **Competitor modules:** share of voice and Wayback change history as scripts (competitor sitemap diffs are item 7).
+  Today these are manual steps in the seo-competitors skill.
 
 **Under consideration, not yet decided.** These came out of a review of other Claude Code SEO plugins (claude-seo,
-geo-seo-claude, seomachine and the older seo-skills), keeping only ideas with evidence behind them:
+geo-seo-claude, seomachine and the older seo-skills), keeping only ideas with evidence behind them. The review's
+Search Console fetcher, IndexNow submitter and CrUX history are now items 1, 4 and 6 above.
 
-- A read-only **Search Console API fetcher** (`webmasters.readonly` scope) that writes the same CSVs `gsc_analyze.py`
-  reads, so mid-size sites aren't limited by the 1,000-row export.
-- An **IndexNow submitter** that checks the key file before sending, since level 3 promises IndexNow.
-- **CrUX LCP subparts and the full 40-week history** in `psi.py`, using the same Google key.
 - A **crawl diff** between runs, which the weekly technical monitor needs.
 
 ## How it works inside Claude Code
