@@ -1,0 +1,4 @@
+title: seo-suite
+description: Full-spectrum, evidence-first SEO plugin for Claude Code
+theme: jekyll-theme-cayman
+exclude: [tests, "**/__pycache__"]

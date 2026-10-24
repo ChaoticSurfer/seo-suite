@@ -1,0 +1,185 @@
+---
+name: seo-links
+description: Internal linking and off-page link work. Use for "fix internal linking", "find orphan pages", "which pages need more links", "hub pages / topic clusters linking", "anchor text audit", "backlink audit", "who links to us", "link building ideas", "link prospecting", "broken link building", "unlinked brand mentions", "digital PR", "should we disavow", "toxic links", "manual action for unnatural links", "backlink gap vs competitors". Works free (crawl CSV, Search Console Links export, Bing Webmaster, Ahrefs Webmaster Tools) and says exactly when Ahrefs/Semrush/Majestic/Moz are worth paying for. Drafts outreach; never sends it. Not for crawl/index/redirect bugs (seo-technical), migrations (seo-migration), local citations (seo-local), or competitor content gaps (seo-competitors).
+---
+
+# Links: internal architecture and off-page authority
+
+Make every important page reachable and well linked inside the site, then earn relevant links from
+outside it, without breaking Google's link-spam policy (google-rules §4).
+
+## When to use / not
+
+Use it for:
+- Internal-link structure: orphans, depth, hubs, anchors, nofollow on internal links.
+- Your backlink profile, prospecting, reclaiming links, digital PR plans.
+- Disavow decisions.
+
+Not for:
+- Redirect chains or broken pages as technical defects → seo-technical. This skill only covers the *links* pointing at them.
+- Citations and NAP → seo-local.
+- Competitor content gaps → seo-competitors.
+
+## Inputs to gather
+
+- **Site root.** Plus `seo-work/urls.txt` from `sitemap_check.py --urls-out`, for orphan detection.
+- **Money pages:** pages that convert or that the business most wants ranking. Ask; never guess.
+- **Search Console → Links export.** Top linking sites, top linked pages, top linking text. Ask the user to export it. Only a verified owner can.
+- **Optional free sources:**
+  - Bing Webmaster Tools → Backlinks export.
+  - Ahrefs Webmaster Tools (free for verified sites) → Backlinks / Broken backlinks CSV.
+- **Brand names, product names, founders' names.** Needed to search for unlinked mentions.
+- **Competitors** that rank for the target terms (from seo-competitors), only if a gap analysis is wanted.
+
+## Workflow
+
+### A. Internal linking (always first: it is fully in your control and free)
+
+1. Run the free checks. These are independent, so run them in parallel:
+
+   ```bash
+   mkdir -p seo-work
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sitemap_check.py" https://example.com --sample 0 --urls-out seo-work/urls.txt > seo-work/sitemap.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/crawl.py" https://example.com --max-pages 500 \
+     --sitemap-urls seo-work/urls.txt --csv seo-work/pages.csv > seo-work/crawl.json
+   ```
+
+   For large sites, delegate to the `seo-site-auditor` agent so the raw JSON stays out of context.
+
+2. Read the crawl findings `[measured]`:
+   - `orphan-pages`: in the sitemap but no internal link reached them.
+   - `weakly-linked`: exactly one inlink.
+   - `deep-pages`: more than 3 clicks deep.
+   - `internal-nofollow`
+   - `anchor-generic` / `anchor-empty`
+   - `noindex-heavily-linked`
+   - `links-to-redirects`
+   - `broken-internal-links`
+
+   If `hit_page_limit` is true, orphan counts are inflated, so say so.
+
+3. From `pages.csv`, rank pages by `inlinks` and `depth`, then compare against the money-page list. A money page that is deep or has few inlinks is the top fix.
+
+4. Design hubs. For each topic cluster (from seo-keywords / seo-strategy):
+   - A pillar/hub page links to every cluster page.
+   - Each cluster page links back to the hub and to 2+ siblings (heuristic).
+   - Breadcrumbs reflect the hierarchy.
+
+   Output a link plan: `source URL → target URL → suggested anchor → placement` (in body copy, not the footer).
+
+5. For anchor text, use descriptive anchors that vary naturally. No "click here", no exact-match stuffing on every link (google-rules §3).
+
+6. For template-level fixes, change the nav, breadcrumbs, related-posts and footer components once rather than editing hundreds of pages. In a codebase, find the components and propose diffs.
+
+7. Re-crawl after the changes and compare the inlink and depth columns.
+
+### B. Off-page: understand the current profile
+
+1. Load the Search Console Links export, plus Bing/AWT if available. Merge the referring domains and record the source of each one.
+   - Search Console shows a *sample* and gives no authority metric. Never call it the full profile.
+2. Summarise `[measured]`:
+   - Referring domains by count.
+   - Most-linked pages.
+   - Anchor-text mix (branded / naked URL / generic / descriptive).
+   - Links pointing at 404s or redirects.
+3. Link reclamation (highest ROI, free):
+   - Fetch the target URLs from the "top linked pages" export and find any that return 404 or chain-redirect.
+   - Fix with a one-hop 301 to the closest equivalent page, never mass-redirecting to the homepage (google-rules §9).
+   - Verify with `redirect_check.py map.csv`.
+4. Unlinked mentions: WebSearch `"Brand Name" -site:example.com` and variants (product names, founder names, `intitle:"brand"`). List the pages that mention the brand without linking. Draft a polite link request for each.
+
+### C. Off-page: earn new links
+
+Pick 2–3 tactics that suit the business. Every outreach message is a **draft** for the user to review and send:
+
+- **Digital PR / data studies.** Original data, surveys or tools that journalists cite. Plan the asset, the angle and the target publications.
+- **Resource and links pages.** Footprints:
+  - `"keyword" inurl:resources`
+  - `"keyword" intitle:"useful links"`
+  - `"keyword" "recommended sites"`
+- **Broken link building.** Find dead resources on relevant pages:
+  - Search `"keyword" inurl:links` or `"keyword" resources`.
+  - Fetch the page and test its outbound links with `page_audit.py`'s facts or by fetching each link.
+  - Offer your page as the replacement.
+- **Partners, suppliers, customers, associations, local chambers, universities, events you sponsor.** Real relationships.
+- **Expert commentary.** Journalist-request platforms. Answers must be genuinely expert.
+- **Guest contributions.** Only genuine editorial pieces on relevant sites. Links in them should be `rel=nofollow` or `sponsored` when there is any exchange (google-rules §4).
+- Run independent prospect searches in parallel with `seo-serp-researcher` agents, one batch of footprints each.
+
+### D. Toxic links and disavow
+
+- **Default: do nothing.** Google ignores most spammy links automatically.
+- Use the disavow tool only when:
+  - (a) Search Console shows a **manual action for unnatural links**, or
+  - (b) there is a clear paid or link-scheme pattern you or a previous agency created that is likely to trigger one.
+- Process:
+  1. Try removal outreach first (draft it).
+  2. Then disavow at domain level (`domain:spam.example`).
+  3. Then file a reconsideration request documenting the cleanup.
+- **Never upload a disavow file or file a reconsideration request yourself.** Prepare the file and the text, and the user submits them.
+- Do not recommend disavowing on the basis of a third-party "toxicity score" alone. Those scores are vendor heuristics.
+
+## Checks
+
+| Check | Rule | Source |
+|---|---|---|
+| Every important page has ≥1 internal `<a href>` link | required for discovery | google-rules §3 [Google doc] |
+| Links are crawlable `<a href>` (not onclick/`<span>`/`javascript:`) | otherwise not followed | google-rules §1 [Google doc] |
+| Internal links are not `nofollow` | wastes discovery | heuristic |
+| Click depth of money pages ≤3 | heuristic (crawl `deep-pages`) | heuristic |
+| Anchors descriptive, not generic, not stuffed | | google-rules §3 [Google doc] |
+| Paid/exchanged links carry `rel=sponsored`/`nofollow`; UGC `rel=ugc` | link-spam policy | google-rules §3–4 [Google doc] |
+| No PBNs, link exchanges at scale, paid dofollow links, link-insertion schemes | link spam → manual action | google-rules §4 [Google doc] |
+| Removed pages with backlinks 301 to a close equivalent | preserves signals; no mass homepage redirects | google-rules §9 [Google doc] |
+| Redirects one hop, 301/308 | | google-rules §1 [Google doc] |
+
+## Data: free vs paid
+
+The free path covers your own site completely:
+- Crawl CSV: internal graph, depth, inlinks.
+- GSC Links: a sample of external links.
+- Bing Webmaster backlinks.
+- Ahrefs Webmaster Tools: a fuller external profile for verified sites.
+- WebSearch: prospecting and mentions.
+
+Paid tools are justified only for **other people's** link data. See `${CLAUDE_PLUGIN_ROOT}/references/tools.md`:
+- **Ahrefs** (`## Ahrefs`). The largest live link index. Use Link Intersect to find sites that link to 2+ competitors but not you, plus competitor best-by-links pages and lost-link alerts.
+  - Justified when the plan includes competitive link building or a recovery investigation.
+  - Cost tactics: export only the referring-domains view rather than every backlink, filter by DR/traffic and dofollow before exporting, and run Link Intersect once per quarter rather than continuously.
+- **Semrush** (`## Semrush`). Backlink Gap and the Backlink Audit workflow, if the team already pays for Semrush for keywords. Don't buy both Semrush and Ahrefs for links alone.
+- **Majestic** (`## Other paid tools`). Trust Flow / topical Trust Flow and a historic index. A cheap second opinion on link quality.
+- **Moz** (`## Moz`). Domain Authority and a link explorer. DA is a vendor metric, not a Google signal.
+- **DataForSEO Backlinks API** (`## DataForSEO`). Pay-as-you-go bulk link data for scripted analysis.
+
+Label every metric from these tools `[vendor data]`. DR/DA/TF are vendor estimates, never Google signals.
+
+## Output
+
+1. **Internal link plan** (`seo-work/internal-links.csv`): `source, target, anchor, placement, reason`, ordered by money-page impact.
+2. **Template changes** (nav, breadcrumbs, related posts) as concrete diffs if there is a codebase.
+3. **Reclamation list:** `linked 404 URL → redirect target`, plus the redirect map ready for `redirect_check.py`.
+4. **Prospect sheet:** `site, page, contact route (public), angle, why relevant, draft message`. All drafts are clearly marked unsent.
+5. **Disavow recommendation:** usually "none needed", with the reason. If one is needed, the `disavow.txt` draft and the reconsideration text.
+6. Pipe crawl/sitemap JSON through `triage.py seo-work/crawl.json seo-work/sitemap.json` for P0–P3 ordering of the link-related findings.
+
+## Pitfalls & myths
+
+- **"More links = better."** Relevance and editorial placement matter; 1,000 directory links don't.
+- **Buying "guest posts" or "niche edits" with dofollow links** is link spam (google-rules §4), whatever the vendor calls it.
+- **Disavowing "toxic" links flagged by a tool** without a manual action usually does nothing, and can remove links that were helping.
+- **Footer/sitewide links** are low-value and pattern-detectable. Contextual body links carry more meaning.
+- **GSC Links is a sample.** Don't report its counts as totals.
+- **Mass-redirecting old URLs to the homepage** is treated as a soft 404, and the link value is lost.
+- **Nofollow on internal links** to "sculpt PageRank" doesn't work and hurts discovery.
+- Never claim a link "caused" a ranking change. Say it "coincides with".
+
+## Log the work
+
+Append to `SEO-WORKLOG.md` (format: `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`):
+- Date and scope.
+- Data sources used, with evidence tags.
+- Paid-tool usage (units/credits spent).
+- Files produced.
+- Drafts awaiting the user's send/approval.
+- Decisions (e.g. "no disavow, no manual action").
+- What to re-measure, and when (re-crawl inlinks in 2 weeks; referring domains monthly).

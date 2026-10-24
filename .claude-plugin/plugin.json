@@ -1,0 +1,26 @@
+{
+  "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
+  "name": "seo-suite",
+  "version": "0.1.0",
+  "description": "Full-spectrum SEO for Claude Code: technical, on-page, content & copywriting, keywords, schema, local, international, e-commerce, media, links, migrations, AI search (AEO/GEO), analytics, competitors and strategy \u2014 with standard-library Python auditors, code-computed prioritisation, beginner and expert guides, and cost-aware use of Semrush/Ahrefs/Screaming Frog/DataForSEO.",
+  "author": {
+    "name": "ChaoticSurfer",
+    "url": "https://github.com/ChaoticSurfer"
+  },
+  "keywords": [
+    "seo",
+    "technical-seo",
+    "content",
+    "backlinks",
+    "schema",
+    "aeo",
+    "geo",
+    "ai-search",
+    "local-seo",
+    "semrush",
+    "ahrefs"
+  ],
+  "repository": "https://github.com/ChaoticSurfer/seo-suite",
+  "homepage": "https://chaoticsurfer.github.io/seo-suite/",
+  "license": "MIT"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "seo-suite",
+  "owner": {
+    "name": "ChaoticSurfer",
+    "url": "https://github.com/ChaoticSurfer"
+  },
+  "plugins": [
+    {
+      "name": "seo-suite",
+      "source": "./",
+      "description": "Full-spectrum SEO for Claude Code: technical, on-page, content & copywriting, keywords, schema, local, international, e-commerce, media, links, migrations, AI search (AEO/GEO), analytics, competitors and strategy \u2014 with standard-library Python auditors, code-computed prioritisation, beginner and expert guides, and cost-aware use of Semrush/Ahrefs/Screaming Frog/DataForSEO.",
+      "version": "0.1.0"
+    }
+  ],
+  "description": "seo-suite: a full-spectrum, evidence-first SEO plugin for Claude Code."
+}
