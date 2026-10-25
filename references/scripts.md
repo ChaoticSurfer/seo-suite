@@ -1,10 +1,12 @@
 # seo-suite scripts
 
-Python 3.9+ standard library only — no installs, no keys required (PSI optionally uses `PSI_API_KEY`).
+Python 3.9+ standard library only — no installs, no keys required (PSI optionally uses `PSI_API_KEY`). The one
+exception is `claude_seo.py`, which installs claude-seo on first need for rendering, Search Console and drift (git and
+Python 3.11–3.14).
 Run as `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/<script>.py" …`. Every script prints JSON to stdout;
 redirect to a file in a working folder (e.g. `seo-work/`) and pass those files to `triage.py`.
 Findings share one shape: `{id, severity: critical|high|medium|low|info, message, evidence}`.
-Scripts see raw HTML only (no JavaScript); use `render_diff.py` with a browser-rendered DOM for JS sites.
+Scripts see raw HTML only (no JavaScript); for JS sites, give `render_diff.py` the DOM from `claude_seo.py render`.
 Tests: `python3 -m unittest discover -s "${CLAUDE_PLUGIN_ROOT}/tests"`.
 
 | Script | Purpose | Key usage |
@@ -26,17 +28,22 @@ Tests: `python3 -m unittest discover -s "${CLAUDE_PLUGIN_ROOT}/tests"`.
 | `serp_cluster.py` | Clusters keywords by shared top-10 URLs: ≥4 shared → one page, 2–3 → interlink (heuristic thresholds, adjustable) | `serp_cluster.py serps.json [--same-page 4] [--interlink 2]` (JSON: keyword → list of top URLs) |
 | `triage.py` | Merge findings from any of the above into a P0–P3 fix plan by lookup table (impact, effort, fix); widens priority for issues on ≥25% of pages | `triage.py crawl.json robots.json sitemap.json [page.json…] [--pages N]` |
 | `audit_profile.py` | Picks the audit profile by fixed rules, never by a question: the user's request words (quick or full, free or paid), then the `audit_profile` option, then the budgets this size's paid list uses, then the size (sitemap `total_urls` summed per host, `hit_page_limit` of the whole-site crawl at 2,001 pages, or its `indexable_pages`; small up to 2,000). Default `full-free` at every size; paid with no usable budget stays free and asks; exit 2 on a bad plugin option (`references/profiles.md`) | `audit_profile.py --request-file request.txt [--sitemap sitemap.json …] [--crawl crawl.json] [--connected SERVER …] [--ignore-options]` |
+| `claude_seo.py` | Runs AgriciDaniel/claude-seo's tools: clones its main branch into seo-suite's data folder (`SEO_SUITE_DATA`) on first use, pulls it (`--ff-only`) before every use, runs its setup (venv, Playwright Chromium) when needed, and fails with the reason when git, Python 3.11–3.14 or the network is missing. `render` writes the Playwright DOM for `render_diff.py` (headless Chrome only when claude-seo can't be set up); `gsc-export` writes Search Analytics rows as the CSV `gsc_analyze.py` reads; `drift` compares one crawl's URLs with their baselines (`technical-drift-*` findings); `run` refuses the Indexing API | `claude_seo.py render URL -o dom.html` · `claude_seo.py gsc-export --property sc-domain:example.com --start-date D --end-date D -o query_page.csv` · `claude_seo.py drift --crawl-csv pages.csv [--rebaseline]` · `claude_seo.py run gsc_inspect.py URL --site-url sc-domain:example.com --json` · `claude_seo.py google-signin --client-secret client.json [--sitemap-write]` · `claude_seo.py submit-sitemap --site P --sitemap URL` · `claude_seo.py ensure [--browser]` |
+| `build_audit.py` | A build folder offline: detects the stack (Next.js, Astro, Hugo, Eleventy, Vite, WordPress, other CMS, plain HTML; ported from AEOTester), finds the folder it serves, and runs `page_audit.py`'s checks on every built page under its URL. Modes `full`, `needs-build` (names the build command), `report-only`, `no-pages`; crawl-shaped `page_issue_summary` for `triage.py` | `build_audit.py REPO [--base-url https://example.com] [--max-pages 500] [--fail-on high]` |
+| `schema_hook.py` | The PostToolUse Edit\|Write hook: JSON-LD in edited markup (and `.jsonld`, or `.json` with a schema.org `@context`) through `schema_rules.py`. Exit 2 for JSON that doesn't parse, a leftover placeholder or a missing `@type`; Google's missing fields as `additionalContext`; other files exit at once | Run by `hooks/hooks.json` |
+| `causal_claims.py` | Sentences in reports and the work log that tie a metric move to a change ("rose after", "due to", "boosted") without "coincides with" or a controlled test; code blocks and quotes skipped; exit 1 when any | `causal_claims.py report.md` · `causal_claims.py SEO-WORKLOG.md --newest-entry` |
 | `ai_visibility.py` | AI-answer visibility from a logged observations CSV: mention/citation rates with Wilson 95% CIs per engine, never-visible queries, competitor mentions, cited URLs | `ai_visibility.py obs.csv [--brand-domain example.com] [--compare earlier.csv]` |
 
 ## Getting a rendered DOM (for JS sites or bot-challenged sites the user can open)
 
-In the built-in browser, open the page, then run `document.documentElement.outerHTML` with the JavaScript tool and
-save the result to a file. If a CAPTCHA or challenge page appears, stop that step (never bypass it), record an
+Run `claude_seo.py render URL -o dom.html` (claude-seo's Playwright, or headless Chrome when claude-seo can't be set
+up). When it exits 1, use the built-in browser: open the page, then run `document.documentElement.outerHTML` with the
+JavaScript tool and save the result to a file. If a CAPTCHA or challenge page appears, stop that step (never bypass it), record an
 access request batched at the end of the run, and continue with everything else (`references/autonomy.md`).
 
 ## Known limits
 
-No JavaScript execution · one host per crawl · sitemap recursion stops after 200 files (index + children);
+No JavaScript execution in seo-suite's own scripts (`claude_seo.py render` renders one URL at a time) · one host per crawl · sitemap recursion stops after 200 files (index + children);
 `sitemap-files-skipped` reports the rest · robots matching treats `Googlebot-Image` etc. via their own group
 only if named · schema validation covers Google's main types, not the full schema.org vocabulary ·
 autocomplete endpoints are unofficial and rate-limited — keep `--delay` ≥0.25 s · title pixel width is an

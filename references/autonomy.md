@@ -70,7 +70,7 @@ question to `seo-work/automation/inbox.md` and never sets the mode: a scheduled 
 | **1. Analyse** (default) | All reads: fetches, crawls, scripts, free APIs, paid calls within budget, reports, work log, research store updates (uncommitted) | Any change to the site or any external account |
 | **2. Fix in code** | Level 1 + edits to the site's repo on a branch, commits, pushing that branch, opening a PR | Merging, deploying |
 | **3. Ship** | Level 2 + merging PRs that pass CI, submitting sitemaps / IndexNow for changed URLs | CMS publishing, account settings |
-| **4. Operate** | Level 3 + publishing to a CMS and Search Console sitemap submission through an authorised connector | See "always gated" |
+| **4. Operate** | Level 3 + publishing to a CMS and Search Console sitemap submission through an authorised connector (`claude_seo.py submit-sitemap`, after the user's one-time `google-signin --sitemap-write`; never the Indexing API) | See "always gated" |
 
 **Never, at any level and not even with approval:** buying reviews, buying links that pass ranking value (a paid
 link is fine only with `rel="sponsored"` or `nofollow`, and the user buys it), and anything a vendor's terms forbid

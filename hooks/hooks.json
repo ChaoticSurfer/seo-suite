@@ -1,5 +1,5 @@
 {
-  "description": "seo-suite credit guard for paid SEO MCP tools (Semrush, Ahrefs, DataForSEO, Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly, Screaming Frog, Sitebulb, Lumar) under every naming variant: mcp__<server>__*, mcp__plugin_<plugin>_<server>__* and mcp__claude_ai_<name>__*. The matcher is case-insensitive by character classes because hook matchers are case-sensitive JavaScript regexes. PreToolUse fails closed (onFailure block); PostToolBatch has no matcher and runs after every batch in every session, so its failure must not stop unrelated work (onFailure continue); paid calls stay blocked anyway because PreToolUse fails closed. SessionStart exports the psi_api_key option as PSI_API_KEY for scripts/psi.py, and the openai, perplexity and anthropic API keys as SEO_SUITE_<VENDOR>_API_KEY for scripts/ai_probe.py (prefixed, so other tools in Bash keep their own keys). It also exports audit_profile, the four monthly budgets, per_run_cap_pct and max_rows under their CLAUDE_PLUGIN_OPTION_ names, the guard's CLAUDE_PLUGIN_DATA as SEO_SUITE_DATA and the session id as SEO_SUITE_SESSION_ID, so scripts/audit_profile.py, scripts/rank_snapshot.py and scripts/ai_probe.py read the same budgets, ledger and per-run cap as the hooks.",
+  "description": "seo-suite credit guard for paid SEO MCP tools (Semrush, Ahrefs, DataForSEO, Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly, Screaming Frog, Sitebulb, Lumar) under every naming variant: mcp__<server>__*, mcp__plugin_<plugin>_<server>__* and mcp__claude_ai_<name>__*. The matcher is case-insensitive by character classes because hook matchers are case-sensitive JavaScript regexes. PreToolUse fails closed (onFailure block); PostToolBatch has no matcher and runs after every batch in every session, so its failure must not stop unrelated work (onFailure continue); paid calls stay blocked anyway because PreToolUse fails closed. SessionStart exports the psi_api_key option as PSI_API_KEY for scripts/psi.py, and the openai, perplexity and anthropic API keys as SEO_SUITE_<VENDOR>_API_KEY for scripts/ai_probe.py (prefixed, so other tools in Bash keep their own keys). It also exports audit_profile, the four monthly budgets, per_run_cap_pct and max_rows under their CLAUDE_PLUGIN_OPTION_ names, the guard's CLAUDE_PLUGIN_DATA as SEO_SUITE_DATA and the session id as SEO_SUITE_SESSION_ID, so scripts/audit_profile.py, scripts/rank_snapshot.py and scripts/ai_probe.py read the same budgets, ledger and per-run cap as the hooks, and scripts/claude_seo.py keeps claude-seo in the same data folder. A second PostToolUse entry on Edit|Write runs scripts/schema_hook.py, which checks JSON-LD in edited markup with schema_rules.py; it exits at once for other files, and its failure must not stop unrelated work (onFailure continue).",
   "hooks": {
     "SessionStart": [
       {
@@ -47,6 +47,20 @@
             ],
             "timeout": 20,
             "onFailure": "block"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/scripts/schema_hook.py"
+            ],
+            "timeout": 10,
+            "onFailure": "continue"
           }
         ]
       }

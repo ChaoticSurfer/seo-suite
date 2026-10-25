@@ -11,11 +11,20 @@ with a stated reason.
   competitors, programmatic, strategy and automation.
 - **3 agents.** `seo-site-auditor` collects data, `seo-serp-researcher` runs SERP batches in parallel,
   and `seo-content-reviewer` grades pages.
-- **17 scripts.** Python standard library only, no installs. They cover page audit, crawler, robots,
+- **Scripts.** Python standard library only, no installs. They cover page audit, crawler, robots,
   sitemaps, PageSpeed/CrUX, keyword ideas, Search Console analysis, log analysis, redirect-map QA,
   content scoring, competitor comparison, render diff, SERP-overlap clustering, code-based triage (P0–P3), AI-visibility
   statistics with confidence intervals, translation checks across a post's language versions (`translation_check.py`)
-  and AI-text quality heuristics with no AI-detection score (`ai_text_check.py`).
+  and AI-text quality heuristics with no AI-detection score (`ai_text_check.py`). `build_audit.py` audits a static
+  build folder offline, and `causal_claims.py` flags report sentences that call a change the cause of a metric move.
+- **claude-seo, used where it is better** (`claude_seo.py`). On first need seo-suite clones
+  [AgriciDaniel/claude-seo](https://github.com/AgriciDaniel/claude-seo) into its own data folder, pulls its latest main
+  before every use, and runs its tools: the Playwright renderer for JavaScript sites, its Search Console client
+  (Search Analytics, URL Inspection, sitemaps; never the Indexing API) and its drift rules between crawls. It is not
+  added as a second plugin.
+- **A schema check on every edit** (`schema_hook.py`). After each Edit or Write of a markup file, JSON-LD that doesn't
+  parse, a leftover placeholder or a missing `@type` goes back to Claude to fix; Google's missing fields come back as
+  advice. Other files are skipped at once.
 - **A shared research store** (`research_store.py`). Keyword, search-results and Search Console research is kept
   in one folder per site, so it is done once: every skill reads it first, re-fetches only what has gone stale, and
   writes new findings back.
@@ -55,7 +64,9 @@ claude plugin marketplace add ChaoticSurfer/seo-suite
 claude plugin install seo-suite@seo-suite
 ```
 
-You need Python 3.9 or newer. The scripts use only the standard library, so there is nothing else to install.
+You need Python 3.9 or newer. The scripts use only the standard library, so there is nothing else to install by hand.
+Rendering, the Search Console API and technical drift use claude-seo, which seo-suite installs itself the first time a
+run needs it (a venv and Chromium, about 150 MB). That needs git and Python 3.11–3.14.
 
 ## Connect paid data (optional)
 
@@ -110,8 +121,10 @@ python3 <plugin-dir>/scripts/page_audit.py https://example.com/
 python3 -m unittest discover -s <plugin-dir>/tests
 ```
 
-`test_docs.py` fails if a skill references a script or flag that doesn't exist. `test_scripts.py` fails if
-a script can emit a finding id that has no triage row.
+`test_docs.py` fails if a skill references a script or flag that doesn't exist, or a section of `google-rules.md`
+has gone unchecked for about six months. `test_scripts.py` fails if a script can emit a finding id that has no triage
+row. GitHub Actions runs the suite on every push (`.github/workflows/tests.yml`) and prints the test count in the job
+summary.
 
 ## Read next
 

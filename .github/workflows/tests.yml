@@ -1,0 +1,36 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unittest:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.9", "3.12"]  # 3.9 is the oldest Python the scripts support
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Run the suite and print the test count
+        shell: bash
+        run: |
+          python -m unittest discover -s tests 2>&1 | tee unittest.log
+          echo "Python ${{ matrix.python }}: $(grep -E '^Ran [0-9]+ tests' unittest.log)" >> "$GITHUB_STEP_SUMMARY"
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - name: Validate the plugin and marketplace manifests
+        run: |
+          npm install --global @anthropic-ai/claude-code
+          claude plugin validate .
+          claude plugin validate .claude-plugin/plugin.json

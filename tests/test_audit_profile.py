@@ -5,13 +5,11 @@ Run: python3 -m unittest discover -s tests"""
 import json
 import os
 import re
-import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
 import textwrap
-import time
 import unittest
 from unittest import mock
 
@@ -408,7 +406,6 @@ class DriftTest(unittest.TestCase):
                     self.assertIsNotNone(cg.VENDORS[vendor][1])
 
 
-SHELLS = [shell for shell in ("bash", "zsh") if shutil.which(shell)]  # the Bash tool runs the user's shell
 # Its content arrives after the load event, as a single-page app's fetched data does
 JS_PAGE = """<!doctype html><html lang="en"><head><title>Raw title</title></head><body><div id="app"></div>
 <script>setTimeout(function () { document.title = "Rendered title"; document.getElementById("app").innerHTML =
@@ -416,7 +413,8 @@ JS_PAGE = """<!doctype html><html lang="en"><head><title>Raw title</title></head
 
 
 class RenderStepTest(unittest.TestCase):
-    """seo-audit step 5's commands, run as written: find Chrome or Chromium, then render or skip with a note."""
+    """seo-audit step 5: claude_seo.py renders (claude-seo's Playwright, headless Chrome if its setup fails), then
+    render_diff.py compares. tests/test_claude_seo.py tests the helper itself."""
 
     @staticmethod
     def read_step():
@@ -427,111 +425,30 @@ class RenderStepTest(unittest.TestCase):
     def setUpClass(cls):
         cls.blocks = [textwrap.dedent(block) for block in re.findall(r"```bash\n(.*?)\n *```", cls.read_step(), re.S)]
 
-    def setUp(self):
-        self.tmp = tempfile.mkdtemp()
-        self.addCleanup(shutil.rmtree, self.tmp)
-        os.mkdir(os.path.join(self.tmp, "seo-work"))
+    def test_the_step_renders_through_claude_seo_then_diffs(self):
+        self.assertEqual(len(self.blocks), 2, "step 5 needs a render block and the render_diff block")
+        self.assertIn('claude_seo.py" render URL -o seo-work/rendered-<template>.html', self.blocks[0])
+        self.assertIn("render_diff.py\" URL --rendered seo-work/rendered-<template>.html", self.blocks[1])
 
-    def run_block(self, shell, index, env, url="https://example.com/"):
-        script = self.blocks[index].replace("<template>", "home").replace("URL", shlex.quote(url))
-        return subprocess.run([shell, "-c", script + '\necho "found=$CHROME"'], cwd=self.tmp,
-                              env={**env, "TMPDIR": self.tmp}, capture_output=True, text=True, timeout=60)
+    def test_scheduled_runs_can_run_every_command(self):
+        """seo-automation's launchd recipe allows only Bash(python3 *), and --permission-mode dontAsk denies the rest."""
+        for block in self.blocks:
+            for line in filter(str.strip, block.splitlines()):
+                with self.subTest(line=line):
+                    self.assertTrue(line.startswith("python3 "), line)
 
-    def stub_chrome(self, body='echo "<html><body><h1>stub</h1></body></html>"'):
-        """A Chrome stand-in that records its arguments, and whether its --user-data-dir existed while it ran."""
-        path = os.path.join(self.tmp, "chrome-stub")
-        with open(path, "w", encoding="utf-8") as fh:
-            fh.write('#!/bin/sh\nprintf "%s\\n" "$@" > "$0.args"\n'
-                     'for a; do case "$a" in --user-data-dir=*) [ -d "${a#*=}" ] && echo yes > "$0.profile";; esac; done\n'
-                     + body + "\n")
-        os.chmod(path, 0o755)
-        return path
-
-    def test_the_step_finds_chrome_then_renders(self):
-        self.assertEqual(len(self.blocks), 3, "step 5 needs a find block, a render block and the render_diff block")
-        self.assertIn("render_diff.py", self.blocks[2])
-
-    def test_chrome_given_in_the_environment_is_used(self):
-        stub = self.stub_chrome()
-        for shell in SHELLS:
-            with self.subTest(shell=shell):
-                found = self.run_block(shell, 0, {**os.environ, "CHROME": stub})
-                self.assertEqual(found.stdout.strip(), f"found={stub}", found.stderr)
-
-    def test_a_chromium_on_the_path_is_found(self):
-        bin_dir = os.path.join(self.tmp, "bin")
-        os.mkdir(bin_dir)
-        shutil.copy(self.stub_chrome(), os.path.join(bin_dir, "chromium"))
-        env = {k: v for k, v in os.environ.items() if k != "CHROME"}
-        for shell in SHELLS:
-            with self.subTest(shell=shell):
-                found = self.run_block(shell, 0, {**env, "PATH": bin_dir + os.pathsep + env["PATH"]})
-                path = found.stdout.strip().removeprefix("found=")
-                self.assertTrue(path and os.access(path, os.X_OK), found.stdout + found.stderr)  # or the installed app
-
-    def test_render_runs_headless_with_a_timeout_and_a_fresh_profile(self):
-        stub = self.stub_chrome()
-        for shell in SHELLS:
-            with self.subTest(shell=shell):
-                proc = self.run_block(shell, 1, {**os.environ, "CHROME": stub})
-                self.assertEqual(proc.returncode, 0, proc.stderr)
-                with open(os.path.join(self.tmp, "seo-work", "rendered-home.html"), encoding="utf-8") as fh:
-                    self.assertIn("<h1>stub</h1>", fh.read())
-                with open(stub + ".args", encoding="utf-8") as fh:
-                    args = fh.read().split("\n")[:-1]
-                self.assertEqual(args[-2:], ["--dump-dom", "https://example.com/"])
-                self.assertIn("--headless", args)
-                for flag in ("--virtual-time-budget", "--timeout"):  # settle scripts; cap real time
-                    self.assertTrue(any(re.fullmatch(flag + r"=\d+", arg) for arg in args), args)
-                profile = next(arg for arg in args if arg.startswith("--user-data-dir="))
-                self.assertTrue(os.path.exists(stub + ".profile"), "the profile didn't exist while Chrome ran")
-                self.assertFalse(os.path.exists(profile.split("=", 1)[1]), "the profile is left behind")
-                os.remove(stub + ".profile")
-
-    def test_a_page_that_never_settles_is_killed_at_the_cap(self):
-        stub = self.stub_chrome(body="exec sleep 30")
-        cap = "' 60 \"$CHROME\""
-        self.assertIn(cap, self.blocks[1], "the render block caps Chrome at 60 seconds of real time")
-        self.blocks = [self.blocks[0], self.blocks[1].replace(cap, "' 1 \"$CHROME\""), self.blocks[2]]
-        for shell in SHELLS:
-            with self.subTest(shell=shell):
-                started = time.monotonic()
-                proc = self.run_block(shell, 1, {**os.environ, "CHROME": stub})
-                self.assertLess(time.monotonic() - started, 15, "Chrome was not killed at the cap")
-                self.assertEqual(proc.returncode, 0, proc.stderr)
-                self.assertEqual(os.path.getsize(os.path.join(self.tmp, "seo-work", "rendered-home.html")), 0)
-
-    def test_the_find_and_render_blocks_run_in_one_bash_call(self):
-        step = self.read_step()
-        self.assertIn("one Bash call", step, "a variable set in one Bash call is gone in the next")
-        bin_dir = os.path.join(self.tmp, "bin")
-        os.mkdir(bin_dir)
-        shutil.copy(self.stub_chrome(), os.path.join(bin_dir, "chromium"))
-        env = {k: v for k, v in os.environ.items() if k != "CHROME"}
-        self.blocks = [self.blocks[0] + "\n" + self.blocks[1]]
-        proc = self.run_block(SHELLS[0], 0, {**env, "PATH": bin_dir + os.pathsep + env["PATH"]})
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        self.assertGreater(os.path.getsize(os.path.join(self.tmp, "seo-work", "rendered-home.html")), 0)
-
-    def test_no_chrome_skips_with_a_note_and_writes_nothing(self):
-        for shell in SHELLS:
-            with self.subTest(shell=shell):
-                proc = self.run_block(shell, 1, {**os.environ, "CHROME": ""})
-                self.assertEqual(proc.returncode, 0, proc.stderr)
-                self.assertIn("JavaScript rendering not checked", proc.stdout)
-                self.assertEqual(os.listdir(os.path.join(self.tmp, "seo-work")), [])
-
-    def test_installed_chrome_renders_javascript_for_render_diff(self):
-        env = {k: v for k, v in os.environ.items() if k != "CHROME"}
-        chrome = self.run_block(SHELLS[0], 0, env).stdout.strip().removeprefix("found=")
+    def test_installed_chrome_fallback_renders_javascript_for_render_diff(self):
+        import claude_seo
+        chrome = claude_seo.find_chrome({k: v for k, v in os.environ.items() if k != "CHROME"})
         if not chrome:
             self.skipTest("no Chrome or Chromium installed")
-        page = os.path.join(self.tmp, "page.html")
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp)
+        page, rendered = os.path.join(tmp, "page.html"), os.path.join(tmp, "rendered.html")
         with open(page, "w", encoding="utf-8") as fh:
             fh.write(JS_PAGE)
-        proc = self.run_block(SHELLS[0], 1, {**env, "CHROME": chrome}, url="file://" + page)
-        self.assertEqual(proc.returncode, 0, proc.stderr)
-        rendered = os.path.join(self.tmp, "seo-work", "rendered-home.html")
+        result = claude_seo.render_with_chrome(chrome, "file://" + page, rendered)
+        self.assertEqual(result.get("engine"), "chrome-headless", result)
         diff = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "render_diff.py"), "--raw", page,
                                "--rendered", rendered, "--base-url", "https://example.com/"],
                               capture_output=True, text=True, timeout=30)
@@ -539,7 +456,6 @@ class RenderStepTest(unittest.TestCase):
         report = json.loads(diff.stdout)
         self.assertEqual((report["rendered"]["title"], report["rendered"]["h1"]), ("Rendered title", ["Hello from JS"]))
         self.assertIn("title changes after JavaScript", report["warnings"])
-
 
 if __name__ == "__main__":
     unittest.main()

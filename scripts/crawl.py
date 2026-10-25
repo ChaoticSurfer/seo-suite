@@ -196,6 +196,22 @@ def site_findings(pages: dict[str, PageFacts], depth: dict[str, int], inlinks: d
     return out
 
 
+def summarize_page_issues(per_page: dict[str, list[Finding]]) -> tuple[list[dict], list[dict]]:
+    """(page_issue_summary, worst_pages) from each page's findings; triage.py widens priority by the page counts."""
+    counts = Counter(key for fs in per_page.values() for key in {(f.id, f.severity) for f in fs})  # pages, not findings
+    examples = defaultdict(list)
+    for url, fs in per_page.items():
+        for issue_id in {f.id for f in fs}:
+            if len(examples[issue_id]) < 3:
+                examples[issue_id].append(url)
+    page_issue_summary = sorted(
+        ({"id": i, "severity": s, "pages": n, "examples": examples[i]} for (i, s), n in counts.items()),
+        key=lambda row: (SEVERITY_ORDER[row["severity"]], -row["pages"]),
+    )
+    worst = sorted(per_page.items(), key=lambda kv: sorted(SEVERITY_ORDER[f.severity] for f in kv[1])[:3] or [9])[:10]
+    return page_issue_summary, [{"url": u, "top_issues": [f.id for f in sort_findings(fs)[:5]]} for u, fs in worst]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("start")
@@ -227,17 +243,7 @@ def main() -> int:
             sitemap_urls = [normalize_url(line.strip()) for line in fh if line.strip()]
 
     per_page: dict[str, list[Finding]] = {u: audit_page(f) for u, f in pages.items()}
-    counts = Counter(key for fs in per_page.values() for key in {(f.id, f.severity) for f in fs})  # pages, not findings
-    examples = defaultdict(list)
-    for url, fs in per_page.items():
-        for issue_id in {f.id for f in fs}:
-            if len(examples[issue_id]) < 3:
-                examples[issue_id].append(url)
-    page_issue_summary = sorted(
-        ({"id": i, "severity": s, "pages": n, "examples": examples[i]} for (i, s), n in counts.items()),
-        key=lambda row: (SEVERITY_ORDER[row["severity"]], -row["pages"]),
-    )
-    worst = sorted(per_page.items(), key=lambda kv: sorted(SEVERITY_ORDER[f.severity] for f in kv[1])[:3] or [9])[:10]
+    page_issue_summary, worst_pages = summarize_page_issues(per_page)
 
     if args.csv:
         with open(args.csv, "w", newline="", encoding="utf-8") as fh:
@@ -268,7 +274,7 @@ def main() -> int:
         "site_findings": sort_findings(site_findings(pages, depth, inlinks, blocked, sitemap_urls)
                                        + [f for f in [soft_404_probe(args.start)] if f]),
         "page_issue_summary": page_issue_summary,
-        "worst_pages": [{"url": u, "top_issues": [f.id for f in sort_findings(fs)[:5]]} for u, fs in worst],
+        "worst_pages": worst_pages,
         "csv": args.csv, "links_csv": args.links_csv,
     })
     return 0

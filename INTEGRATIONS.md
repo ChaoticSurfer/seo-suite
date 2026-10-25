@@ -7,10 +7,14 @@ planned. Checked 2026-10-24. Prices change often; [references/tools.md](referenc
 
 - **It works with no accounts and no keys.** The plugin's own scripts fetch web pages directly and use free Google
   and Bing endpoints. That is enough for a full technical audit.
+- **claude-seo is installed on first need** for JavaScript rendering, the Search Console API and technical drift.
+  `scripts/claude_seo.py` clones [AgriciDaniel/claude-seo](https://github.com/AgriciDaniel/claude-seo) into seo-suite's
+  data folder, pulls its latest main before every use (never pinned) and sets up its venv and Chromium (about 150 MB).
+  It needs git and Python 3.11–3.14, and it is not added as a second plugin.
 - **Paid SEO data** (Semrush, Ahrefs, DataForSEO) comes through optional connector plugins in this repo. Paid calls
   stay off until you set a budget.
-- **Your own Google and Bing data** comes from exports, Google's official GA4 server, or Claude working in the browser
-  while you are signed in.
+- **Your own Google and Bing data** comes from the Search Console API through claude-seo once you sign in, exports,
+  Google's official GA4 server, or Claude working in the browser while you are signed in.
 - **Some tools are advice only.** The docs say when they are worth paying for, but the plugin does not connect to
   them.
 
@@ -46,8 +50,9 @@ Every step after the first is optional. Stop once the free data answers your que
 1. **Nothing yet.** Install seo-suite ([README](README.md#install)) and ask in plain words, for example "audit
    example.com". The scripts need no accounts or keys.
 2. **Google Search Console.** Add the site, preferably as a Domain property, verify it
-   ([how](#verifying-you-own-the-site)), and submit the sitemap under *Indexing → Sitemaps*. Then either export the
-   *Performance* report each month, or let Claude open Search Console in the browser while you are signed in.
+   ([how](#verifying-you-own-the-site)), and submit the sitemap under *Indexing → Sitemaps*. Then sign in once for the
+   API ([how](#your-own-data-google-bing-and-your-business-accounts)), or export the *Performance* report each month,
+   or let Claude open Search Console in the browser while you are signed in.
 3. **Bing Webmaster Tools.** Import the site from Search Console, which also verifies it.
 4. **Ahrefs Free.** Verify the site. It gives the best free view of your own backlinks: the top 1,000 backlinks and
    keywords, plus a site audit.
@@ -88,6 +93,7 @@ with `claude`, `gcloud` or `npx` are run in your computer's terminal.
 | Level | Meaning |
 |---|---|
 | **Built in** | The plugin's own scripts call it. Nothing to set up |
+| **Through claude-seo** | `claude_seo.py` installs claude-seo on first use and runs its tool. Needs git and Python 3.11–3.14 |
 | **Connector** | Install a small add-on plugin from this repo and sign in to the vendor once. The credit guard limits its spending |
 | **Add it yourself** | No connector. You add the vendor's own MCP server. The credit guard recognises it and limits its spending |
 | **Your licence** | A licensed tool you add yourself. The credit guard recognises it but lets calls through, because there is no per-call charge |
@@ -102,6 +108,7 @@ starts with, and "paid" is the small and big lists that apply once paid tools ar
 | Tool | Level | Used for | What you do | Cost | Stack |
 |---|---|---|---|---|---|
 | Any website (yours or a competitor's) | Built in | Crawls, page audits, robots.txt, sitemaps, redirects, rendering checks, page comparisons | Nothing | Free | Main in every list |
+| claude-seo (AgriciDaniel) | Through claude-seo | The rendered DOM for `render_diff.py` (Playwright), Search Console Search Analytics, URL Inspection and sitemaps, and technical drift between crawls | Nothing: installed on first use. For Search Console, sign in once | Free | Main in every list |
 | Google PageSpeed Insights API | Built in | Lab speed audits and real-user Core Web Vitals | Nothing. Add a free key only if the shared quota runs out | Free | Main (paid lists); Cross-check in the default stack, lab against CrUX field |
 | Google, Bing and YouTube autocomplete | Built in | Keyword ideas | Nothing | Free. Unofficial public endpoints, rate-limited | Default: Cross-check (Google, Bing). Paid: Cross-check (Bing), Reserve (Google). YouTube: Reserve |
 | Your server's access logs | Built in | Which bots crawl what, fake Googlebots, sitemap URLs never crawled | Supply the log files | Free | Main in every list |
@@ -111,7 +118,7 @@ starts with, and "paid" is the small and big lists that apply once paid tools ar
 | Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly, Lumar | Add it yourself | Traffic estimates, rank tracking, volumes, question research, AI-answer tracking, crawling | Add the vendor's MCP server (named after the vendor), set `other_monthly_usd` | The vendor's own plan | SE Ranking Data API (to build): Main (small). In the big list it splits by market: Main for the GE pairs and the markets DataForSEO Labs lacks, and Cross-check in the markets Labs covers. Reserve (default). SE Ranking's other APIs and the other vendors: Reserve |
 | Screaming Frog | Your licence | Large crawls with JavaScript rendering | CLI for scheduled crawls, MCP in sessions you watch | £199/year. Free mode crawls 500 URLs and has no MCP | Big: Main (licensed CLI). Small and the default stack: Reserve |
 | Sitebulb | Your licence | Reading finished crawls (its MCP is read-only and can't start crawls) | Add its MCP server (OAuth) | A Sitebulb plan | Reserve |
-| Google Search Console | Your account | Clicks, queries, positions, indexing | Export Performance reports, or let Claude use Search Console in the browser | Free | The API (to build): Main (default, small, big); in the default Technical list, URL Inspection is a Cross-check against `crawl.py`. Bulk export to BigQuery: Main (default, big), Reserve (small). Search generative AI report, Links and Crawl Stats exports: Reserve, use when a person exports them |
+| Google Search Console | Your account | Clicks, queries, positions, indexing | Sign in once for the API (`claude_seo.py google-signin`), or export Performance reports, or let Claude use Search Console in the browser | Free | The API (through claude-seo): Main (default, small, big); in the default Technical list, URL Inspection is a Cross-check against `crawl.py`. Bulk export to BigQuery: Main (default, big), Reserve (small). Search generative AI report, Links and Crawl Stats exports: Reserve, use when a person exports them |
 | Google Analytics 4 | Your account | What organic visitors do and whether they convert | Sign in with `gcloud` and add Google's `analytics-mcp` server | Free | Main in every list. AI referrals: Main (default), Cross-check (small, big) |
 | Bing Webmaster Tools | Your account | Bing search data and your backlinks | Export reports | Free | The API (client to build): Main (default, small, big). Crawl methods: Cross-check (default, small, big). Positions: Cross-check (default), Main (small, big). Keyword API: Cross-check (default), Reserve (small, big). AI Performance export: Reserve, use when a person exports it |
 | Google Keyword Planner | Your account | Search volume ranges | Export the shortlist's volumes | Free with a Google Ads account | Reserve |
@@ -134,6 +141,7 @@ what it costs a month, what each cross-check compares, and the condition for eve
 - **Reserve:** a good tool that is not in the stack, brought in under a stated condition ("use when …").
 - **(to build):** the vendor's route is official and allowed for unattended runs, but seo-suite has no client for it
   yet, or the credit guard can't price it yet.
+- **(through claude-seo):** run by `scripts/claude_seo.py` with claude-seo's own tools, installed on first use.
 
 **Default: big website, free only.** Every run starts here, at every site size: the most thorough stack that costs
 $0. The page count sets only its depth: up to 2,000 URLs the run covers every URL, and above that it works in
@@ -145,7 +153,7 @@ quotas, billing-account notes and what free can't answer are in
 
 - **Keywords and competitors**
   1. Research store (`research_store.py`).
-  2. Search Console API (to build): measured demand per query, page and country.
+  2. Search Console API (through claude-seo): measured demand per query, page and country.
   3. Search Console bulk export to BigQuery: needs a Cloud project with billing, $0 within BigQuery's free tier.
   4. WebSearch samples (`seo-serp-researcher`): who wins each head term, and People Also Ask. At most 200 searches per
      session (per turn in `claude -p`); $0 on a Claude subscription.
@@ -165,19 +173,20 @@ quotas, billing-account notes and what free can't answer are in
   6. `schema_rules.py`: Google's rich-result rules.
   7. CrUX API and History API (to build): real-user Core Web Vitals.
   8. `render_diff.py`: what changes after JavaScript.
-  9. Chrome headless (`--dump-dom`): the rendered DOM in scheduled runs.
+  9. claude-seo's renderer (`claude_seo.py render`): the rendered DOM in scheduled runs; headless Chrome only when
+     claude-seo can't be set up.
   10. `log_analyze.py`: what bots actually fetch.
   11. Chrome DevTools MCP: traces behind a poor INP or LCP.
   12. IndexNow (to build): changed URLs to Bing, Yandex and others.
 - **Rank and AI answers**
-  1. Search Console API (to build): our own positions and clicks.
+  1. Search Console API (through claude-seo): our own positions and clicks.
   2. Search Console bulk export to BigQuery.
   3. SerpApi Free (to build: collector): 250 Google rank snapshots a month for the money tier, with AI Overview and
      AI Mode.
   4. GA4 AI-referral sessions: the free AI-answer signal.
   5. Google Search Status Dashboard feed: dates of Google updates.
 - **Measurement, local and indexing**
-  1. Search Console API (to build): Search Analytics, URL Inspection, sitemap submission.
+  1. Search Console API (through claude-seo): Search Analytics, URL Inspection, sitemap submission.
   2. Search Console bulk export to BigQuery.
   3. Google Analytics 4 (`analytics-mcp`).
   4. Bing Webmaster Tools API (to build).
@@ -187,8 +196,9 @@ quotas, billing-account notes and what free can't answer are in
   8. Google Search Status Dashboard feed (shared with Rank).
 - **Cross-checks:** Google suggestions against Search Console queries, Bing suggestions, the Bing keyword API (to
   build) and the Wayback Machine for keywords. Moz API Free and a live `page_audit.py` check for links. URL Inspection
-  (to build) against `crawl.py` and the sitemap, `psi.py` lab against CrUX field, and Bing crawl data (to build) for
-  technical. Bing Webmaster positions (to build) against Search Console for rank. Microsoft Clarity for measurement.
+  (through claude-seo) against `crawl.py` and the sitemap, technical drift (through claude-seo) against each URL's
+  baseline, `psi.py` lab against CrUX field, and Bing crawl data (to build) for technical. Bing Webmaster positions (to
+  build) against Search Console for rank. Microsoft Clarity for measurement.
 
 **Size.** Small is up to 2,000 indexable URLs: the sitemap total across every locale folder, subdomain and ccTLD. Big
 is more. Markets, competitors, keywords and locations multiply the costs but don't change the class.
@@ -197,7 +207,7 @@ is more. Markets, competitors, keywords and locations multiply the costs but don
 
 - **Keywords and competitors**
   1. Research store (`research_store.py`): reuse, gaps, a source and date for every value.
-  2. Search Console API (to build): measured demand per query, page and country.
+  2. Search Console API (through claude-seo): measured demand per query, page and country.
   3. DataForSEO Google Ads volumes: Google's numbers, exact for Georgia and its cities.
   4. DataForSEO SERP API: who wins each keyword, SERP features, People Also Ask.
   5. DataForSEO Google Autocomplete: keyword ideas through an official API.
@@ -212,24 +222,25 @@ is more. Markets, competitors, keywords and locations multiply the costs but don
   3. `robots_check.py`: robots.txt and the AI-bot matrix, also before deploy.
   4. `page_audit.py`: one URL per template, and the CI gate.
   5. `redirect_check.py`: redirect maps and shipped redirect fixes.
-  6. Search Console URL Inspection API (to build): Google's index verdict per URL.
+  6. Search Console URL Inspection API (through claude-seo): Google's index verdict per URL.
   7. `schema_rules.py`: Google's rich-result rules.
   8. `psi.py`: Lighthouse lab audits.
   9. CrUX API and History API (to build): real-user Core Web Vitals.
   10. `render_diff.py`: what changes after JavaScript.
-  11. Chrome headless (`--dump-dom`): the rendered DOM in scheduled runs.
+  11. claude-seo's renderer (`claude_seo.py render`): the rendered DOM in scheduled runs; headless Chrome only when
+      claude-seo can't be set up.
   12. `log_analyze.py`: what bots actually fetch.
   13. Chrome DevTools MCP: traces behind a poor INP or LCP.
   14. IndexNow (to build): changed URLs to Bing, Yandex and others.
 - **Rank and AI answers**
-  1. Search Console API (to build): our own positions and clicks.
+  1. Search Console API (through claude-seo): our own positions and clicks.
   2. DataForSEO Google organic SERP API: rank snapshots, competitors, AI Overview citations.
   3. `ai_probe` (to build): ChatGPT, Claude and Perplexity answers through their official APIs.
   4. DataForSEO Google AI Mode API: AI Mode answers and citations (no Georgian).
   5. Bing Webmaster Tools API (to build): Bing positions, all markets.
   6. Google Search Status Dashboard feed: dates of Google updates.
 - **Measurement, local and indexing**
-  1. Search Console API (to build): Search Analytics, URL Inspection, sitemap submission.
+  1. Search Console API (through claude-seo): Search Analytics, URL Inspection, sitemap submission.
   2. Google Analytics 4 (`analytics-mcp`): what organic visitors do and whether they convert.
   3. Bing Webmaster Tools API (to build): Bing's own data.
   4. IndexNow (to build): the run tells the engines itself.
@@ -239,16 +250,16 @@ is more. Markets, competitors, keywords and locations multiply the costs but don
   8. Google Search Status Dashboard feed (shared with Rank).
 - **Cross-checks:** DataForSEO Labs (markets it covers, not Georgia), Bing suggestions from `keyword_ideas.py`,
   competitor sitemaps (to build), WebSearch samples and the Wayback Machine for keywords. Moz API Free, Ahrefs
-  `domain-rating-free` (to build) and a live `page_audit.py` check for links. Bing crawl data (to build) and DataForSEO
-  On-Page for technical. SerpApi Free (to build: collector) and GA4 AI referrals for rank. Microsoft Clarity for
-  measurement.
+  `domain-rating-free` (to build) and a live `page_audit.py` check for links. Bing crawl data (to build), DataForSEO
+  On-Page and technical drift (through claude-seo) for technical. SerpApi Free (to build: collector) and GA4 AI
+  referrals for rank. Microsoft Clarity for measurement.
 
 **Big sites, paid.** Main costs about $140–200 a month, with Screaming Frog as the only licence. Main + Cross-check
 is about $400–710, with Ahrefs Standard as the one SEO subscription.
 
 - **Keywords and competitors**
   1. Research store.
-  2. Search Console API (to build).
+  2. Search Console API (through claude-seo).
   3. Search Console bulk export to BigQuery, read through Google's BigQuery MCP.
   4. DataForSEO Google Ads volumes.
   5. DataForSEO SERP API.
@@ -265,18 +276,18 @@ is about $400–710, with Ahrefs Standard as the one SEO subscription.
   3. `sitemap_check.py`.
   4. `robots_check.py`.
   5. `log_analyze.py`.
-  6. Search Console URL Inspection API (to build): changed URLs and samples.
+  6. Search Console URL Inspection API (through claude-seo): changed URLs and samples.
   7. CrUX API and History API (to build).
   8. `psi.py`.
   9. `page_audit.py`.
   10. `redirect_check.py`.
   11. `schema_rules.py`.
   12. `render_diff.py`.
-  13. Chrome headless (`--dump-dom`).
+  13. claude-seo's renderer (`claude_seo.py render`).
   14. Chrome DevTools MCP.
   15. IndexNow (to build).
 - **Rank and AI answers**
-  1. Search Console API (to build).
+  1. Search Console API (through claude-seo).
   2. Search Console bulk export to BigQuery.
   3. DataForSEO Google organic SERP API.
   4. `ai_probe` (to build).
@@ -284,7 +295,7 @@ is about $400–710, with Ahrefs Standard as the one SEO subscription.
   6. Bing Webmaster Tools API (to build).
   7. Google Search Status Dashboard feed.
 - **Measurement, local and indexing**
-  1. Search Console API (to build).
+  1. Search Console API (through claude-seo).
   2. Search Console bulk export to BigQuery.
   3. Google Analytics 4.
   4. Bing Webmaster Tools API (to build).
@@ -296,9 +307,9 @@ is about $400–710, with Ahrefs Standard as the one SEO subscription.
 - **Cross-checks:** Ahrefs API v3 through REST, to build (backlinks, Rank Tracker, Brand Radar with Claude, AI Overview
   and AI Mode data only, and keyword difficulty), SE Ranking in Labs markets, DataForSEO Clickstream, the CrUX
   popularity rank, Bing suggestions, competitor sitemaps, WebSearch samples and the Wayback Machine. Ahrefs
-  `domain-rating-free` (to build) and a live `page_audit.py` check for links. DataForSEO On-Page and Bing crawl data
-  for technical. DataForSEO Bing SERPs and GA4 AI referrals for rank. Local Falcon (local) and Microsoft Clarity for
-  measurement.
+  `domain-rating-free` (to build) and a live `page_audit.py` check for links. DataForSEO On-Page, Bing crawl data and
+  technical drift (through claude-seo) for technical. DataForSEO Bing SERPs and GA4 AI referrals for rank. Local
+  Falcon (local) and Microsoft Clarity for measurement.
 
 Semrush, Moz for big sites, SerpApi Free for big sites (use when there is no Ahrefs plan), Similarweb, AlsoAsked,
 Yext and the person-assisted exports (the Search generative AI report, the Links report and Bing's AI Performance
@@ -492,7 +503,7 @@ Details: [references/autonomy.md](references/autonomy.md).
 
 | Source | How seo-suite gets the data | Notes |
 |---|---|---|
-| **Google Search Console** | Your exports (Performance → Export), read by `gsc_analyze.py`. Or Claude works in Search Console itself in the built-in browser or Claude in Chrome, signed in as you. With the Ahrefs connector, its `gsc` tools also read Search Console data at 0 units (except `gsc-anonymous-queries`), in sessions you watch | Google publishes no Search Console MCP server. With access set up (OAuth, or a service account added as a property user), the Search Console API gives up to 25,000 rows per request and the URL Inspection API 2,000 checks a day per site. A community server can wrap them (see [free servers](#free-servers-you-can-add-yourself)). For big sites, have an owner turn on the bulk export to BigQuery early: it needs Google Cloud billing and has no row cap, but does not backfill. The Search generative AI report has no API, so it is exported in the browser. **Data warning:** a Google logging error made impressions, CTR and average position unreliable from 2025-05-13 to 2026-04-27 (clicks were not affected), so don't compare those metrics across that window ([Google's notice](https://support.google.com/webmasters/answer/6211453)) |
+| **Google Search Console** | The Search Console API through claude-seo once you sign in: `claude_seo.py gsc-export` writes the same CSV an export gives, `claude_seo.py run gsc_inspect.py` checks URLs, and at autonomy level 4 `claude_seo.py submit-sitemap` submits a sitemap. Sign in once in a terminal: `python3 <plugin-dir>/scripts/claude_seo.py google-signin --client-secret client_secret.json`, with an OAuth client (type Desktop app) from a Google Cloud project with the Search Console API enabled. It asks only for `webmasters.readonly`; add `--sitemap-write` for `webmasters`, which level 4 needs. A service account an owner adds as a property user works too (`GOOGLE_APPLICATION_CREDENTIALS`). Without a sign-in: your exports (Performance → Export), read by `gsc_analyze.py`. Or Claude works in Search Console itself in the built-in browser or Claude in Chrome, signed in as you. With the Ahrefs connector, its `gsc` tools also read Search Console data at 0 units (except `gsc-anonymous-queries`), in sessions you watch | Google publishes no Search Console MCP server. With access set up (OAuth, or a service account added as a property user), the Search Console API gives up to 25,000 rows per request and the URL Inspection API 2,000 checks a day per site. An OAuth app left in *Testing* status gets refresh tokens that expire after 7 days, which breaks scheduled runs: publish the app, or use a service account. For big sites, have an owner turn on the bulk export to BigQuery early: it needs Google Cloud billing and has no row cap, but does not backfill. The Search generative AI report has no API, so it is exported in the browser. **Data warning:** a Google logging error made impressions, CTR and average position unreliable from 2025-05-13 to 2026-04-27 (clicks were not affected), so don't compare those metrics across that window ([Google's notice](https://support.google.com/webmasters/answer/6211453)) |
 | **Google Analytics 4** | Google's official `analytics-mcp` server, which you add yourself after signing in with `gcloud` | Read-only unless started with `--allow-write`. The plugin never adds that flag |
 | **Bing Webmaster Tools** | Performance exports, which `gsc_analyze.py` reads by matching Bing's column names to Search Console's. Or Bing's API, with a key from Settings → API Access, through a community MCP server you choose to trust | The plugin has no built-in Bing API client. Bing powers Copilot, so its data matters for AI search too |
 | **Google Keyword Planner** | Your export (a UTF-16 CSV), read by `research_store.py ingest volumes`, which keeps ranges such as "1K – 10K" as written | Ranges unless the Ads account spends. The same command reads Semrush, Ahrefs and DataForSEO volume exports. Google's official Google Ads MCP has no Keyword Planner |
@@ -531,7 +542,7 @@ decide.
 | Microsoft Clarity MCP (official) | Your Clarity project's data | The project admin creates the token. 10 requests per project per day, covering the last 1–3 days, so run it as one fixed daily job | Cross-check in every list |
 | Google Ads MCP (official) | Read-only Google Ads data | It has no Keyword Planner | Reserve: use when the site runs Google Ads |
 | Bing Webmaster Tools, community (`zizzfizzix/mcp-server-bwt`) | Bing query and page stats | Uses your Bing API key. Third-party code | Reserve: use until the plugin's Bing client exists |
-| Search Console, community (`AminForou/mcp-gsc`) | The Search Console API | OAuth or a service account. Third-party code holding your Search Console access: audit it and pin a version. Destructive tools are off by default | Reserve: use until the plugin's Search Console fetcher exists |
+| Search Console, community (`AminForou/mcp-gsc`) | The Search Console API | OAuth or a service account. Third-party code holding your Search Console access: audit it and pin a version. Destructive tools are off by default | Reserve: use when claude-seo can't be set up on the machine (no git, or no Python 3.11–3.14) |
 
 ## Public web sources
 
@@ -594,10 +605,10 @@ their cross-checks. Ranks are in the [Main stack](#main-stack); every Reserve co
 | Question | Free source | Paid, when free isn't enough |
 |---|---|---|
 | Broken pages, redirects, titles, canonicals, duplicates | `crawl.py` (per section above 2,000 URLs), `sitemap_check.py`, `page_audit.py`, `redirect_check.py` | Big sites: Screaming Frog (licensed CLI). Cross-check: DataForSEO On-Page, a second crawl from other IPs |
-| Is content there only after JavaScript runs? | `render_diff.py`, with the DOM from Chrome headless | Big sites: Screaming Frog renders whole sections. Cross-check: DataForSEO On-Page with JavaScript or browser rendering |
+| Is content there only after JavaScript runs? | `render_diff.py`, with the DOM from claude-seo's renderer (`claude_seo.py render`) | Big sites: Screaming Frog renders whole sections. Cross-check: DataForSEO On-Page with JavaScript or browser rendering |
 | Speed and Core Web Vitals, yours or a competitor's | CrUX API and History API (to build) for field data, and Chrome DevTools MCP traces. Cross-check: `psi.py` lab audits | — (the paid lists use the same free tools, with `psi.py` as Main) |
 | Structured data | `page_audit.py` and `schema_rules.py`. The Rich Results Test by hand is Reserve | Big sites: Screaming Frog's structured-data validation. Cross-check: DataForSEO On-Page microdata errors |
-| Your own queries, clicks and positions | Search Console API (to build; 16 months of data) and the bulk export to BigQuery (needs Cloud billing). Until the fetcher exists: exports → `gsc_analyze.py` | — |
+| Your own queries, clicks and positions | Search Console API through claude-seo (`claude_seo.py gsc-export`, 16 months of data) and the bulk export to BigQuery (needs Cloud billing). Without a sign-in: exports → `gsc_analyze.py` | — |
 | How bots crawl your site | `log_analyze.py` on your access logs. Cross-check: Bing Webmaster crawl data (to build) | — |
 | Keyword ideas | Search Console queries and WebSearch samples (People Also Ask). Cross-check: `keyword_ideas.py` Google and Bing suggestions (no volumes) | DataForSEO Google Autocomplete. Cross-check: Bing suggestions |
 | Search volume and difficulty | Search Console impressions (measured demand, not volumes). Cross-check: Bing keyword API counts (to build) | DataForSEO Google Ads volumes; difficulty from SE Ranking (to build) and, outside Georgia, DataForSEO Labs (Main on big sites, a cross-check on small). Big cross-checks: Ahrefs Standard and DataForSEO Clickstream |
@@ -628,7 +639,7 @@ Why each paid tool is worth it, and how to spend less: [references/tools.md](ref
 | DataForSEO | API login and API password from the dashboard. The API password is not your dashboard password | `/plugin configure seo-suite-dataforseo@seo-suite` (system keychain). Never pass them on the command line |
 | GA4 | Application Default Credentials from `gcloud auth application-default login` with the `analytics.readonly` and `cloud-platform` scopes, or by impersonating a service account | `GOOGLE_APPLICATION_CREDENTIALS` and `GOOGLE_PROJECT_ID` in the `claude mcp add analytics-mcp` command |
 | Bing Webmaster Tools | Settings → API Access in Bing Webmaster Tools | No seo-suite option uses it. A community Bing MCP server can |
-| Search Console | None by default: exports or the browser | A community MCP needs OAuth, or a service account that an owner adds as a property user |
+| Search Console | An OAuth client (Desktop app) from your Google Cloud project, for `claude_seo.py google-signin`; or a service account that an owner adds as a property user | claude-seo keeps the token in `~/.config/claude-seo/oauth-token.json` (owner-only permissions) and the client's path in `~/.config/claude-seo/google-api.json`. A service account goes in `GOOGLE_APPLICATION_CREDENTIALS` |
 | IndexNow | A key you make up: 8–128 letters, digits or dashes | A text file `{key}.txt` at the site root |
 | Ahrefs Free | None | It has no API or MCP. Use it in its own interface |
 
@@ -642,6 +653,7 @@ Why each paid tool is worth it, and how to spend less: [references/tools.md](ref
 | Your DNS resolver | IP addresses of hits claiming to be Googlebot or Bingbot | `log_analyze.py --verify-dns` only |
 | Semrush, Ahrefs, DataForSEO and other vendors you connect | The query Claude sends: domains, URLs or keywords | Paid calls, only within your budgets |
 | Google (GA4, Search Console) and other accounts you connect | Requests made with your sign-in | Only when you have connected them |
+| GitHub, PyPI and Playwright's download host | The git clone and pull of claude-seo, its Python packages and Chromium. Nothing about your sites | The first time `claude_seo.py` runs, a pull before every use, and a new setup when claude-seo's requirements change |
 | Anthropic | Everything Claude reads or writes in the session, as for any Claude Code use | Always |
 
 The credit guard's ledger and cache, the research store and the work log are local files. The research store goes
@@ -653,10 +665,13 @@ further only if you commit it to a repo.
 - **Balances, free:** Ahrefs `subscription-info` (0 units), DataForSEO `appendix/user_data`, and Semrush
   `countapiunits` (API-key route only).
 - **Credit guard:** `/hooks` shows it on PreToolUse, PostToolUse, PostToolUseFailure and PostToolBatch, plus the
-  SessionStart hook for the PageSpeed key.
+  SessionStart hook for the PageSpeed key, and the schema check on PostToolUse Edit|Write.
+- **claude-seo:** `python3 <plugin-dir>/scripts/claude_seo.py ensure --browser` installs or updates it and prints the
+  commit and whether Chromium is ready. It fails with the reason when git, Python 3.11–3.14 or the network is missing.
 - **Cache:** repeat one paid call. The second answer comes from the cache and costs nothing.
-- **Before scheduling:** finish every sign-in with `/mcp` or `claude mcp login <name>`, because a `claude -p` run
-  cannot do OAuth.
+- **Before scheduling:** finish every sign-in with `/mcp` or `claude mcp login <name>`, and the Search Console sign-in
+  with `claude_seo.py google-signin`, because a `claude -p` run cannot do OAuth. Run `claude_seo.py ensure --browser`
+  once too, so the first scheduled run doesn't spend minutes on claude-seo's setup.
 
 ## Advice only: not connected
 
@@ -687,8 +702,9 @@ The Stack column gives each one's label in the [Main stack](#main-stack); every 
 The order, and which categories each item unblocks, is the [build order](references/tools.md#build-order) in
 references/tools.md. This list follows it:
 
-1. A read-only **Search Console API fetcher** (`webmasters.readonly` scope) for Search Analytics, URL Inspection and
-   Sitemaps. It writes the same CSVs `gsc_analyze.py` reads, so mid-size sites aren't limited by the 1,000-row export.
+1. Done: the **Search Console API** runs through claude-seo (`claude_seo.py gsc-export`, `run gsc_inspect.py`,
+   `submit-sitemap`), with `webmasters.readonly` by default. It writes the same CSVs `gsc_analyze.py` reads, so
+   mid-size sites aren't limited by the 1,000-row export.
 2. A **Bing Webmaster Tools API client** for the query, page, link, crawl and keyword methods.
 3. **Credit guard changes:** an SE Ranking price table and a budget per vendor, row limits per endpoint, and the
    missing price rows (AI Mode, Maps, Clickstream and others).
@@ -721,13 +737,18 @@ Also planned, outside the build order:
 geo-seo-claude, seomachine and the older seo-skills), keeping only ideas with evidence behind them. The review's
 Search Console fetcher, IndexNow submitter and CrUX history are now items 1, 4 and 6 above.
 
-- A **crawl diff** between runs, which the weekly technical monitor needs.
+- Done: a **crawl diff** between runs, which the weekly technical monitor needs, is `claude_seo.py drift` (claude-seo's
+  drift rules, one snapshot per crawl run).
 
 ## How it works inside Claude Code
 
 - **Hooks.** The plugin uses five hook events:
-  - SessionStart exports `psi_api_key` as `PSI_API_KEY`.
+  - SessionStart exports `psi_api_key` as `PSI_API_KEY`, and the plugin's data folder as `SEO_SUITE_DATA`, where
+    `claude_seo.py` keeps claude-seo.
   - PreToolUse, PostToolUse and PostToolUseFailure run the credit guard on the recognised vendors' MCP calls.
+  - PostToolUse on Edit and Write also runs `schema_hook.py`: JSON-LD that doesn't parse, a leftover placeholder or an
+    object without `@type` comes back to Claude as an error to fix; missing rich-result fields come back as advice.
+    Other files are skipped at once.
   - PostToolBatch runs after every batch of tool calls and stops the run when a batch pushed a vendor past its monthly
     budget or per-run cap.
 - **Plugin options.** These hold the autonomy level, budgets and keys. Sensitive values are kept in the system

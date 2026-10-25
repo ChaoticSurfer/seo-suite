@@ -27,7 +27,7 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 | Input | Decide from | Default when evidence is thin |
 |---|---|---|
 | Affected URLs or URL patterns | The URLs given; otherwise the crawl's non-200, noindex, canonical and robots-blocked findings | Home plus one URL per template |
-| Search Console "Pages" report reason (e.g. "Crawled – currently not indexed") | Search Console, when access is configured | `[needs data]`. Access: ask — batched at the end |
+| Search Console "Pages" report reason (e.g. "Crawled – currently not indexed") | URL Inspection through `claude_seo.py` (step 1) when a Search Console sign-in exists; else Search Console in the browser while the user is signed in | `[needs data]`. Access: ask — batched at the end |
 | Repo, framework and version | `package.json`, `composer.json`, `requirements.txt` and `Gemfile` in this workspace | No repo: no codebase mode. Repo access: ask — batched at the end |
 | Hosting and CDN (Cloudflare, Vercel, Netlify, nginx): decides where headers, redirects and bot rules live | `facts.response_headers` from `page_audit.py --facts`; config files in the repo | Unknown: give each fix as the header, redirect or bot rule it needs, not a host-specific file |
 | Access logs (the last 7–30 days), a `PSI_API_KEY`, the Search Console Crawl Stats export | What's configured or already in the workspace | Run without them. Ask — batched at the end, naming what each adds |
@@ -51,6 +51,11 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
    python3 "$S/robots_check.py" https://example.com --path / --path /affected/path --path "/search?q=x" > seo-work/technical/robots.json
    python3 "$S/page_audit.py" https://example.com/affected/path --facts > seo-work/technical/page.json
    ```
+   With a Search Console sign-in (the user runs `claude_seo.py google-signin` once; see INTEGRATIONS.md), add Google's own verdict for each affected URL, at most 2,000 a day per property:
+   ```bash
+   python3 "$S/claude_seo.py" run gsc_inspect.py https://example.com/affected/path --site-url sc-domain:example.com --json > seo-work/technical/inspect.json
+   ```
+   Always name the property: claude-seo's default property can belong to another site. For many URLs, pass `--batch urls.txt` instead of the URL.
    Read the robots verdict for Googlebot, the meta robots and `X-Robots-Tag`, the canonical, the status code and the redirect chain. Keep `--path /`: the site-wide Googlebot and answer-engine block findings are only raised for `/`. To test a draft robots.txt before deploying it, use `robots_check.py --file draft-robots.txt --path / --path …`.
 2. **Sitemaps:**
    ```bash
@@ -61,8 +66,17 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
    python3 "$S/crawl.py" https://example.com --max-pages 500 --sitemap-urls seo-work/technical/sitemap-urls.txt --csv seo-work/technical/pages.csv > seo-work/technical/crawl.json
    ```
    This finds broken links, redirects, duplicates, depth, orphans, canonical targets, the soft-404 probe and URLs blocked by robots.txt.
+   On a site you monitor (scheduled runs, re-checks after a deploy), compare this crawl with each URL's baseline. It keeps one snapshot per crawl run, with claude-seo's 17 drift rules (schema, canonical, noindex, H1, title, status, Open Graph and more) on the raw HTML:
+   ```bash
+   python3 "$S/claude_seo.py" drift --crawl-csv seo-work/technical/pages.csv > seo-work/technical/drift.json
+   ```
+   URLs without a baseline get one, so the first run only records. Findings are `technical-drift-critical`, `-warning` and `-info`, which step 7 triages. After verified fixes, or once a change was intended, run it again with `--rebaseline`.
 4. **Rendering:**
-   1. Render the page with headless Chrome: run `seo-audit` step 5's find and render commands in one Bash call, saving to `seo-work/technical/rendered.html`. They run unattended, so scheduled runs check rendering too. With no Chrome or Chromium installed, load the page in the built-in browser and save `document.documentElement.outerHTML` to that file. With neither, say rendering wasn't checked.
+   1. Render the page with claude-seo's Playwright renderer, as in `seo-audit` step 5. It runs unattended, so scheduled runs check rendering too, and it falls back to headless Chrome only when claude-seo can't be set up:
+      ```bash
+      python3 "$S/claude_seo.py" render https://example.com/affected/path -o seo-work/technical/rendered.html > seo-work/technical/rendered.json
+      ```
+      On exit 1, load the page in the built-in browser and save `document.documentElement.outerHTML` to that file. Without the built-in browser, say rendering wasn't checked, with the `error`.
    2. Run `render_diff.py URL --rendered seo-work/technical/rendered.html > seo-work/technical/render.json`.
    3. If the title, canonical or robots tags change after JS, or the content and links only appear after JS, the page needs SSR/SSG or pre-rendering (§1).
 5. **Performance:** run `psi.py URL --strategy mobile > seo-work/technical/psi-<template>-mobile.json` per template, then the same with `desktop`.
@@ -87,6 +101,10 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
 9. **CI mode.** Add a job that audits the preview's HTML as a file, with the production URL as the base:
    ```bash
    curl -sf "$PREVIEW_URL/<path>" -o page.html && python3 scripts/page_audit.py --file page.html --base-url "https://<production-host>/<path>" --fail-on high
+   ```
+   For a static build (Astro, Hugo, Eleventy, Next.js export, Vite, plain HTML), audit every built page after the build step instead of one URL per template. `build_audit.py` detects the stack, finds the build folder and exits 1 on any high or critical finding:
+   ```bash
+   python3 scripts/build_audit.py . --base-url "https://<production-host>" --fail-on high
    ```
    If the preview is protected, add `-H "x-vercel-protection-bypass: $BYPASS_SECRET"` to the curl call, with the project's Protection Bypass for Automation secret stored as a CI secret. A live audit of a preview always fails: preview deployments (Vercel, Netlify) send `X-Robots-Tag: noindex`, and preview builds keep the production canonical (`noindex` / `canonical-elsewhere`). File mode skips header checks (X-Robots-Tag, HSTS, compression), so check those with a live `page_audit.py` run against production. Run it per key template. It exits 1 on any high or critical finding. Copy the scripts into the repo or pin the plugin path. Pair it with a robots.txt test. `robots_check.py` has no `--fail-on` and exits 0 even on a critical finding, so fail the job on its findings:
    ```bash
@@ -180,6 +198,9 @@ Read the existing files first and match their style. Show a diff, and write it p
 - **SvelteKit:** `<svelte:head>`, `+page.server.ts` with `error(404)`, `prerender = true` where possible.
 - **Remix / React Router:** the `meta` export plus a `links` export for the canonical. Loaders `throw new Response(null, {status: 404})`.
 - **Gatsby:** the Head API, `gatsby-plugin-sitemap`, a canonical plugin.
+- **Hugo:** the `<head>` is in `layouts/_default/baseof.html` or `layouts/partials/head.html`. Override a theme's template by copying it into the site's own `layouts/`, never by editing `themes/`. `baseURL` in `hugo.toml` builds every canonical. The sitemap is built in; robots.txt needs `enableRobotsTXT = true` and `layouts/robots.txt`. Pages with `draft: true` are never built.
+- **Eleventy:** the base layout in `_includes/` (e.g. `_includes/base.njk`) prints the title, meta description and canonical from each page's front matter. Keep the site URL in a global data file such as `_data/site.json`. There is no built-in sitemap: add a `sitemap.njk` template with `permalink: /sitemap.xml`. Copy robots.txt with `addPassthroughCopy`.
+- **Any static build:** `build_audit.py` (CI mode) names the stack, the build folder and the build command, and audits every built page before deploy.
 - **Plain React SPA (CRA/Vite):** the biggest risk. Recommend SSR/SSG (Next/Astro/vite-ssg) or pre-rendering. Until then, at minimum serve real 404s and put the title and meta in the HTML.
 - **WordPress (Yoast / Rank Math):**
   - Settings → Reading "Discourage search engines" must be off.
@@ -201,11 +222,11 @@ Read the existing files first and match their style. Show a diff, and write it p
 
 - **Free path:**
   - Bundled scripts.
-  - Search Console: Pages/indexing report, URL Inspection (2,000/day per site via the API), Crawl Stats.
+  - Search Console: Pages/indexing report, URL Inspection (2,000/day per site through `claude_seo.py` once the user has signed in), Crawl Stats.
   - Bing Webmaster Tools.
   - PSI/CrUX (free key).
   - Server logs.
-  - Headless Chrome for rendering (the built-in browser when Chrome isn't installed), and the built-in browser for DevTools performance traces.
+  - claude-seo's Playwright renderer and drift rules through `claude_seo.py`, installed on first use (headless Chrome renders when claude-seo can't be set up), and the built-in browser for DevTools performance traces.
 - **Screaming Frog** adds JS-rendered crawling at scale, crawl comparison, custom extraction (e.g. find every page missing a component), and its log file analyser. Justified for big or JS-heavy sites and recurring scheduled crawls (tools.md `## Screaming Frog`).
 - **Sitebulb / Lumar / Botify** add enterprise crawl scheduling and log pipelines. Only justified for very large sites (tools.md `## Other paid tools`).
 - **Semrush / Ahrefs site audits** duplicate the free crawler here. Use them only if the user already pays and wants the dashboards. Their unique value is off-site data, which this skill doesn't need.
@@ -226,7 +247,7 @@ Read the existing files first and match their style. Show a diff, and write it p
 
 ## Pitfalls & myths
 
-- **"Submit to Google" doesn't make a page indexed.** The fix is quality, internal links and the right status codes. Indexing API use is only for JobPosting and livestream pages (§11).
+- **"Submit to Google" doesn't make a page indexed.** The fix is quality, internal links and the right status codes. Indexing API use is only for JobPosting and livestream pages (§11), so seo-suite never calls it.
 - **Blocking a URL in robots.txt to remove it from the index backfires**; the URL stays indexed without content.
 - **canonical is a hint.** Google may pick another canonical when the signals conflict (duplicates, internal links, sitemap).
 - **Dynamic rendering** is a workaround, not a strategy; prefer SSR/SSG.

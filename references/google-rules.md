@@ -1,11 +1,11 @@
-# Verified search rules (checked 2026-10-24)
+# Verified search rules
 
 Primary sources: Google Search Central (developers.google.com/search, /crawling), web.dev, Bing Webmaster blog and guidelines,
 vendor bot docs. "upd" = the page's own last-updated stamp at check time. Items in §12 are NOT verified —
-do not state them as fact. Re-verify anything older than ~6 months before relying on it for a client.
+do not state them as fact. Each section heading ends with the date it was last checked against its sources;
+`tests/test_docs.py` fails once one is older than about 6 months, so re-check that section and update its date.
 
-## 1. Crawling & indexing
-
+## 1. Crawling & indexing (checked 2026-10-24)
 **Baseline (only 3 requirements):** Googlebot not blocked · page returns HTTP 200 · indexable content.
 Eligibility ≠ guaranteed indexing. (essentials/technical, upd 2025-12-18)
 
@@ -64,8 +64,7 @@ Submit in Search Console or via robots.txt `Sitemap:` — a hint only.
 **IndexNow:** GET `/indexnow?url=&key=` or POST ≤10,000 URLs; key file `/{key}.txt`. Bing, Yandex, Seznam, Naver,
 Yep, Internet Archive, Amazonbot. **Google does not participate.**
 
-## 2. Page experience
-
+## 2. Page experience (checked 2026-10-24)
 | Metric (p75, field, per device) | Good | Needs improvement | Poor |
 |---|---|---|---|
 | LCP | ≤2.5 s | ≤4.0 s | >4.0 s |
@@ -80,8 +79,7 @@ Yep, Internet Archive, Amazonbot. **Google does not participate.**
   meta, robots, alt text. Don't lazy-load primary content on interaction.
 - Interstitials: no full-page overlays hiding content; legal gates as overlays; verified Googlebot past age gates.
 
-## 3. On-page
-
+## 3. On-page (checked 2026-10-24)
 - **Title links** come from `<title>`, main heading/h1, og:title, prominent text, anchors, WebSite data.
   **No character limit** — truncated to device width. Unique, descriptive, brand at start or end with a delimiter,
   one dominant h1, same language as page. Rewrite triggers: half-empty, stale dates, boilerplate, duplicated site name.
@@ -96,8 +94,7 @@ Yep, Internet Archive, Amazonbot. **Google does not participate.**
 - **URLs:** hyphens not underscores; readable words; percent-encode; one case; no session IDs or `#` content;
   avoid parameter/filter explosions and infinite calendars.
 
-## 4. Content & spam
-
+## 4. Content & spam (checked 2026-10-24)
 - **Helpful content** (upd 2026-10-05): original info/analysis, complete coverage, worth bookmarking/citing,
   visible author expertise, no easily checked errors. Red flags: mass topics, summarising others with no added value,
   trend chasing, fake freshness (date changes), targeting word counts — **no preferred length**.
@@ -120,8 +117,7 @@ Yep, Internet Archive, Amazonbot. **Google does not participate.**
   2026-08-28 such pages are ranked separately** rather than manual actions), legal/personal-info removals,
   policy circumvention, scam & fraud. Attempts to manipulate generative AI responses are covered (2026-05-15).
 
-## 5. Structured data
-
+## 5. Structured data (checked 2026-10-24)
 **Search Gallery (upd 2026-10-16), 25 features:** Article, Breadcrumb (desktop), Carousel, Course list, Dataset,
 Discussion forum, Education Q&A, Employer aggregate rating, Event, Image metadata, Job posting, Local business,
 Math solver, Movie, Organization, Product (snippets, merchant listings, variants, shipping/returns, loyalty),
@@ -151,8 +147,7 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
 - Recipe: R name, image. SoftwareApplication: R name, offers.price, aggregateRating|review.
 - ProfilePage: R mainEntity with name. DiscussionForumPosting: R author.name, datePublished, text|image|video.
 
-## 6. International
-
+## 6. International (checked 2026-10-24)
 - hreflang via HTML, HTTP header or sitemap (equivalent). **Bidirectional or ignored.** Self-reference included.
 - Codes: ISO 639-1 language (+ ISO 15924 script) + optional ISO 3166-1 region. **`UK`, `EU`, `UN` invalid → en-GB.**
   Region alone invalid. `x-default` for unmatched users.
@@ -165,16 +160,14 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
 - Geo signals: ccTLD, hreflang, local address/phone/currency, links, GBP. Prefer ccTLD/subdomain/subfolder over params.
 - Googlebot crawls mostly from US IPs with **no Accept-Language** → use separate locale URLs, not locale-adaptive serving.
 
-## 7. Local
-
+## 7. Local (checked 2026-10-24)
 - Local ranking = **relevance, distance, prominence**; you can't pay for local rank.
 - GBP: in-person contact required; virtual offices ineligible; real-world name only (no keywords/taglines);
   exact address, no PO boxes; service-area businesses hide address; local controlled phone, no redirects;
   fewest most-specific categories; accurate regular and special hours.
 - NAP consistency across the web is an industry convention, not a stated Google rule.
 
-## 8. Video, Discover, News, e-commerce
-
+## 8. Video, Discover, News, e-commerce (checked 2026-10-24)
 - **Video:** must be on a watch page whose main purpose is that video; thumbnail ≥60×30; not hidden behind interaction.
 - **Discover:** no markup needed; images ≥1200 px wide (>300k px, 16:9) + `max-image-preview:large`; avoid clickbait.
 - **News:** no application; automatic; stable section URLs.
@@ -182,8 +175,7 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
   if crawled: `&` separator, consistent order, **404 for empty/nonsense combinations**.
 - **Pagination:** unique `?page=n` URLs linked with `<a href>`; **don't canonicalize to page 1**; `rel=next/prev` unused.
 
-## 9. Site moves
-
+## 9. Site moves (checked 2026-10-24)
 - Verify all variants of old and new; copy disavow; check manual actions; map every URL (sitemaps, logs, analytics,
   links report, CMS, images/CSS/JS).
 - Server-side **301/308**, one hop; never mass-redirect to home; **keep redirects ≥1 year**.
@@ -195,8 +187,7 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
 - **Change of Address tool**: domain/subdomain changes only (not http→https, paths, www, CDN); same owner;
   homepage 301 in place; forwards signals **180 days**; keep old domain ≥1 year.
 
-## 10. AI search
-
+## 10. AI search (checked 2026-10-24)
 - **AI Overviews / AI Mode eligibility = indexed + snippet-eligible.** No special schema, no "AI files" needed.
   Controls: nosnippet, data-nosnippet, max-snippet, noindex. Traffic counts inside Search Console "Web".
 - Search Console → Settings → **Search generative AI**: site-wide opt-out of AI Overviews/AI Mode/Discover gen-AI
@@ -214,8 +205,7 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
   GEO paper (KDD 2024): citations, quotations and statistics raised visibility up to ~40% on its benchmark.
 - Practical: be indexed in Bing; allow search bots separately from training bots.
 
-## 11. Free official data sources
-
+## 11. Free official data sources (checked 2026-10-24)
 - **Search Console API:** ≤25,000 rows/request, ~50k rows/day/search type (top rows), 2–3 day delay, **16 months**
   retention; 1,200 QPM per site/user. URL Inspection API: **2,000/day, 600/min per site**.
 - **PageSpeed Insights v5:** key optional (keyless shares a small quota — create a free key). Returns CrUX + Lighthouse.
@@ -226,8 +216,7 @@ ClaimReview, Book actions (2025) · Practice problems (2026-01-06). Dataset → 
 - **GSC vs GA4** (upd 2026-01-07): totals won't match (attribution, canonical URLs, consent, missing tags, non-HTML
   files, PT time zone, bots); the general trends should be similar.
 
-## 12. Not verified — do not hard-code
-
+## 12. Not verified — do not hard-code (checked 2026-10-24)
 PSI quota numbers · sitemap ping deprecation date · mobile-first "after 2024-07-05" cutoff · FAQ removal from
 GSC report/RRT/API · BWT AI Performance details · Bing guideline specifics, except those §1 and §10 state (e.g.
 Copilot's NOARCHIVE/NOCACHE handling) · dynamic rendering wording · Indexing API quotas · CrUX eligibility thresholds ·

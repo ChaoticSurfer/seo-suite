@@ -95,29 +95,19 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    python3 "$S/psi.py" URL --strategy mobile > seo-work/psi-<template>.json
    ```
    **PSI quota:** if PSI returns 429, continue without it and add a free key (how to get one is in the `hint` field) to the access requests batched at the end. Field data is `field_url` / `field_origin`; `null` means CrUX has too little traffic, so fall back to lab data.
-5. **JavaScript sites.** This step applies if a page has `likely-client-rendered`, an SPA framework, or very few links. Headless Chrome renders each such template URL without a person, so scheduled `claude -p` runs check rendering too, once the run's `--allowedTools` allows these commands: `seo-automation`'s launchd recipe allows only `Bash(python3 *)` in Bash, and `--permission-mode dontAsk` denies the rest. A denied render counts as no Chrome found (profiles.md `js-render`).
-   1. Find Chrome or Chromium: the macOS apps, then the Linux binaries on `PATH`. Set `CHROME` to use another binary. Run this block and the render block below in one Bash call: `CHROME` is a shell variable, and the next call starts a new shell without it.
+5. **JavaScript sites.** This step applies if a page has `likely-client-rendered`, an SPA framework, or very few links. `claude_seo.py` renders each such template URL with claude-seo's Playwright renderer (`render_page.py --mode always`), without a person. It is one `python3` command, so scheduled `claude -p` runs render too: `seo-automation`'s launchd recipe allows only `Bash(python3 *)`. The first render installs claude-seo into seo-suite's data folder (a git clone of its main branch, a venv and Chromium, about 150 MB, a few minutes); every later one pulls main first.
+   1. Render the URL:
       ```bash
-      CHROME="$(for c in "${CHROME:-}" "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" "/Applications/Chromium.app/Contents/MacOS/Chromium" google-chrome google-chrome-stable chromium chromium-browser; do [ -n "$c" ] && command -v "$c" && break; done)"
+      python3 "$S/claude_seo.py" render URL -o seo-work/rendered-<template>.html > seo-work/rendered-<template>.json
       ```
-   2. Render the URL. Chrome gets a fresh temporary profile (no cookies, no sign-ins) and keeps its default User-Agent: a Googlebot one from a non-Google IP looks spoofed. Scripts, timers and data fetches get 10 seconds of page time to settle (without that, `--dump-dom` prints the DOM at the load event, before most single-page apps fetch their content). After 30 seconds of real time Chrome stops loading and prints the DOM it has, and a page whose script never yields is killed at 60 seconds, leaving an empty file. The profile is deleted after the render.
-      ```bash
-      if [ -n "$CHROME" ]; then
-        PROFILE="$(mktemp -d)"
-        python3 -c 'import subprocess, sys; subprocess.run(sys.argv[2:], timeout=float(sys.argv[1]))' 60 "$CHROME" --headless --use-mock-keychain --user-data-dir="$PROFILE" --virtual-time-budget=10000 --timeout=30000 --dump-dom URL > seo-work/rendered-<template>.html 2> /dev/null
-        rm -rf "$PROFILE"
-      else
-        echo "no Chrome or Chromium found: JavaScript rendering not checked"
-      fi
-      ```
-      - **No Chrome found.** With the built-in browser in the session, open the URL there, run `document.documentElement.outerHTML`, and save the result as `seo-work/rendered-<template>.html`. Without it (a scheduled run), skip the rest of this step. List those templates under *What could not be verified*, with the note, and add "install Google Chrome or Chromium" to the access requests batched at the end.
-      - **An empty file** means Chrome failed on that URL. List the template the same way.
-   3. Run the diff:
+      `engine` names the renderer: `claude-seo render_page.py`, or `chrome-headless` when claude-seo couldn't be installed or set up. Chrome is the fallback only then; `fallback_reason` says why, and it goes in the access requests batched at the end. Chrome gets a fresh temporary profile and its default User-Agent (a Googlebot one from a non-Google IP looks spoofed), 10 seconds of page time to settle, a 30-second load cap, and is killed at 60 seconds.
+      - **Exit 1** means the URL wasn't rendered; `error` says why. With the built-in browser in the session, open the URL there, run `document.documentElement.outerHTML`, and save the result as `seo-work/rendered-<template>.html`. Otherwise (a scheduled run) list the template under *What could not be verified* with the `error`, and add what it names (git, Python 3.11–3.14, network access to GitHub, or Chrome) to the access requests batched at the end.
+   2. Run the diff:
       ```bash
       python3 "$S/render_diff.py" URL --rendered seo-work/rendered-<template>.html > seo-work/render-<template>.json
       ```
-   4. Also run `page_audit.py --file seo-work/rendered-<template>.html --base-url URL` to audit what users actually see.
-6. **Search data, if exports were provided.**
+   3. Also run `page_audit.py --file seo-work/rendered-<template>.html --base-url URL` to audit what users actually see.
+6. **Search data, from the API or the exports.** With a Search Console sign-in, pull the rows with `claude_seo.py gsc-export` (seo-analytics) instead of asking for exports.
    ```bash
    python3 "$S/gsc_analyze.py" Queries.csv --brand "brandname" > seo-work/gsc.json
    ```
@@ -235,7 +225,7 @@ Tag every row with `[measured]`, `[Google doc]`, `[vendor data]`, `[estimate]` o
 - **Lighthouse "SEO 100" ≠ good SEO.** Lab performance ≠ CWV. Use field data when it exists.
 - **llms.txt** is not used by Google (§10). FAQ/HowTo markup earns no Google rich result (§5).
 - **Fixing 400 pages one by one** when 1 template causes them is wasted work. Always map issues to templates.
-- **A crawl from your machine ≠ Googlebot's view.** Bot challenges, geo-redirects and A/B tests differ. Confirm critical findings with Search Console URL Inspection: through the API when Search Console access is configured, otherwise as an access request batched at the end.
+- **A crawl from your machine ≠ Googlebot's view.** Bot challenges, geo-redirects and A/B tests differ. Confirm critical findings with Search Console URL Inspection: through `claude_seo.py run gsc_inspect.py` (seo-technical step 1) when a Search Console sign-in exists, otherwise as an access request batched at the end.
 
 ## Log the work
 

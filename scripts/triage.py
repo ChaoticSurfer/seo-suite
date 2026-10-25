@@ -120,6 +120,10 @@ FINDING_TABLE: dict[str, tuple[int, int, str]] = {
     "schema-limited-type": (1, 1, "No action needed for Google; don't expect a rich result."),
     "schema-none": (1, 2, "Add structured data for the page type (Organization, Article, Product, LocalBusiness, BreadcrumbList…)."),
     "robots-blocked-links": (1, 1, "Confirm those disallowed URLs are meant to be blocked."),
+    # technical drift against each URL's baseline (claude_seo.py drift, claude-seo's drift_compare.py rules)
+    "technical-drift-critical": (4, 1, "Check the change against the last deploy: restore a removed schema block, canonical, H1 or title, remove an added noindex, or fix the error status, unless the change was intended; then take a new baseline (--rebaseline)."),
+    "technical-drift-warning": (2, 1, "Confirm the changed title, description, Open Graph tags or schema were intended; take a new baseline once they are."),
+    "technical-drift-info": (1, 1, "No action unless unexpected: new schema, a changed H2 outline or content. Re-baseline after reviewing."),
     # language versions of a post (translation_check.py)
     "translation-body-language-mismatch": (4, 3, "Translate the main content, not just nav/header/footer, into the declared language. If it was left in the source language, Google treats it as a duplicate. Keep it noindex until a fluent reviewer has checked it. If the hreflang code is what's wrong, fix the code instead."),
     "translation-side-by-side": (4, 2, "One language per page: translate the remaining blocks or move them to their own language version."),

@@ -30,7 +30,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 
 | Input | Decide from | Default when evidence is thin |
 |---|---|---|
-| Search Console Performance export(s). UI export: `Queries.csv` / `Pages.csv` (top 1,000 rows only). API or Looker Studio export with query+page rows: needed for cannibalisation. API limit: 25k rows/request, ~50k rows/day/type (google-rules §11) | A connector or the API, or exports in `seo-work/` | **Ask — batched at the end.** Carry on with the drop tree's technical, update-date and SERP branches, plus logs if present |
+| Search Console Performance export(s). UI export: `Queries.csv` / `Pages.csv` (top 1,000 rows only). API or Looker Studio export with query+page rows: needed for cannibalisation. API limit: 25k rows/request, ~50k rows/day/type (google-rules §11) | The Search Console API through `claude_seo.py gsc-export` (below) once the user has signed in; else exports in `seo-work/`, or Search Console in the browser while the user is signed in | **Ask — batched at the end** for the one-time sign-in, or for exports. Carry on with the drop tree's technical, update-date and SERP branches, plus logs if present |
 | Comparison windows | Choose them yourself: **two windows of equal length, aligned on weekdays**, with the last 2–3 days excluded (GSC data lags) | The last 28 days vs the previous 28, plus YoY when 16 months exist |
 | Brand regex: brand name plus misspellings (example below) | Site name, Organization schema, domain, and the brand variants in GSC queries, in every alphabet the brand is written in | The domain name without the TLD |
 | Optional: Bing Webmaster export (same shape; works with gsc_analyze), GA4 organic landing-page report, server access logs (`.log` / `.gz`) | A connector, or files in the project or `seo-work/` | **Ask — batched at the end**, saying what each adds |
@@ -49,10 +49,21 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status > seo-work/stor
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --format csv > seo-work/store-keywords.csv
 ```
 
-- `datasets.gsc` gives the age of the newest GSC data per locale (TTL 7 days). Fresh: reuse the export it came from, the newest GSC file in `seo-work/`, instead of asking for another. Stale or missing: ask for a new export, as in Inputs.
+- `datasets.gsc` gives the age of the newest GSC data per locale (TTL 7 days). Fresh: reuse the export it came from, the newest GSC file in `seo-work/`, instead of asking for another. Stale or missing: pull it from the API (below), or ask for a new export, as in Inputs.
 - The store keeps per-query totals, not daily rows, so A–D still run on the export files.
 - The keywords' `cluster_id` and `target_url` give the cluster grouping for C and the primary page for the cannibalisation decisions in A6.
 - No store yet (`status` exits with "no research store here"): create it with `init --site URL --locales …` (research-store §9).
+
+**Search Console through the API.** `claude_seo.py` runs claude-seo's Search Console client (installed on first use) and writes the rows as the same CSV a UI export gives, so every step below reads it unchanged. Always name the property: claude-seo's default property can belong to another site. Set the dates yourself, as in Inputs:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/claude_seo.py" gsc-export --property sc-domain:example.com --start-date 2026-09-22 --end-date 2026-10-19 --dimensions query,page -o seo-work/query_page.csv > seo-work/gsc-export.json
+```
+
+- Add `--country GEO --device mobile` for a market's rows, and `--dimensions query` or `page` for a Queries- or Pages-shaped file.
+- Sitemaps and their errors: `claude_seo.py run gsc_query.py sitemaps --property sc-domain:example.com --json`. Index verdicts per URL: seo-technical step 1.
+- Exit 1 with no sign-in: add the one-time sign-in to the questions batched at the end (INTEGRATIONS.md, Search Console). It asks only for `webmasters.readonly`, never the Indexing API.
+- GA4 stays on Google's `analytics-mcp` server.
 
 ### A. Opportunity analysis (GSC/Bing export)
 

@@ -29,4 +29,7 @@ next session — or the next person — knows what was checked, what changed, wh
 - Record paid usage (units/credits/rows) every time — it makes the next budget decision easy.
 - Never paste secrets, API keys, customer personal data or full exports into the log; link file paths instead.
 - When a later entry confirms or refutes an earlier one, say so ("Re-check of 2026-10-24: 38/40 redirects fixed").
-- Changes are "coinciding with" metric moves, not "causing" them, unless a controlled test showed it.
+- Changes are "coinciding with" metric moves, not "causing" them, unless a controlled test showed it. Before closing,
+  check the new entry and the report, and rewrite every sentence it flags:
+  `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/causal_claims.py" SEO-WORKLOG.md --newest-entry` (add the report's path, without
+  `--newest-entry`, in a second run). Exit 1 means at least one causal claim is left.
