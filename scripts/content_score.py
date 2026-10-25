@@ -6,6 +6,8 @@ These are measurable proxies, not a ranking score. Judge quality and intent matc
 Usage:
   content_score.py https://example.com/post --keyword "core web vitals"
   content_score.py --file draft.html --keyword "..."      # score a draft before publishing
+  content_score.py --file blog_posts.csv --key SLUG --fields title,excerpt,content --base-url URL --keyword "..."
+                                                          # a post kept as data: a JSON, CSV or TSV entry
 Outputs JSON: placement checks, readability, structure, trust signals, top phrases.
 """
 from __future__ import annotations
@@ -17,7 +19,7 @@ import urllib.parse
 from collections import Counter
 
 from schema_rules import iter_typed_nodes, node_types
-from seo_lib import PageFacts, extract_page, fetch, load_local, print_json
+from seo_lib import PageFacts, content_fields, extract_page, fetch, is_content_file, load_draft_file, print_json
 
 STOPWORDS = set("""a an the and or but if then of to in on at by for with from as is are was were be been being it its this that
 these those you your we our they their he she his her i me my not no do does did can could will would should may might
@@ -141,12 +143,19 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("url", nargs="?")
     ap.add_argument("--file")
+    ap.add_argument("--key", help="with a JSON, CSV or TSV --file: the post's entry (its slug, or a dotted key)")
+    ap.add_argument("--fields", type=content_fields, help="with --key: the fields to read, e.g. title,excerpt,content")
     ap.add_argument("--base-url", default="https://localhost/")
     ap.add_argument("--keyword")
     args = ap.parse_args()
     if not args.url and not args.file:
         ap.error("give a URL or --file")
-    result = load_local(args.file, args.base_url) if args.file else fetch(args.url)
+    if (args.key or args.fields) and not (args.file and is_content_file(args.file)):
+        ap.error("--key and --fields pick an entry of a JSON, CSV or TSV --file")
+    try:
+        result = load_draft_file(args.file, args.base_url, args.key, args.fields) if args.file else fetch(args.url)
+    except ValueError as err:
+        ap.error(str(err))
     if result.error:
         print_json({"url": args.url, "error": result.error})
         return 2

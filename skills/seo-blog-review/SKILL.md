@@ -107,8 +107,31 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
      python3 "$S/content_score.py" --file content/post.ka.html --base-url "$PLANNED_KA_URL" --keyword "$QUERY_KA" > "$W/score/ka-$SLUG.json"
      ```
      - `--base-url` replaces `{lang}` with each draft's code.
-     - `content_score.py --file` reads HTML only, so use the built page. Read a Markdown-only draft by hand.
-     - Text from a CMS export can be piped to `ai_text_check.py -` (`cat draft.txt | ai_text_check.py -`).
+     - `content_score.py --file` reads HTML and content files, not Markdown, so use the built page. Read a
+       Markdown-only draft by hand.
+   - **Posts kept as data** go through the same three scripts with `--key` (the entry) and `--fields` (what to
+     read). That covers a locale translation file keyed by slug (Geotour's `lib/i18n/content/blog/<locale>.json`), a
+     table export with the HTML in a column (the source rows as Supabase's CSV or JSON export gives them, or as the
+     project's own export script writes them), and a TS dictionary rendered to JSON with the project's own toolchain
+     (a script it has, or the TypeScript compiler it already depends on; never a package it lacks), read by a dotted
+     key such as `seo.home`. MoneyTalks' `src/lib/i18n/dictionaries/*.ts` are only the code fallback: its live text is
+     database rows, so check those through the site's own export the same way. The PR's own files are the drafts, so
+     the checks run before merge:
+     ```bash
+     python3 "$S/translation_check.py" --files en:"$W/blog_posts.csv" ka:lib/i18n/content/blog/ka.json ru:lib/i18n/content/blog/ru.json --key "$SLUG" --fields title,excerpt,content --base-url "https://example.com/{lang}/blog/$SLUG/" --source en > "$W/translation/$SLUG.json"
+     python3 "$S/ai_text_check.py" --file lib/i18n/content/blog/ka.json --key "$SLUG" --fields title,content > "$W/text/ka-$SLUG.json"
+     python3 "$S/content_score.py" --file lib/i18n/content/blog/ka.json --key "$SLUG" --fields title,excerpt,content --base-url "$PLANNED_KA_URL" --keyword "$QUERY_KA" > "$W/score/ka-$SLUG.json"
+     ```
+     - The entry is read as the page a blog template renders from it: the first title field is the `<title>` and
+       H1, the first excerpt or description field the meta description, and every other field the body, in order
+       (HTML as written, plain text as paragraphs). Dotted fields reach nested values (`meta.description`).
+     - A row of a table export is picked by its `slug` column; a JSON file's entry by its key, or the dotted path to
+       it. A missing entry or field fails with the file's name, so a partial translation shows up as an error, not
+       as English quietly rendered. On a site that falls back to the source for a missing field, list only the
+       fields the file has.
+     - The English row comes from the site, never from database credentials: the export the owner or the site
+       produces, or the row file the blog builder wrote for the project's own write path (`seo-blog-builder` step 4).
+     - Other text from an export can be piped to `ai_text_check.py -` (`cat draft.txt | ai_text_check.py -`).
    - `content_score.py` uses English stopwords and exact whole-word matching, and Flesch is English-only. In
      Georgian and Russian, read its placement and phrase output as rough (review §7).
 5. **LLM review pass on the sampled posts**, one subagent per (post, language) pair, in parallel:

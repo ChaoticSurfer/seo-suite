@@ -6,7 +6,9 @@ Python 3.9+ standard library only. Every CLI in this folder builds on
 from __future__ import annotations
 
 import codecs
+import csv
 import gzip
+import html
 import http.client
 import json
 import re
@@ -213,6 +215,138 @@ def load_local(path: str, base_url: str = "https://localhost/") -> FetchResult:
     except UnicodeDecodeError:
         content_type = "text/html"
     return FetchResult(base_url, to_uri(base_url), 200, {"content-type": content_type}, body, [], 0)  # same form as extracted URLs
+
+
+def html_draft(url: str, page: str) -> FetchResult:
+    """An HTML page built from a draft (Markdown, a content file entry) as a 200 response for `url`."""
+    return FetchResult(url, to_uri(url), 200, {"content-type": "text/html; charset=utf-8"}, page.encode("utf-8"), [], 0)
+
+
+# ---------------------------------------------------------------- content files (JSON, CSV, TSV)
+# A post kept as data instead of a page: an entry of a locale translation file ({"<slug>": {"title": …}}), of a TS
+# dictionary the project rendered to JSON ({"seo": {"home": {…}}}), or a row of a table export (Supabase's CSV or
+# JSON, HTML in a column). The checks read it as the page a blog template would render from it.
+
+CONTENT_FILE_SUFFIXES = (".json", ".csv", ".tsv")
+ROW_KEY_COLUMN = "slug"  # a row of a table export is picked by its slug
+# By the last part of a field's name: the first title field is the page's <title> and H1, the first description
+# field its meta description; every other field is body copy, in the order given.
+TITLE_FIELD_NAMES = {"title", "headline", "name"}
+DESCRIPTION_FIELD_NAMES = {"excerpt", "description", "summary", "meta_description"}
+_HTML_TAG = re.compile(r"</?[a-zA-Z][^>]*>")
+_NOT_FOUND = object()
+
+
+def is_content_file(path: str) -> bool:
+    return path.lower().endswith(CONTENT_FILE_SUFFIXES)
+
+
+def content_fields(value: str) -> list[str]:
+    """--fields title,excerpt,content as a list (argparse type)."""
+    return [name.strip() for name in value.split(",") if name.strip()]
+
+
+def _member(value, path: str):
+    """`path` in nested JSON: the member of that exact name, else the dotted path (seo.home, seo.keywords.2)."""
+    if isinstance(value, dict) and path in value:
+        return value[path]
+    for part in path.split("."):
+        if isinstance(value, dict) and part in value:
+            value = value[part]
+        elif isinstance(value, list) and part.isdigit() and int(part) < len(value):
+            value = value[int(part)]
+        else:
+            return _NOT_FOUND
+    return value
+
+
+def _table_rows(path: str) -> list[dict]:
+    with open(path, encoding="utf-8-sig", newline="") as fh:  # newline="" keeps the newlines inside quoted HTML cells
+        return list(csv.DictReader(fh, delimiter="\t" if path.lower().endswith(".tsv") else ","))
+
+
+def read_content_entry(path: str, key: str) -> dict:
+    """The entry `key` names in a content file: in a JSON object, its member `key` or the dotted path to it; in a
+    JSON list of rows, a CSV or a TSV, the one row whose slug is `key`. Raises ValueError naming the file."""
+    if path.lower().endswith(".json"):
+        with open(path, encoding="utf-8-sig") as fh:
+            try:
+                data = json.load(fh)
+            except json.JSONDecodeError as err:
+                raise ValueError(f"{path}: not valid JSON ({err})") from None
+    else:
+        data = _table_rows(path)
+    if isinstance(data, list):
+        rows = data
+        if not all(isinstance(row, dict) for row in rows):
+            raise ValueError(f"{path}: a list of rows must hold only objects")
+        if not any(ROW_KEY_COLUMN in row for row in rows):
+            raise ValueError(f"{path}: no {ROW_KEY_COLUMN} column to find {key!r} by")
+        matches = [row for row in rows if str(row.get(ROW_KEY_COLUMN)) == key]
+        if not matches:
+            raise ValueError(f"{path}: no row with slug {key!r}")
+        if len(matches) > 1:
+            raise ValueError(f"{path}: {len(matches)} rows with slug {key!r}")
+        return matches[0]
+    entry = _member(data, key)
+    if entry is _NOT_FOUND:
+        raise ValueError(f"{path}: no entry {key!r}")
+    if not isinstance(entry, dict):
+        raise ValueError(f"{path}: entry {key!r} must be an object of fields, not {type(entry).__name__}")
+    return entry
+
+
+def _inline_html(text: str) -> str:
+    """HTML as written (a CMS's rich-text field), plain text escaped."""
+    return text if _HTML_TAG.search(text) else html.escape(text)
+
+
+def _copy_html(text: str) -> str:
+    """A field's copy as body HTML: HTML as written, plain text as paragraphs split at blank lines."""
+    if _HTML_TAG.search(text):
+        return text
+    return "".join(f"<p>{html.escape(part.strip())}</p>" for part in re.split(r"\n\s*\n", text) if part.strip())
+
+
+def content_entry_page(entry: dict, fields: list[str], where: str) -> str:
+    """`entry` as an HTML page: the first title field is the <title> and H1, the first description field the meta
+    description, and every other field body copy (a list of texts becomes a list). A null field is empty."""
+    title = description = None
+    body = []
+    for name in fields:
+        value = _member(entry, name)
+        if value is _NOT_FOUND:
+            raise ValueError(f"{where} has no field {name!r}")
+        value = "" if value is None else value
+        role = name.rsplit(".", 1)[-1].lower()
+        if isinstance(value, list) and all(isinstance(item, str) for item in value) and role not in (
+                TITLE_FIELD_NAMES | DESCRIPTION_FIELD_NAMES):
+            body.append("<ul>" + "".join(f"<li>{_inline_html(item)}</li>" for item in value) + "</ul>")
+        elif not isinstance(value, str):
+            raise ValueError(f"{where} field {name!r} must be text, not {type(value).__name__}")
+        elif title is None and role in TITLE_FIELD_NAMES:
+            title = value
+        elif description is None and role in DESCRIPTION_FIELD_NAMES:
+            description = value
+        else:
+            body.append(_copy_html(value))
+    head = f"<title>{html.escape(title or '')}</title>"
+    if description is not None:
+        head += f'<meta name="description" content="{html.escape(description)}">'
+    h1 = f"<h1>{html.escape(title)}</h1>" if title else ""
+    return (f'<!doctype html><html><head><meta charset="utf-8">{head}</head><body><article>{h1}{"".join(body)}'
+            "</article></body></html>")
+
+
+def load_draft_file(path: str, url: str, key: str | None = None, fields: list[str] | None = None) -> FetchResult:
+    """A local draft as a 200 response for `url`: the `key` entry of a content file, rendered from `fields`, or a
+    saved HTML page (`key` and `fields` are not used for it)."""
+    if not is_content_file(path):
+        return load_local(path, url)
+    if not (key and fields):
+        raise ValueError(f"{path}: a JSON, CSV or TSV draft needs --key and --fields: the entry's slug or "
+                         "dotted key, and the fields to read (title,excerpt,content)")
+    return html_draft(url, content_entry_page(read_content_entry(path, key), fields, f"{path}: {key}"))
 
 
 # ---------------------------------------------------------------- HTML parsing

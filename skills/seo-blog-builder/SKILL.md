@@ -38,11 +38,28 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | Which topics | `next-topics` from the store, filtered by the step 2 gates | The highest-priority clusters that pass |
 | Byline and the author's real credentials | `site.json`, the newest posts' bylines and front-matter, author pages | `[needs data]`. **Ask, batched at the end**, recommending the most relevant existing author. Never invent a person or credentials, and never make the AI the author |
 | First-hand facts: what the business did, saw, measured or charges; cases; photos | The user's messages, the repo (case studies, changelogs, docs), the site's own pages | Mark each spot `[needs first-hand detail: …]` and **ask, batched at the end**. Never invent them |
-| Content format and location | The repo's content folders (`content/`, `src/content/blog/`, `_posts/`, `blog/`) and the newest post's front-matter keys; a CMS connector in the session; else the site's HTML post template | Markdown with the newest post's front-matter keys, delivered as files |
+| Content format and location | The repo's content folders (`content/`, `src/content/blog/`, `_posts/`, `blog/`) and the newest post's front-matter keys; locale JSON files keyed by slug that the site overlays on database rows (`lib/i18n/content/blog/<locale>.json`, read by the blog's data layer); a CMS connector in the session; else the site's HTML post template | Markdown with the newest post's front-matter keys, delivered as files. No blog at all: the "No blog yet" branch below |
+| Write path for posts kept in a database | The repo's own code that writes the posts table with the site's server environment: a script (`package.json` scripts, `scripts/**`) that upserts rows from a file, or a server route that writes posts under the server's own auth. Search the code and its git history; never `.env` or any secret | None found: the run stops at that boundary (step 4) |
 | Voice and register per language | The site's top posts, the majority form of address in existing posts, glossary notes | The majority form. For a new language, the review §9 defaults: თქვენ forms in `ka`, вы in `ru` |
 | GSC export | A connector, or an export in `seo-work/` | Run without it, with demand from autocomplete and SERPs. **Ask, batched at the end** |
 | Autonomy level and budgets | `seo-automation` configuration | Level 1, paid budget 0 |
 | Publishing mode: how posts and translations go live | `publishing` in the step 1 `status` output (`seo-research/site.json`, research-store §2): `automatic` or `review` | `unset`: run as `review`, and add the mode question to the end-of-run batch (`references/autonomy.md`). Never ask mid-run, and never set the mode yourself |
+
+### No blog yet
+When the site has no blog (no post folder, no posts table or route, no blog URLs in the sitemap, no CMS), the run
+doesn't build one: where posts live and how they ship is the owner's decision.
+- Run steps 1–3 as usual (store, topics, briefs), so the research and briefs are kept.
+- Write `$W/content-model.md`, a proposal fitted to how the site already keeps its content:
+  - where posts live: files in the repo (`content/blog/<locale>/<slug>.mdx`) when its content is in the repo, or
+    rows in its own database with locale JSON overlays when its other content already works that way, and the
+    step 4 delivery path each one gets;
+  - the fields of a post: title, meta description, slug per locale, publish and modified dates, author, image and
+    alt text, body, `review_state` (with `reviewed_by` and `reviewed_at`), and a per-version robots field;
+  - URLs per locale, and the hreflang, sitemap and `BlogPosting` wiring in the site's framework (`seo-international`,
+    `seo-schema`);
+  - one recommendation, with the work it takes.
+- Stop before writing posts, and put one question in the end-of-run batch: which model to build. Never scaffold
+  the blog, or open a PR for one, without that answer.
 
 ## Workflow
 `S="${CLAUDE_PLUGIN_ROOT}/scripts"`, `W="seo-work/blog-builder/$(date +%F)"`; `$LOC` is a locale code and `$CID` a
@@ -73,7 +90,7 @@ cluster id. Run independent steps in parallel:
      | `clusters` | `serp_cluster.py` on the locale's merged `{keyword: [urls]}` maps | `ingest clusters FILE --locale LOC` |
      | `gsc`, or `stale_gsc`, `stale_gsc_pages` | A new GSC export, through `gsc_analyze.py` or as the CSV itself | A query+page export: `ingest gsc FILE --as-of LAST_DAY`, the last day its period covers (each row's locale comes from its page URL). A Queries.csv without a page column: add `--locale LOC`, one export per locale |
      | `inventory`, or `stale_inventory` | A crawl: `crawl.py` with `--csv "$W/pages.csv"` (`--path-prefix` for one section) | `ingest crawl "$W/pages.csv"` |
-     | `posts` | The site's existing and queued posts: a CSV of each post's URL or slug, locale, title, status (a store status, or empty) and publish date, from the repo's post files or read through the CMS connector | `ingest posts FILE` (`--locale LOC` only for rows with neither a locale nor a URL) |
+     | `posts` | The site's existing and queued posts: a CSV of each post's URL or slug, locale, title, status (a store status, or empty) and publish date, from the repo's post files or read through the CMS connector. Posts kept in a database: the table export the site's own export path or the owner provides (a Supabase CSV or JSON export as it is), then each locale's translation file | `ingest posts FILE` (`--locale LOC` only for rows with neither a locale nor a URL); the source rows first with `--locale` of the source language, then `ingest posts lib/i18n/content/blog/$LOC.json --locale $LOC` per locale, so each translation takes its source post's date (research-store §3) |
      | `volumes`, or `stale_volumes` (optional, paid) | Head terms of the shortlisted clusters only, within budget (Data) | `ingest volumes FILE --locale LOC --source NAME` |
 
    - **Close the loop on earlier batches.** The store inventory has no indexability column, so check each `drafted`
@@ -187,18 +204,30 @@ cluster id. Run independent steps in parallel:
      | Repo with Markdown or MDX posts | A new file beside the newest post, with exactly its front-matter keys. If the repo uses a draft flag (Hugo or Docusaurus `draft`, Jekyll `published`), set it so the post goes live on merge |
      | A CMS, through an authorised connector | The post, published through the connector at level 4. Below level 4: the post as a file in `$W/posts/<locale>/`, and the report says level 4 would publish it |
      | Static HTML | A file built from an existing post's template |
+     | Translations in locale JSON files keyed by slug, overlaid on the source post's database row | Each other-language version as the slug's entry in that locale's file, with exactly the fields the other entries carry (`title`, `excerpt`, `content` as HTML in the markup the site's editor writes, `updated_at` when the project dates its entries), in the file's own key order and indentation. Run the project's own content tests on the files before the PR |
+     | The source post as a database row | The row through the project's own write path (Inputs): the run writes the row as `$W/posts/<locale>/<slug>.json`, `{"<slug>": {column: value}}` (the form the checks read; converted when the path reads another), with every column it sets (title, excerpt, slug, content, the publish slot as its date, tags, image and alt text), runs its dry run, checks that it changes only this post's row, then runs the write. The path runs with the site's own server environment. The run never opens `.env` or any secret, never prints, copies or passes a key, and never asks for one |
 
      - **Level 1:** files in `$W/posts/<locale>/`. The run stops there and says level 2 would open the PR.
-     - **Level 2:** a branch `seo/blog-<date>` and a PR, left open. The report says level 3 would merge it.
+     - **Level 2:** a branch `seo/blog-<date>` and a PR, left open. The report says level 3 would merge it. A source
+       row for the database waits as its row file, and the report says level 3 would write it.
      - **Level 3:** level 2, then merge the PR once CI passes and every source post in it passes every gate in Checks.
        The Human review gate follows the publishing mode: in `automatic` the automated gates are enough, and in
        `review` or `unset` each post needs a named human sign-off (`reviewed_by`, `reviewed_at`). Merging publishes
-       the posts. Their other language versions ship as step 5 says.
+       the posts. Their other language versions ship as step 5 says. A source row is written through the write path
+       after the PR with its translations is merged and deployed, with a publish slot after the deploy: an overlay
+       shows a translation only once its source row is live, and a row written first goes live in one language only.
+       A future slot leaves the post `scheduled` (step 7).
      - **Level 4:** level 3, and on a CMS, publish each post that passes the same gates through the connector.
      - A post that fails a gate stays `drafted` (written, not yet live), and so does one with no sign-off yet in
        `review` mode: in the open PR, or as a file in `$W/posts/<locale>/` for a CMS. The report names the gate, and
        the next run checks it again and ships it once it passes. A post queued for a future publish date is
        `scheduled` (step 7).
+     - **No write path for the database row: stop at that boundary.** Deliver everything before it (the row file,
+       the checks, the PR with the translations, left open since they would show nothing without their row), keep the
+       post `drafted`, and name the access that would finish it in Requests: a write path in the repo for the posts
+       table that runs with the site's server environment. Check the git history first (`git log --diff-filter=D
+       --name-only -- scripts`): a write script the project deleted may be the shortest route back, as a change for
+       the owner to approve. Never ask for database keys, a service-role key or an admin password instead.
 5. **Other locales: localise, don't translate the keyword.**
    - Each version targets **that locale's own cluster** for the topic, from `export clusters --locale`, and uses its
      head keyword as the target query. Never a translation of the source keyword (review §7). With no matching
@@ -220,6 +249,11 @@ cluster id. Run independent steps in parallel:
      `--base-url` follows the site's URL pattern and can vary only by `{lang}`. With a slug in each audience's
      language, canonical and hreflang findings on the files (such as `translation-canonical-not-self`) are therefore
      expected. Check the URL wiring after the build with `translation_check.py --urls en:URL ka:URL ru:URL`.
+     Posts kept as data are checked from the files the run wrote, before merge: the row file and each locale's
+     translation file, with `--key "$SLUG" --fields title,excerpt,content` (`seo-blog-review` step 4):
+     ```bash
+     python3 "$S/translation_check.py" --files en:"$W/posts/en/$SLUG.json" ka:lib/i18n/content/blog/ka.json ru:lib/i18n/content/blog/ru.json --key "$SLUG" --fields title,excerpt,content --base-url "$SITE/{lang}/blog/$SLUG/" --source en > "$W/translation/$SLUG.json"
+     ```
      After both scripts, run the LLM reviewer pass on every version, with the review §11 reviewer brief and never
      the translation prompt's framing. Fix every critical and major error, re-run both scripts, and record the pass
      as `llm_reviewed`, never as human-reviewed: `review_state: llm_reviewed` in the version's front-matter or CMS
@@ -244,8 +278,9 @@ cluster id. Run independent steps in parallel:
    python3 "$S/content_score.py" --file "$W/built/$LOC-$SLUG.html" --base-url "$PLANNED_URL" --keyword "$TARGET_QUERY" > "$W/score/$LOC-$SLUG.json"
    python3 "$S/ai_text_check.py" --file "$SOURCE_FILE" > "$W/text/$LOC-$SLUG.json"
    ```
-   - `content_score.py --file` reads HTML only. Score the page the site's own build produces, or an HTML file; check
-     a Markdown-only post by hand. In `ka` and `ru` its placement counts are rough (review §7).
+   - `content_score.py --file` reads HTML, and the entry of a JSON, CSV or TSV content file with `--key` and
+     `--fields` (the row file, a locale translation file). Score a Markdown post from the page the site's own build
+     produces, or check it by hand. In `ka` and `ru` its placement counts are rough (review §7).
    - From the main thread, once the posts are written, give each source-language post to the `seo-content-reviewer`
      agent (one per post, in parallel) with its target query and the brief's competitor URLs, and apply its edits.
      That is the source post's LLM review pass: record it as `review_state: llm_reviewed`, as in step 5.
@@ -304,7 +339,8 @@ cluster id. Run independent steps in parallel:
   ```
   - Add `"Edit(./seo-research/**)"` to the recipe's `--allowedTools`. At level 2 and above, add the git and
     `gh pr` rules `seo-automation` lists, at level 3 its `seo/*` merge rule and the `--admin` deny rule, and at level 4
-    the CMS connector's publish tools.
+    the CMS connector's publish tools. For a source post kept in a database, add at level 3 a rule for the write
+    path's exact command (its dry run and its write), and a deny rule for reading `.env*`.
   - In a scheduled run, a paid call the guard would ask about is denied and lands in `inbox.md`. The run carries on
     with free data.
   - A scheduled prompt is not the user. It never approves a gated action or a new language, and never sets the
@@ -369,8 +405,10 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
 - `seo-research/<brief>`: one brief per topic and locale, at the `brief` path `next-topics` gives, versioned with the
   repo.
 - Posts in the site's format: `$W/posts/<locale>/` at level 1, an open PR at level 2, merged and live at level 3,
-  published through the CMS connector at level 4. Each live post has its URL submitted and its checks scheduled
-  (step 7).
+  published through the CMS connector at level 4. A source post kept in a database: its row file at levels 1–2,
+  written through the project's write path at level 3. Each live post has its URL submitted and its checks
+  scheduled (step 7).
+- `$W/content-model.md` when the site has no blog yet (No blog yet).
 - Store updates: cluster statuses, glossary rows for approved terms and brand names, and the inventory after
   publication.
 - `$W/batch.md`:
@@ -399,7 +437,9 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
   - the byline and the author's credentials, when unknown;
   - a native reviewer per language, and their verdict on the terms pending review;
   - GSC access, and a budget for volumes;
-  - for each post the run stopped short of publishing, the level or credential that would finish it;
+  - for each post the run stopped short of publishing, the level, or the connector or write path, that would finish
+    it (never a key or password);
+  - with no blog yet, the content model to build (`$W/content-model.md`), with a recommendation;
   - the publishing mode, while it is unset: one question with a recommendation (`references/autonomy.md`);
   - any language the data suggests but nobody asked for.
 

@@ -141,7 +141,7 @@ back. Its domains stay in `competitors.json`, with `keywords_shared` 0 when no s
   has a `last_modified` or `lastmod` column (a CMS or Screaming Frog export). `cluster_id` lists, `;`-separated, the
   clusters that target that URL. `crawled_at` and `gsc_at` are the dates of the row's own crawl and GSC data (§5).
 - **posts.csv:** `locale, url, slug, title, status, publish_date, cluster_id, as_of`: the site's existing and queued
-  posts from a CMS export (`ingest posts`). `as_of` is the export's date. `cluster_id` lists, `;`-separated, the
+  posts from a posts export or a locale translation file (`ingest posts`). `as_of` is the export's date. `cluster_id` lists, `;`-separated, the
   clusters the post covers (§7).
 - **glossary/&lt;locale&gt;.json:** `{"term": {"translation": "…", "note": "…", "do_not_translate": false}}`, one file
   per target language. It is the glossary that `references/ai-content-review.md` §11 injects into the translation
@@ -193,7 +193,7 @@ Locale codes are stored lower-case: `en`, `ka`, `ru`, `ru-ge`. A URL's locale is
 | `ingest gsc FILE [--locale LOC]` | `gsc_analyze.py` JSON (`.json`) or a GSC Queries, Pages or query+page CSV |
 | `ingest crawl FILE` | `crawl.py --csv` pages file |
 | `ingest volumes FILE --locale LOC --source NAME` | A keyword/volume[/difficulty] export from Semrush, Ahrefs, DataForSEO or Keyword Planner |
-| `ingest posts FILE [--locale LOC]` | A CMS export of existing and queued posts, CSV or JSON, so `next-topics` never proposes their topics again |
+| `ingest posts FILE [--locale LOC]` | Existing and queued posts, so `next-topics` never proposes their topics again: a posts export (CSV, TSV or JSON; a Supabase table export works as it is), or a locale translation file of entries keyed by slug |
 | `status` | The `publishing` mode, datasets, their age per locale, `stale` and `missing` lists, `gaps` per locale |
 | `next-topics [--locale LOC] [--limit N]` | Clusters without a published target, best first, with every reason (§7). `N` is 1 or more |
 | `set-status (--cluster ID or --keyword KW --locale LOC) --status S [--url URL]` | Moves a cluster or keyword along the pipeline |
@@ -239,7 +239,9 @@ naming the cluster and the missing keyword or cluster: restore it from git histo
   `people_also_ask_element`). Questions and titles are trimmed to 200 characters.
 - **Posts** (`ingest posts`): a CSV or TSV, or JSON (a list of posts, or `{"posts": […]}`; the columns below must
   hold text or null). Columns are matched by name, as plain names or as `seo-blog-review`'s post inventory has them;
-  other columns are ignored:
+  other columns are ignored. A table export of a posts table, such as Supabase's CSV or JSON of `blog_posts`
+  (`id, title, excerpt, content, date, slug, tags…`), is read as it is: `slug`, `title` and `date` match, and the
+  HTML in `content` and the other columns are ignored:
 
   | Field | Column names |
   |---|---|
@@ -253,6 +255,19 @@ naming the cluster and the missing keyword or cluster: restore it from git histo
   Each row needs a URL or a slug. A status is one of the store's (`planned` to `published`, not `skip`), or empty.
   An empty status is `scheduled` when the publish date is after the export's date, else `published`. Any other
   status fails with its row number: give the row a store status, or leave it out of the export.
+- **Translation files** (`ingest posts`): a JSON object of entries keyed by slug, one file per locale, the layout of
+  a site that keeps its source posts in a database and overlays translations from the repo (Geotour's
+  `lib/i18n/content/blog/<locale>.json`: `{"<slug>": {"updated_at", "title", "excerpt", "content"}}`). Each entry is
+  a post of that locale with the key as its slug; the columns above are read from it (usually only `title`), and its
+  `updated_at` is not a publish date. Give `--locale`, one file per call:
+  ```bash
+  for f in lib/i18n/content/blog/*.json; do python3 "$S/research_store.py" ingest posts "$f" --locale "$(basename "$f" .json)"; done
+  ```
+  Such a translation goes live with its source post, so an entry without a date of its own takes the publish date of
+  the store's default-locale post with the same slug, and its status follows from that date. Ingest the source posts'
+  export first (`ingest posts blog_posts.csv --locale en`). Entries whose source post isn't in the store, or has no
+  date, are counted as `no_source_post` and read as `published`. A file with a top-level `posts` member is a posts
+  export, not a translation file.
 
 ## 4. What each ingest updates
 
@@ -321,7 +336,7 @@ naming the cluster and the missing keyword or cluster: restore it from git histo
 | gsc | 7 | a GSC export, then `ingest gsc` | GSC data is daily; weekly is enough for planning |
 | inventory | 30 | `crawl.py --csv`, then `ingest crawl` | Pages are added and changed |
 | competitors | 90 | derived from SERPs | The competitor set changes slowly |
-| posts | 7 | a CMS export, then `ingest posts` | Posts are queued and published every week; optional: missing only means no export was ingested |
+| posts | 7 | a posts export (and the locale translation files), then `ingest posts` | Posts are queued and published every week; optional: missing only means no export was ingested |
 | clusters, glossary | none | decisions, not observations | Re-cluster when the SERPs are refreshed |
 
 - `status` reports a dataset as **stale** for a locale when its newest data there is older than the TTL, and as
@@ -386,7 +401,8 @@ Every skill that needs keyword, SERP, GSC or page data follows the same loop:
 3. **Fetch only the missing or stale pieces:** the `stale` and `missing` entries, and the per-record lists in
    `gaps.<locale>` (`needs_serp`, `stale_volumes`, `stale_gsc`, `stale_gsc_pages`, `stale_inventory`).
 4. **Write results back** with `ingest`, `set-status` or `glossary add`. Before picking topics, a skill that plans
-   posts ingests the CMS's post export (`ingest posts`), so `next-topics` skips topics already written or queued.
+   posts ingests the site's posts (`ingest posts`: a posts export, and each locale's translation file where the site
+   keeps them), so `next-topics` skips topics already written or queued.
 5. **Say what was reused** in the report's *Assumptions* and in `SEO-WORKLOG.md` (`references/worklog.md`), with
    ages, e.g. "Reused from seo-research: en keywords (keyword_ideas, 12 days old), en SERPs (9 days). Refreshed: GSC
    (was 9 days old, TTL 7)."

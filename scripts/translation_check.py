@@ -9,6 +9,8 @@ Usage:
   translation_check.py https://blog.example.com/en/post/      # follows hreflang alternates (breadth-first, max 20 pages)
   translation_check.py --urls en:https://example.com/post ka:https://example.com/ka/post   # hreflang missing or broken
   translation_check.py --files en:post.en.md ka:post.ka.md ru:post.ru.html --base-url "https://blog.example.com/{lang}/post/"
+  translation_check.py --files en:blog_posts.csv ka:lib/i18n/content/blog/ka.json --key SLUG --fields title,excerpt,content
+                                                   # posts kept as data: a table export row, a translation file entry
   translation_check.py URL --source en     # version the others are compared with (default: x-default target, else longest)
 Outputs JSON {"url", "source", "hreflang_checked", "cluster": [one summary per version], "findings": [...]};
 finding ids start with "translation-".
@@ -33,6 +35,10 @@ How to read it:
 - Markdown support is a minimal subset: front matter (title, description, lang, canonical), headings, paragraphs,
   lists, tables, block quotes, links, images and code fences. Raw HTML inside Markdown is read as text, and template
   syntax ({{ site.baseurl }}, {% include %}) is not expanded, so check drafts that use it as built HTML.
+- A .json, .csv or .tsv draft is a post kept as data: --key picks the entry (a translation file's slug, a dotted key
+  in a TS dictionary the project rendered to JSON, or the slug column of a table export such as Supabase's), and
+  --fields names what to read. The first title field becomes the <title> and H1, the first excerpt or description the
+  meta description, and the rest the body, as a blog template renders them (seo_lib.content_entry_page).
 """
 from __future__ import annotations
 
@@ -48,8 +54,8 @@ from html.parser import HTMLParser
 
 from schema_rules import iter_typed_nodes
 from seo_lib import (
-    COMMON_CODE_MISTAKES, ISO_639_1, FetchResult, Finding, PageFacts, extract_page, fetch, is_indexable, load_local,
-    normalize_url, print_json, same_site, sort_findings, to_uri,
+    COMMON_CODE_MISTAKES, ISO_639_1, FetchResult, Finding, PageFacts, content_fields, extract_page, fetch, html_draft,
+    is_indexable, load_draft_file, normalize_url, print_json, same_site, sort_findings,
 )
 
 MAX_VERSIONS = 20  # a post rarely has more language versions; the rest are reported as translation-cluster-capped
@@ -541,13 +547,13 @@ def is_markdown_path(path: str) -> bool:
     return path.lower().endswith((".md", ".markdown", ".mdx"))
 
 
-def load_draft(path: str, url: str) -> FetchResult:
-    """A local HTML or Markdown draft as a 200 response for `url`."""
+def load_draft(path: str, url: str, key: str | None = None, fields: list[str] | None = None) -> FetchResult:
+    """A local HTML, Markdown or content-file draft as a 200 response for `url` (`key` and `fields` pick a JSON, CSV or
+    TSV entry; seo_lib.load_draft_file)."""
     if not is_markdown_path(path):
-        return load_local(path, url)
+        return load_draft_file(path, url, key, fields)
     with open(path, encoding="utf-8") as fh:
-        page = markdown_to_html(fh.read())
-    return FetchResult(url, to_uri(url), 200, {"content-type": "text/html; charset=utf-8"}, page.encode("utf-8"), [], 0)
+        return html_draft(url, markdown_to_html(fh.read()))
 
 
 # ---------------------------------------------------------------- numbers
@@ -1036,12 +1042,17 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("url", nargs="?", help="a post URL; its hreflang alternates are followed")
     ap.add_argument("--urls", nargs="+", metavar="LANG:URL", help="language versions to compare (hreflang missing or broken)")
-    ap.add_argument("--files", nargs="+", metavar="LANG:PATH", help="local drafts, HTML or Markdown")
+    ap.add_argument("--files", nargs="+", metavar="LANG:PATH", help="local drafts: HTML, Markdown, or JSON, CSV or TSV "
+                                                                   "content files (with --key and --fields)")
+    ap.add_argument("--key", help="with --files: the post's entry in each JSON, CSV or TSV file (its slug, or a dotted key)")
+    ap.add_argument("--fields", type=content_fields, help="with --key: the fields to read, e.g. title,excerpt,content")
     ap.add_argument("--base-url", default="https://localhost/{lang}/", help="URL of each --files draft; {lang} becomes its code")
     ap.add_argument("--source", help="code of the original version (default: the x-default target, else the longest)")
     args = ap.parse_args()
     if sum(bool(x) for x in (args.url, args.urls, args.files)) != 1:
         ap.error("give exactly one of: URL, --urls, --files")
+    if (args.key or args.fields) and not args.files:
+        ap.error("--key and --fields pick an entry of a --files content file")
     if args.files and "{lang}" not in args.base_url:
         ap.error("--base-url needs a {lang} placeholder so each draft gets its own URL")
 
@@ -1063,7 +1074,10 @@ def main() -> int:
         versions = []
         for code, path in _pairs(args.files, "--files", ap):
             url = args.base_url.replace("{lang}", code)
-            versions.append(load_version(code, url, load_draft(path, url)))
+            try:
+                versions.append(load_version(code, url, load_draft(path, url, args.key, args.fields)))
+            except ValueError as err:
+                ap.error(str(err))
     check_hreflang = not args.files or any(v.facts.hreflang for v in versions)  # drafts often get hreflang at build time
     try:
         report = cluster_report(versions, args.source, check_hreflang, capped)

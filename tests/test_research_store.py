@@ -23,6 +23,7 @@ from unittest import mock
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 SCRIPTS = os.path.join(ROOT, "scripts")
+CONTENT = os.path.join(ROOT, "tests", "fixtures", "content")
 sys.path.insert(0, SCRIPTS)
 
 import research_store as rs  # noqa: E402
@@ -1129,6 +1130,47 @@ class PostsTest(StoreCase):
         self.assertIn("pass --locale", self.cli_fails("ingest", "posts", slug_only))
         self.assertEqual(self.cli("ingest", "posts", slug_only, "--locale", "ka")["added"], 1)
         self.assertIn("no url or slug column", self.cli_fails("ingest", "posts", self.input_file("x.csv", "title\nA\n")))
+
+    def test_a_supabase_posts_export_is_ingested_by_slug(self):
+        # tests/fixtures/content: Geotour's blog_posts table export, HTML in the content column, date a timestamptz
+        directory = self.fresh("supabase")
+        for name in ("blog_posts.csv", "blog_posts.json"):
+            with self.subTest(export=name):
+                summary = self.cli_in(directory, "ingest", "posts", os.path.join(CONTENT, name), "--locale", "en",
+                                      "--as-of", "2026-10-25")
+                self.assertEqual(summary.get("added", 0) + summary.get("unchanged", 0), 2)
+                posts = self.cli_in(directory, "export", "posts", "--format", "json")
+                self.assertEqual([(p["locale"], p["slug"], p["status"], p["publish_date"], p["title"]) for p in posts],
+                                 [("en", "tbilisi-sulphur-baths", "scheduled", "2027-01-12",
+                                   "Tbilisi Sulphur Baths: Which One to Choose"),
+                                  ("en", "what-to-eat-in-georgia", "published", "2026-09-20",
+                                   "What to Eat in Georgia: 15 Dishes")])
+
+    def test_locale_translation_files_are_posts_that_go_live_with_their_source(self):
+        # Geotour's lib/i18n/content/blog/<locale>.json: {slug: {updated_at, title, excerpt, content}}, overlaid on the
+        # English row, so a translation goes live when its English row does
+        directory = self.fresh("translations")
+        ka = os.path.join(CONTENT, "blog", "ka.json")
+        early = self.cli_in(directory, "ingest", "posts", ka, "--locale", "ka", "--as-of", "2026-10-25")
+        self.assertEqual((early["added"], early["no_source_post"]), (2, 2))
+        self.assertEqual({p["status"] for p in self.cli_in(directory, "export", "posts", "--format", "json")},
+                         {"published"})
+        self.cli_in(directory, "ingest", "posts", os.path.join(CONTENT, "blog_posts.csv"), "--locale", "en",
+                    "--as-of", "2026-10-25")
+        summary = self.cli_in(directory, "ingest", "posts", ka, "--locale", "ka", "--as-of", "2026-10-25")
+        self.assertEqual((summary["updated"], summary.get("no_source_post", 0)), (2, 0))
+        posts = self.cli_in(directory, "export", "posts", "--locale", "ka", "--format", "json")
+        self.assertEqual([(p["slug"], p["status"], p["publish_date"], p["title"]) for p in posts],
+                         [("tbilisi-sulphur-baths", "scheduled", "2027-01-12", "თბილისის გოგირდის აბანოები: რომელი ავირჩიოთ"),
+                          ("what-to-eat-in-georgia", "published", "2026-09-20", "რა ვჭამოთ საქართველოში: 15 კერძი")])
+        self.assertIn("pass --locale", self.cli_fails("ingest", "posts", ka, directory=directory))
+
+    def test_a_bad_translation_file_fails_with_its_entry(self):
+        not_an_entry = self.input_file("ka.json", {"some-post": "ტექსტი"})
+        self.assertIn("entry 'some-post' must be an object",
+                      self.cli_fails("ingest", "posts", not_an_entry, "--locale", "ka"))
+        rendered = self.input_file("ru.json", {"some-post": {"title": {"rendered": "Текст"}}})
+        self.assertIn("entry 'some-post' title must be text", self.cli_fails("ingest", "posts", rendered, "--locale", "ru"))
 
 
 class NextTopicsTest(StoreCase):

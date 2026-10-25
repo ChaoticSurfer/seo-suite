@@ -15,6 +15,7 @@ Usage:
   research_store.py ingest crawl pages.csv                                    # crawl.py --csv output
   research_store.py ingest volumes volumes.csv --locale en --source semrush   # keyword,volume[,difficulty]
   research_store.py ingest posts posts.csv [--locale en]                      # CMS export: url or slug, title…
+  research_store.py ingest posts lib/i18n/content/blog/ka.json --locale ka    # translation file: {slug: {title…}}
   research_store.py status
   research_store.py next-topics [--locale en] [--limit 10]
   research_store.py set-status --cluster en-001 --status briefed
@@ -1129,26 +1130,31 @@ def words_of(text: str) -> tuple[str, ...]:
     return tuple(re.findall(r"[^\W_]+", text.lower()))  # letters and digits of any script; - _ and punctuation split
 
 
-def read_posts_export(path: str) -> list[dict]:
-    """Rows of a posts export, renamed to the POST_HEADERS names: a CSV or TSV, or JSON (a list of posts, or
-    {"posts": […]})."""
+def post_row(item, path: str, where: str) -> dict:
+    """One post of a JSON export, renamed to the POST_HEADERS names; other members are ignored."""
+    require(isinstance(item, dict), path, where, "an object")
+    row = {}
+    for key, value in item.items():
+        canonical = next((c for c, aliases in POST_HEADERS.items() if key.strip().lower() in aliases), None)
+        if canonical is None:
+            continue
+        require(isinstance(value, (str, type(None))), path, f"{where} {key}", "text")
+        row[canonical] = value or ""
+    return row
+
+
+def read_posts_export(path: str) -> tuple[list[dict], bool]:
+    """Rows of a posts export, renamed to the POST_HEADERS names, and whether the file is a locale translation file.
+    A CSV or TSV, or JSON: a list of posts (a table export such as Supabase's), {"posts": […]}, or a translation file,
+    an object of entries keyed by slug ({"<slug>": {"title": …}}) whose posts go live with their source post."""
     if not path.endswith(".json"):
-        return read_table(path, POST_HEADERS, key_columns=("url", "slug"))[0]
+        return read_table(path, POST_HEADERS, key_columns=("url", "slug"))[0], False
     data = read_json(path)
+    if isinstance(data, dict) and "posts" not in data:
+        return [{**post_row(entry, path, f"entry {slug!r}"), "slug": slug} for slug, entry in data.items()], True
     items = data.get("posts") if isinstance(data, dict) else data
-    require(isinstance(items, list), path, "the file", 'a list of posts, or {"posts": […]}')
-    rows = []
-    for number, item in enumerate(items, 1):
-        require(isinstance(item, dict), path, f"row {number}", "an object")
-        row = {}
-        for key, value in item.items():
-            canonical = next((c for c, aliases in POST_HEADERS.items() if key.strip().lower() in aliases), None)
-            if canonical is None:
-                continue
-            require(isinstance(value, (str, type(None))), path, f"row {number} {key}", "text")
-            row[canonical] = value or ""
-        rows.append(row)
-    return rows
+    require(isinstance(items, list), path, "the file", 'a list of posts, {"posts": […]}, or entries keyed by slug')
+    return [post_row(item, path, f"row {number}") for number, item in enumerate(items, 1)], False
 
 
 def post_date(value: str, path: str, where: str) -> str:
@@ -1203,11 +1209,16 @@ def post_clusters(store: Store) -> dict[str, list[str]]:
 
 
 def ingest_posts(store: Store, args, now: str) -> dict:
-    """Existing and queued posts from a CMS export, so next-topics never proposes their topics again."""
-    rows = read_posts_export(args.file)
+    """Existing and queued posts from a posts export or a translation file, so next-topics never proposes their topics
+    again."""
+    rows, translations = read_posts_export(args.file)
     default_locale = (store.check_locale(args.locale) if args.locale
                       else store.locales[0] if len(store.locales) == 1 else None)
     at, counts, touched, keys = data_date(args), Counter(), set(), []
+    # A translation entry has no date of its own: it goes live with the source post, the store's default-locale post
+    # of the same slug (ingest the source's export first)
+    source_dates = {post["slug"]: post["publish_date"] for post in store.posts.values()
+                    if post["locale"] == store.locales[0] and post["publish_date"]}
     for number, raw in enumerate(rows, 1):
         where = f"row {number}"
         url = normalize_url(raw["url"].strip()) if raw.get("url", "").strip() else ""
@@ -1231,6 +1242,9 @@ def ingest_posts(store: Store, args, now: str) -> dict:
         else:
             raise SystemExit(f"{args.file}: {where} has no URL and no locale, and the store has several: pass --locale")
         publish_date = post_date(raw.get("publish_date", ""), args.file, where)
+        if translations and locale != store.locales[0] and not publish_date:
+            publish_date = source_dates.get(slug, "")
+            counts["no_source_post"] += not publish_date
         status = post_status(raw.get("status", ""), publish_date, at[:10], args.file, where)
         new = {"locale": locale, "url": url, "slug": slug, "title": "", "status": status, "publish_date": "",
                "cluster_id": "", "as_of": ""}
@@ -1605,7 +1619,8 @@ def build_parser() -> argparse.ArgumentParser:
             ("gsc", ingest_gsc, "gsc_analyze.py JSON, or a GSC Queries/Pages/query+page CSV"),
             ("crawl", ingest_crawl, "crawl.py --csv pages.csv"),
             ("volumes", ingest_volumes, "CSV keyword,volume[,difficulty] from a vendor export"),
-            ("posts", ingest_posts, "CMS posts export, CSV or JSON: url or slug, locale, title, status, publish_date")):
+            ("posts", ingest_posts, "posts export, CSV or JSON (url or slug, locale, title, status, publish_date), "
+                                     "or a translation file of entries keyed by slug")):
         kind = kinds.add_parser(name, parents=[common], help=help_text)
         kind.add_argument("file")
         kind.add_argument("--as-of", type=as_of_date, help="the last day the data covers, YYYY-MM-DD (default: the "

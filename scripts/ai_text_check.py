@@ -27,7 +27,9 @@ Usage:
   ai_text_check.py --file draft.md                 # HTML or Markdown (.md, .markdown, .mdx)
   cat draft.txt | ai_text_check.py -               # stdin: HTML if it starts with '<', else Markdown or plain text
   ai_text_check.py --file post.ka.html --lang ka   # override the detected language (ka-GE counts as ka)
-Outputs JSON {"url" | "file", "language", "words", "metrics": {...}, "findings": [...]}; ids start with "ai-text-".
+  ai_text_check.py --file lib/i18n/content/blog/ka.json --key SLUG --fields title,content
+                                                   # a post kept as data: an entry of a JSON, CSV or TSV file
+Outputs JSON {"url" | "file" (+ "key"), "language", "words", "metrics": {...}, "findings": [...]}; ids start with "ai-text-".
 Markdown template syntax ({{ site.baseurl }}, {% include %}) is read as text, so check drafts that use it as built HTML.
 
 Every metric and finding is a heuristic: the thresholds are rules of thumb, not published standards, and human writers
@@ -45,7 +47,7 @@ import sys
 from collections import Counter
 from html.parser import HTMLParser
 
-from seo_lib import Finding, fetch, load_local, print_json, sort_findings
+from seo_lib import Finding, content_fields, fetch, is_content_file, load_draft_file, print_json, sort_findings
 from translation_check import (
     WORD_RE, MainContent, detect_language, is_markdown_path, main_content, markdown_to_html, primary_subtag,
 )
@@ -576,11 +578,15 @@ def analyse(content: MainContent, source: str, is_html: bool, lang: str) -> tupl
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("url", nargs="?", help="page URL, or - to read stdin")
-    ap.add_argument("--file", help="local HTML or Markdown file")
+    ap.add_argument("--file", help="local HTML or Markdown file, or a JSON, CSV or TSV content file with --key and --fields")
+    ap.add_argument("--key", help="with a content --file: the post's entry (its slug, or a dotted key)")
+    ap.add_argument("--fields", type=content_fields, help="with --key: the fields to read, e.g. title,content")
     ap.add_argument("--lang", help="language code to use instead of the detected one")
     args = ap.parse_args()
     if bool(args.url) == bool(args.file):
         ap.error("give a URL, - for stdin, or --file")
+    if (args.key or args.fields) and not (args.file and is_content_file(args.file)):
+        ap.error("--key and --fields pick an entry of a JSON, CSV or TSV --file")
     where: dict = {}
     if args.file:
         where["file"] = args.file
@@ -589,8 +595,13 @@ def main() -> int:
                 source = fh.read()
             page, is_html = markdown_to_html(source), False
         else:
-            source = page = load_local(args.file).text
+            try:
+                source = page = load_draft_file(args.file, "https://localhost/", args.key, args.fields).text
+            except ValueError as err:
+                ap.error(str(err))
             is_html = True
+            if args.key:
+                where["key"] = args.key
         base = "https://localhost/"
     elif args.url == "-":
         where["file"] = "<stdin>"

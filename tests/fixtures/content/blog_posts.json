@@ -1,0 +1,42 @@
+[
+  {
+    "id": "00000000-0000-4000-8000-000000000001",
+    "created_at": "2026-09-01 08:00:00+00",
+    "updated_at": "2026-10-14 11:42:41+00",
+    "version": 3,
+    "title": "What to Eat in Georgia: 15 Dishes",
+    "excerpt": "Khinkali, three kinds of khachapuri, badrijani, pkhali and churchkhela: 15 Georgian dishes worth trying, how to eat them and what to order if you skip meat.",
+    "image": "https://cdn.example.test/blog/what-to-eat.jpg",
+    "image_alt": "A table of Georgian dishes",
+    "date": "2026-09-20 05:00:00+00",
+    "slug": "what-to-eat-in-georgia",
+    "content": "<p>Georgian food rests on a few things done very well: bread with cheese, dumplings, meat over fire and vegetables pounded with walnuts, garlic and fresh herbs. If you try only five dishes, make them <strong>khinkali, imeruli khachapuri, badrijani, pkhali and mtsvadi</strong>. Below are 15 dishes worth ordering, how to eat the tricky ones and what to choose if you skip meat.</p>\n\n<h2>Bread and dumplings</h2>\n<h3>1. Khinkali</h3>\n<p>Twisted parcels of thin dough with spiced minced meat and a mouthful of hot broth inside. They come from the mountain valleys along the Georgian Military Road, and Pasanauri, 90 km north of Tbilisi, is the classic lunch stop for them.</p>\n<p><strong>How to eat them:</strong> with your hands. Hold the knot on top, bite a small hole in the side, drink the broth, then eat the rest and leave the knot on the plate.</p>\n<h3>2. Khachapuri in three regional styles</h3>\n<ul>\n<li><strong>Imeruli:</strong> round and flat, with the cheese baked inside.</li>\n<li><strong>Megruli:</strong> the same, with a second layer of cheese melted on top.</li>\n<li><strong>Adjaruli:</strong> a boat of bread with cheese, an egg yolk and butter, \"the one everyone photographs\".</li>\n</ul>\n\n<h2>Where to try them</h2>\n<p>A supra for four people in a Tbilisi restaurant costs about 120 GEL with wine. The Dezerter Bazaar, a 15-minute walk from the old town, sells churchkhela and cheese from every region; read our <a href=\"/blog/tbilisi-sulphur-baths\">guide to the sulphur baths</a> for the walk back.</p>",
+    "author": null,
+    "read_time": 9,
+    "tags": [
+      "food",
+      "culture"
+    ],
+    "location": "Tbilisi"
+  },
+  {
+    "id": "00000000-0000-4000-8000-000000000002",
+    "created_at": "2026-10-20 08:00:00+00",
+    "updated_at": "2026-10-20 08:00:00+00",
+    "version": 1,
+    "title": "Tbilisi Sulphur Baths: Which One to Choose",
+    "excerpt": "The sulphur baths of Abanotubani: prices, private rooms and the scrub, and which bath to choose.",
+    "image": null,
+    "image_alt": null,
+    "date": "2027-01-12 05:00:00+00",
+    "slug": "tbilisi-sulphur-baths",
+    "content": "<p>The sulphur baths of Abanotubani sit at the foot of Narikala fortress, where hot springs at 38 to 40 degrees have drawn bathers for centuries. A private room for two costs from 80 GEL an hour, and the public pools are cheaper.</p>\n<p>Here is the revised version of the guide, with the opening hours checked again.</p>\n<h2>Which bath to choose</h2>\n<p>Chreli Abano, with its blue mosaic front, is the one in every photograph. Gulo's Thermal Spa and the Royal Bath are quieter, and all of them rent towels and sell a scrub with a kisi mitt for about 30 GEL.</p>",
+    "author": null,
+    "read_time": 4,
+    "tags": [
+      "tbilisi",
+      "wellness"
+    ],
+    "location": "Tbilisi"
+  }
+]
