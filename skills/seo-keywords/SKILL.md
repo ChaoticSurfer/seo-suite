@@ -23,7 +23,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | Business, offer, audience, conversion goal (lead, sale, signup) | Home page, navigation, money pages (forms, cart, checkout, booking, pricing), Product/Service/LocalBusiness schema | The goal of the money pages' main call to action |
 | **Market:** country (`--gl`) and language (`--hl`) | `<html lang>`, ccTLD, hreflang, currency, addresses. Use native-language seeds. Never transliterate (e.g. Georgian queries in Georgian script unless users really type Latin) | The copy's language and its main country. Entering a new market or language is a business decision: **ask — batched at the end** |
 | 3–10 seed topics (products, services, problems solved, competitor names) | Titles, H1s and nav labels of money pages, plus GSC queries | The money pages' H1s |
-| Competitor domains | Domains in the top 10 for the head terms (WebSearch) | The domains that recur most across those SERPs |
+| Competitor domains | Domains in the top 10 for the head terms (WebSearch, US-located: step 6) | The domains that recur most across those SERPs |
 | Existing URL list | `sitemap_check.py --urls-out`, or a crawl CSV | Run the sitemap check |
 | GSC Queries export, the best free source of real impressions | A connector, or an export in `seo-work/` | **Ask — batched at the end.** Carry on with autocomplete and SERP evidence |
 
@@ -42,12 +42,17 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    ```bash
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/keyword_ideas.py" "english tutor" --hl en --gl gb --sources google,bing,youtube > seo-work/kw-english-tutor.json
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/keyword_ideas.py" "ielts preparation" --hl en --gl gb --deep > seo-work/kw-ielts.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/keyword_ideas.py" "ინგლისური ენის კურსები" --hl ka --gl ge --sources google > seo-work/kw-ka-courses.json
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/keyword_ideas.py" "репетитор английского" --hl ru --gl ge --sources google,bing > seo-work/kw-ru-tutor.json
    python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest keyword-ideas seo-work/kw-english-tutor.json --locale en
    ```
    - Each run returns `keywords` (with `sources`, `modifier`, `intent`), first-token `clusters`, and `multi_source` (typed in more than one engine, a stronger demand signal).
+   - `--hl` picks the expansion language. en, ka, ru, he, ar, de and es each have their own letters (Mkhedruli, Cyrillic, Hebrew, Arabic, or Latin with ä ö ü or ñ), question words, modifiers and intent words. Any other language uses the English ones, and `warnings` says so.
+   - `completions` is each seed's demand per engine: the suggestions for the bare seed, minus the seed itself. Autocomplete echoes any query it has a signal for, so a seed that only echoes itself scores 0. If a seed scores 0 in every engine, reword it or drop it. `null` means the engine couldn't be read: re-run it, and never read it as 0.
    - Keep `--delay` at 0.25 s or more. Autocomplete is an unofficial endpoint; stay modest.
+   - Yandex suggest is left out on purpose. Yandex's search licence (clause 6.6) allows automatic requests only through its paid Search API. For ru, use Google and Bing.
 2. **Mine what autocomplete misses:**
-   - WebSearch each head term and record People Also Ask, related searches and SERP features.
+   - WebSearch each head term and record People Also Ask, related searches and SERP features. The results are US-located (step 6).
    - Search Reddit, Quora and niche forums (`site:reddit.com <topic>`) for problem language and objections.
    - YouTube suggestions (`--sources youtube`) for how-to demand.
 3. **Ground the list in GSC.** If an export exists:
@@ -66,6 +71,11 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 6. **Cluster by SERP overlap.** This is the Google-grounded method; first-token clusters are only a starting point.
    - For each candidate pair inside a theme, WebSearch both in the target locale and compare the top-10 organic URLs.
    - **4 or more shared URLs → same page.** 2–3 shared → separate pages that interlink. 0–1 → separate topics [heuristic, consistent with common SERP-overlap practice].
+   - **WebSearch results are US-located:** the tool describes itself as US-only. Tag them `[measured: WebSearch sample, US-located, <date>]`. They fit an en-US market; for any other market they are directional.
+   - **Georgia-located results** (ka-GE, ru-GE, en-GE) come from one of two places:
+     - DataForSEO's Google Organic SERP with `location_code` 2268. It is paid, so run it only within the configured budget, which the credit guard enforces (tools.md `## DataForSEO`).
+     - A watched browser session: a person opens Google with `gl=ge` and the locale's `hl`, and records the top 10. Never automate google.com/search.
+   - With neither available, cluster on the WebSearch samples, mark those clusters `[directional: US-located SERPs]`, and add the DataForSEO budget for the head terms to the requests batched at the end.
    - **Parallelise:** split the keywords in `gaps.<locale>.needs_serp` (up to 50 per `status` run, strongest demand first) into batches of about 10 and give each batch to a `seo-serp-researcher` subagent with an output path such as `seo-work/serps-en-1.json`. Each writes that details file and `seo-work/serps-en-1.serps.json` (`{"keyword": [top10 urls]}`). Ingest every batch, then cluster the locale's whole SERP set (the fresh snapshots already in the store plus the new ones) centrally, so every cluster uses the same rule:
      ```bash
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest serps seo-work/serps-en-1.serps.json --locale en --details seo-work/serps-en-1.json
@@ -95,7 +105,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 4. Single-source autocomplete.
 5. PAA / forum mention.
 
-Autocomplete proves a query is typed, **not how often**.
+Autocomplete proves a query is typed, **not how often**. Count completions without the echo: the engine returns the query itself whenever it has any signal for it, so a seed whose only suggestion is itself has no measured demand.
 
 **Intent fit:** the page type you can build must match the dominant page type in the top 10. If 7 of 10 results are product category pages, a blog post is the wrong asset [heuristic].
 
@@ -125,6 +135,7 @@ Autocomplete proves a query is typed, **not how often**.
   - Cheapest for bulk volumes of a few hundred to thousands of terms.
   - Batch everything into as few tasks as possible (tools.md `## DataForSEO`).
 - **Keywords Everywhere:** cheap per-keyword credits for spot checks (tools.md `## Other paid tools`).
+- **DataForSEO Google Organic SERP:** Georgia-located top 10s (`location_code` 2268) for clustering ka-GE and ru-GE, which WebSearch can't give. Query only the cluster head terms (tools.md `## DataForSEO`).
 
 Without one of these, the volume column is `[needs data]`. Never estimate it.
 
