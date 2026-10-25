@@ -100,7 +100,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --loca
      python3 "${CLAUDE_PLUGIN_ROOT}/scripts/ai_probe.py" run seo-work/ai-prompts.json --out seo-work/ai/observations-$(date +%F).csv
      ```
      - **Engines:** `openai` is the main one, the stand-in for ChatGPT search, and `perplexity` the cross-check. Add `anthropic` with `--engines openai,perplexity,anthropic` when Claude matters to the audience.
-     - **Pin the versions** in the set's `engines`: a small priced model for routine probes (`gpt-5-mini`, `claude-haiku-5-5` with `max_uses` 1) and a Perplexity preset with its date (`fast@2026-10-16.0`). Rows record the model and tool version that actually ran.
+     - **Pin the versions** in the set's `engines`: a pinned model for routine probes (`gpt-5-mini`; for Claude `claude-sonnet-5-5` with `max_uses` 1, since Haiku is not allowed and Claude app users get Sonnet or Opus answers) and a Perplexity preset with its date (`fast@2026-10-16.0`). Rows record the model and tool version that actually ran.
      - **Runs:** 3 per prompt and engine unless the set says otherwise. Run the full set monthly, or weekly only when `other_monthly_usd` covers four runs (seo-automation B8); `plan` says whether one run fits the per-run cap.
      - **Budget:** `plan` is free and says whether the run fits. `run` checks the whole run first, reserves each prompt's batch in the credit guard's ledger, records what it cost and stops at the monthly budget or the per-run cap. A stop goes in the end-of-run questions.
      - **Location:** `user_location` sends the set's country and city. Whether each vendor accepts `GE` is [UNVERIFIED]: an engine that rejects it fails loudly on its first call.

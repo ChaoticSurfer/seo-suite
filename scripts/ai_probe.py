@@ -15,7 +15,7 @@ it a new version.
    "locale": {"country": "GE", "city": "Tbilisi", "region": "Tbilisi", "timezone": "Asia/Tbilisi"},
    "repeats": 3,
    "engines": {"openai": {"model": "gpt-5-mini"}, "perplexity": {"effort": "fast@2026-10-16.0"},
-               "anthropic": {"model": "claude-haiku-5-5", "max_uses": 1}},
+               "anthropic": {"model": "claude-sonnet-5-5", "max_uses": 1}},
    "prompts": [{"id": "brand-ka-1", "class": "brand", "lang": "ka", "text": "რა არის Acme?"}]}
 Classes: brand, category, comparison, problem. Write ka and ru prompts natively; never machine-translate them.
 A name or alias counts as a mention as a whole word, ignoring case and separators ("Acme-Tutors" = "acme tutors").
@@ -71,9 +71,12 @@ CLASSES = ("brand", "category", "comparison", "problem")
 TOKEN_PRICES = {
     "openai": {"gpt-5-mini": (0.25, 2.00), "gpt-5.4-mini": (0.75, 4.50), "gpt-5.5": (5.00, 30.00),
                "gpt-6-luna": (0.10, 0.50)},
-    "anthropic": {"claude-haiku-5-5": (0.10, 0.50), "claude-sonnet-5-5": (2.00, 10.00),
-                  "claude-opus-5-5": (4.00, 20.00)},
+    "anthropic": {"claude-sonnet-5-5": (2.00, 10.00), "claude-opus-5-5": (4.00, 20.00)},
 }
+# Owner rule (2026-10-26): no Haiku anywhere; the lowest model is Sonnet. Claude app users get Sonnet or Opus
+# answers, so Haiku was also a poor stand-in for what they see.
+BANNED_MODEL = re.compile(r"haiku", re.I)
+LOWEST_CLAUDE_MODEL = "claude-sonnet-5-5"
 PERPLEXITY_PRESET_PRICE = (0.25, 2.50)  # a preset's model isn't documented: priced as perplexity/sonar [estimate]
 SEARCH_PRICES = {"openai": 0.01, "perplexity": 0.0025, "anthropic": 0.01}  # USD per search call
 PROBE_TOKENS = (10_000, 1_000)  # input and output tokens per probe [estimate], as in references/tools.md
@@ -194,6 +197,9 @@ def check_engines(pset: dict, engines: list[str]) -> None:
                 raise SystemExit(f"{pset['path']}: engines.perplexity.effort must be a pinned version such as "
                                  f"fast@2026-10-16.0, not {effort!r}; a response's effort field names the version")
             continue
+        if BANNED_MODEL.search(str(config.get("model"))):
+            raise SystemExit(f"{pset['path']}: engines.{engine}.model {config.get('model')!r}: Haiku is not allowed; "
+                             f"the lowest model is Sonnet ({LOWEST_CLAUDE_MODEL})")
         if config.get("model") not in TOKEN_PRICES[engine]:
             raise SystemExit(f"{pset['path']}: engines.{engine}.model {config.get('model')!r} has no price in "
                              f"ai_probe.py ({', '.join(TOKEN_PRICES[engine])}); add it from the vendor's pricing page")

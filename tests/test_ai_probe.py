@@ -108,6 +108,15 @@ class PromptSetTest(unittest.TestCase):
             ap.check_engines(ap.load_prompt_set(path), ["openai"])
         self.assertIn("gpt-unknown", str(stop.exception))
 
+    def test_haiku_is_refused_with_sonnet_named(self):
+        # Owner rule (2026-10-26): Haiku is banned; the lowest model is Sonnet. Its answers are also a poor stand-in
+        # for what Claude app users see, who get Sonnet or Opus.
+        path = self.write_set(lambda d: d["engines"]["anthropic"].update(model="claude-haiku-5-5"))
+        with self.assertRaises(SystemExit) as stop:
+            ap.check_engines(ap.load_prompt_set(path), ["anthropic"])
+        self.assertIn("Haiku", str(stop.exception))
+        self.assertIn("claude-sonnet-5-5", str(stop.exception))
+        self.assertFalse(any("haiku" in model for model in ap.TOKEN_PRICES["anthropic"]))
 
 class EngineRuleTest(unittest.TestCase):
     def test_consumer_apps_and_grounded_gemini_or_bing_are_refused(self):
@@ -158,7 +167,7 @@ class RequestTest(unittest.TestCase):
         url, headers, body = ap.build_request("anthropic", self.prompt, self.pset, "sk-ant-test")
         self.assertEqual(url, "https://api.anthropic.com/v1/messages")
         self.assertEqual((headers["x-api-key"], headers["anthropic-version"]), ("sk-ant-test", "2023-06-01"))
-        self.assertEqual(body["model"], "claude-haiku-5-5")
+        self.assertEqual(body["model"], "claude-sonnet-5-5")
         self.assertEqual(body["messages"], [{"role": "user", "content": self.prompt["text"]}])
         self.assertEqual(body["tools"], [{"type": "web_search_20250305", "name": "web_search", "max_uses": 1,
                                           "user_location": {"type": "approximate", "country": "GE", "city": "Tbilisi",
@@ -193,7 +202,7 @@ class ParseTest(unittest.TestCase):
         answer = ap.parse_answer("anthropic", fixture("anthropic-response.json"))
         self.assertEqual(answer.citations, ["https://www.rival.example/ka/"])
         self.assertEqual(answer.sources, ["https://www.rival.example/ka/", "https://courses.example/english/"])
-        self.assertEqual((answer.search_calls, answer.model_id, answer.tool_version), (1, "claude-haiku-5-5",
+        self.assertEqual((answer.search_calls, answer.model_id, answer.tool_version), (1, "claude-sonnet-5-5",
                                                                                         "web_search_20250305"))
 
     def test_cost_from_usage_or_the_vendors_figure(self):
@@ -203,7 +212,7 @@ class ParseTest(unittest.TestCase):
         perplexity = ap.parse_answer("perplexity", fixture("perplexity-response.json"))
         self.assertEqual(ap.answer_cost("perplexity", pset, perplexity), (0.0021, False))
         anthropic = ap.parse_answer("anthropic", fixture("anthropic-response.json"))
-        self.assertEqual(ap.answer_cost("anthropic", pset, anthropic)[0], round(6000 * 0.1e-6 + 700 * 0.5e-6 + 0.01, 6))
+        self.assertEqual(ap.answer_cost("anthropic", pset, anthropic)[0], round(6000 * 2e-6 + 700 * 10e-6 + 0.01, 6))
 
 
 class MentionTest(unittest.TestCase):

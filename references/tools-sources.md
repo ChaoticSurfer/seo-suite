@@ -86,7 +86,7 @@ Checked 2026-10-24, read-only, no sign-ins and no paid calls. Code facts were re
   (https://developers.botify.com/); schema.org downloads (https://schema.org/docs/developers.html); Cloudflare AI Crawl
   Control (https://developers.cloudflare.com/ai-crawl-control/).
 - **AI-answer APIs:** OpenAI web search and prices (https://developers.openai.com/api/docs/guides/tools-web-search,
-  https://developers.openai.com/api/docs/pricing); Anthropic web search fee and Haiku 5.5 prices
+  https://developers.openai.com/api/docs/pricing); Anthropic web search fee and Sonnet and Opus 5.5 prices
   (https://platform.claude.com/docs/en/about-claude/pricing); Perplexity API Terms §5.1
   (https://www.perplexity.ai/hub/legal/perplexity-api-terms-of-service).
 - **Other vendors:** Majestic (https://majestic.com/plans-pricing,

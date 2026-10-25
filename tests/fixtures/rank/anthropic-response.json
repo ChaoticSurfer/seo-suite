@@ -2,7 +2,7 @@
   "id": "msg_a930390d3a",
   "type": "message",
   "role": "assistant",
-  "model": "claude-haiku-5-5",
+  "model": "claude-sonnet-5-5",
   "content": [
     {"type": "server_tool_use", "id": "srvtoolu_01WYG3", "name": "web_search", "input": {"query": "საუკეთესო ინგლისურის რეპეტიტორი თბილისში"}},
     {"type": "web_search_tool_result", "tool_use_id": "srvtoolu_01WYG3",
