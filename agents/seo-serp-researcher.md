@@ -1,6 +1,6 @@
 ---
 name: seo-serp-researcher
-description: Researches the live search results for up to about 10 keywords with WebSearch and WebFetch (top-10 URLs, page types, SERP features, intent, People Also Ask) and returns one compact table. Run several in parallel for clustering, competitor and intent checks. Not for crawling the user's own site.
+description: Delegate to this agent to research the live search results for a batch of up to ~10 keywords using WebSearch/WebFetch — top-10 organic URLs, page types, SERP features, dominant intent, People Also Ask questions — and return one compact table. Launch several in parallel (one per keyword batch) for keyword clustering by SERP overlap, competitor identification, intent checks, and link-prospect footprint searches. Not for crawling the user's own site or scoring content.
 tools:
   - WebSearch
   - WebFetch

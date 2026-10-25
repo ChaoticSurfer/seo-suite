@@ -1,6 +1,6 @@
 ---
 name: seo-schema
-description: Structured data and rich results. Finds a page's JSON-LD, checks it against Google's current requirements, and writes markup per page type with where to put it in each framework. Use for "add schema", "validate my JSON-LD", "why no rich results", review stars, breadcrumbs. Not for AI-answer visibility (seo-ai-search).
+description: Use when the user asks about structured data, schema markup, JSON-LD or rich results — "add schema to this page", "why don't we get rich results", "validate my JSON-LD", "product schema / merchant listing errors in Search Console", "review stars", "breadcrumb markup", "Organization schema", "is FAQ schema still worth it", "generate structured data for our templates". It finds the markup on a page, checks it against Google's current requirements, writes JSON-LD for each page type and says where to put it for each framework. Not for: general page audits (seo-onpage, seo-technical), visibility in AI answers (seo-ai-search), product feeds and Merchant Center strategy (seo-ecommerce), image and video indexing beyond VideoObject (seo-media), Business Profile work (seo-local).
 ---
 
 # Structured data (schema.org JSON-LD)

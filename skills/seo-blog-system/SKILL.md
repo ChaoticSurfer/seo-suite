@@ -1,6 +1,6 @@
 ---
 name: seo-blog-system
-description: Sets up or upgrades a blog's SEO plumbing (URLs, paginated index, category, tag and author pages, post template and schema, sitemap with real lastmod, RSS, IndexNow, hreflang, related links, noindex for thin archives). Next.js first. Use for "set up our blog". Not for writing (seo-blog-builder) or reviewing posts (seo-blog-review).
+description: Blog-system builder. Sets up a blog, or upgrades an existing one, to seo-suite's rules for everything around the posts: URL structure, a crawlable paginated index with self-canonical pages, category, tag and author pages, the post template (titles, BlogPosting and BreadcrumbList schema, honest publish and modified dates, bylines, a prioritised hero image with real sizes), the XML sitemap with real per-locale lastmod, an RSS feed, IndexNow on publish, hreflang clusters with crawlable links between language versions, related-post and money-page links, and noindex for thin archives. Next.js App Router first; notes for Astro and static sites. Upgrade mode changes only what is missing or wrong. Ships a report, a PR or a merge per autonomy level, verified with blog_system_check.py and the audit scripts. Triggers include "set up our blog", "fix our blog's SEO plumbing", "blog pagination", "add an RSS feed" and "IndexNow for posts". Not for writing posts (seo-blog-builder) or reviewing them (seo-blog-review).
 ---
 
 # Blog system: the plumbing around the posts

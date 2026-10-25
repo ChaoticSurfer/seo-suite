@@ -1,6 +1,6 @@
 ---
 name: seo-local
-description: Local and maps visibility. Google Business Profile, the map pack, near-me searches, NAP and citations, reviews, location and service-area pages, LocalBusiness schema, suspended listings, Apple Maps and Bing Places. Profile edits and review requests wait for approval. Not for language or country targeting (seo-international).
+description: Use for local and maps visibility — "local SEO", "Google Business Profile", "rank in Google Maps / the map pack", "near me searches", "NAP consistency", "local citations", "how to get more Google reviews", "location pages", "service area business", "multi-location SEO", "our listing got suspended", "Apple Maps / Bing Places". Covers Business Profile optimisation within Google's guidelines, ethical review strategy, NAP and citations, LocalBusiness schema, location and service-area pages, local rank checks and local links. Profile edits, listing corrections and review requests go to the end-of-run approval batch, and Claude carries out only the approved ones. Not for: general on-page work (seo-onpage), schema syntax (seo-schema), language or country targeting (seo-international), link building beyond local (seo-links).
 ---
 
 # Local SEO

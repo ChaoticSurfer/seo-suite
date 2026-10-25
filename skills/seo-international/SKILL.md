@@ -1,6 +1,6 @@
 ---
 name: seo-international
-description: International and multilingual SEO. hreflang and x-default, language and region codes, return links, URL structure per country (ccTLD, subdomain, subfolder), locale-adaptive serving, translation at scale, per-market keywords. Use for "hreflang", "wrong language in Google", "expand to another country". Not for site moves (seo-migration).
+description: International and multilingual SEO. Covers hreflang (HTML, HTTP header or sitemap), x-default, language and region codes, return links, URL structure (ccTLD vs subdomain vs subfolder), locale-adaptive serving pitfalls, translation quality vs machine translation at scale, per-market keyword research, and currency/address signals. Use when the user says "hreflang", "multilingual site", "translate my site for SEO", "expand to another country", "wrong language showing in Google", "en-GB vs en-US", "Georgian and English versions", "x-default", or "which URL structure for countries". Not for a full audit (use seo-audit), a domain move (seo-migration), general crawling or canonical bugs (seo-technical), or local Business Profile work (seo-local).
 ---
 
 # International SEO

@@ -1,6 +1,6 @@
 ---
 name: seo-audit
-description: Full SEO audit of a site or one URL on measured evidence ("audit my site", "SEO health check", "quick SEO check of this URL"). Runs the robots, sitemap, crawl, speed, page and render checks, then a P0-P3 fix plan grouped by template, and fixes code in repo-backed sites. For a deep dive on one area, use that area's skill.
+description: Full SEO audit orchestrator for a whole site or a single page, run on measured evidence. Use when the user says "audit my site", "SEO audit", "site health check", "why isn't my site ranking", "check my website for SEO issues", "technical + content audit", "give me an SEO fix list", or "quick SEO check of this URL". It runs the robots, sitemap, crawl, PageSpeed, page and render checks, turns every finding into a P0–P3 plan with triage.py, groups issues by template, and offers to fix code in repo-backed sites. Not for a deep dive on one area: use seo-technical (crawling, rendering, CWV, framework code), seo-onpage (one page's copy and tags), seo-content, seo-keywords, seo-links, seo-migration (site moves), seo-international (hreflang), seo-local, seo-ecommerce, seo-ai-search, or seo-analytics (traffic drops, GSC data).
 ---
 
 # SEO Audit

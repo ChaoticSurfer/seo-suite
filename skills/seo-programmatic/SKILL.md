@@ -1,6 +1,6 @@
 ---
 name: seo-programmatic
-description: Programmatic SEO page sets generated from data and templates (location x service, comparisons, glossaries, directories). Go/no-go test, quality gates, batch rollout and pruning within Google's scaled-content and doorway policies. Use for "generate pages for every city", "pSEO". Not for single pages (seo-onpage) or store facets (seo-ecommerce).
+description: Plan, build, QA, roll out and prune programmatic SEO page sets generated from data and templates. Examples include location × service pages, integrations, comparisons ("X vs Y"), glossaries, directories, tools by use case, and product or attribute landing pages. Triggers include "programmatic SEO", "pSEO", "generate pages for every city", "template pages at scale", "landing pages from our database", "is this doorway/scaled content", "should we make 5,000 pages" and "our generated pages aren't indexed". It includes a go/no-go test, quality gates, batch rollout and pruning within Google's scaled-content-abuse and doorway policies. It is not for single pages (seo-onpage), hand-written content programmes (seo-content), local Business Profile work (seo-local) or e-commerce category and faceted navigation (seo-ecommerce).
 ---
 
 # Programmatic SEO

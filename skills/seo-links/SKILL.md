@@ -1,6 +1,6 @@
 ---
 name: seo-links
-description: Internal linking and backlinks. Orphan pages, hub and cluster linking, anchor text, backlink audits, link prospecting, broken-link building, unlinked mentions, digital PR, disavow and unnatural-link actions. Free first; outreach is sent only once approved. Not for crawl bugs (seo-technical) or local citations (seo-local).
+description: Internal linking and off-page link work. Use for "fix internal linking", "find orphan pages", "which pages need more links", "hub pages / topic clusters linking", "anchor text audit", "backlink audit", "who links to us", "link building ideas", "link prospecting", "broken link building", "unlinked brand mentions", "digital PR", "should we disavow", "toxic links", "manual action for unnatural links", "backlink gap vs competitors". Works free (crawl CSV, Search Console Links export, Bing Webmaster, Ahrefs Webmaster Tools) and says exactly when Ahrefs/Semrush/Majestic/Moz are worth paying for. Prepares each outreach message and sends only the ones the user approves. Not for crawl/index/redirect bugs (seo-technical), migrations (seo-migration), local citations (seo-local), or competitor content gaps (seo-competitors).
 ---
 
 # Links: internal architecture and off-page authority

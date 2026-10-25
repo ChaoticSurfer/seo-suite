@@ -1,6 +1,6 @@
 ---
 name: seo-strategy
-description: SEO strategy, roadmap and budget. Turns business goals into KPIs, honest traffic ranges, a topical map, site architecture, a quarterly P0-P3 roadmap, resourcing, a tool stack per budget and a risk register. Use for "SEO plan", "is SEO worth it", "which SEO tools to buy". Not for running the audit (seo-audit).
+description: SEO strategy, roadmap and budgeting. Use for "build an SEO strategy", "SEO plan for next quarter", "where should we focus SEO", "is SEO worth it for us", "how much traffic could we get", "SEO roadmap", "topical authority plan", "site architecture for SEO", "what SEO tools should we buy", "SEO budget", "SEO KPIs / OKRs", "prioritise our SEO backlog", "SEO for a new website / launch". Turns business goals into KPIs, honest opportunity ranges, a topical map, architecture, a quarterly P0–P3 roadmap (from triage.py), resourcing, a tool stack per budget tier and a risk register. Not for running the audit itself (seo-audit / seo-technical), keyword discovery (seo-keywords), or one-off page fixes (seo-onpage).
 ---
 
 # Strategy: from business goal to a quarterly SEO plan

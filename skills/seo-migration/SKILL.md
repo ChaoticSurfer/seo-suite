@@ -1,6 +1,6 @@
 ---
 name: seo-migration
-description: Plans, checks and monitors site moves without losing traffic (domain changes, URL restructures, replatforms, HTTPS or www changes, subdomain and subfolder merges). Builds the URL inventory, redirect map, launch checklist and day 1/7/30/90 monitoring with rollback triggers. Not for single redirect bugs (seo-technical).
+description: Plan, validate and monitor site moves without losing search traffic. Covers domain changes, URL restructures, CMS or platform replatforms (e.g. WordPress→Next.js, Shopify→headless), HTTP→HTTPS, www changes, subdomain↔subfolder merges, and site consolidations. Use when the user says "we're migrating", "moving to a new domain", "redesign with new URLs", "replatforming", "build a redirect map", "check my redirects", "traffic dropped after the migration", "launch checklist", or "Change of Address". It builds the URL inventory, the redirect map, staging safeguards, the launch-day checklist and the day 1/7/30/90 monitoring with rollback triggers. Not for a routine audit (use seo-audit), single redirect or canonical bugs (seo-technical), or hreflang setup (seo-international).
 ---
 
 # SEO Migration

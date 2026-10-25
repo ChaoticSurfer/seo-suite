@@ -1,6 +1,6 @@
 ---
 name: seo-analytics
-description: Search performance analysis and reporting. Use for traffic drops, Google update impact, Search Console quick wins (striking distance, low CTR, cannibalisation), server logs, rank tracking and snapshots, dashboards, and whether an SEO change worked. Not for crawling for defects (seo-technical, seo-audit) or keyword discovery (seo-keywords).
+description: Search performance analysis, traffic-drop diagnosis and SEO reporting. Use for "why did our traffic drop", "organic traffic fell", "lost rankings", "analyse my Search Console export", "find quick wins in GSC", "striking distance keywords", "low CTR pages", "keyword cannibalisation", "compare this month vs last", "branded vs non-branded", "did the Google update hit us", "analyse server logs / Googlebot crawl", "build an SEO dashboard / KPI report", "did my SEO change work", "rank tracking". Uses gsc_analyze.py, log_analyze.py, rank_compare.py and Looker Studio (free), and rank_snapshot.py for fixed-condition rank snapshots with competitor share of voice (paid, within the DataForSEO budget; Search Console positions when it is 0). Not for crawling the site for defects (seo-technical / seo-audit), keyword discovery for new content (seo-keywords), or competitor research (seo-competitors).
 ---
 
 # Analytics: measure, diagnose, report

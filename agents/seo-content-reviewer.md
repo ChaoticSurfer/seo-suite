@@ -1,6 +1,6 @@
 ---
 name: seo-content-reviewer
-description: Grades one page or draft for search quality (people-first helpfulness, E-E-A-T, intent match, keyword placement, citations, readability, answer-readiness) with content_score.py and a close read, and returns a verdict with specific edits. Run one per page in parallel. Not for technical SEO or schema.
+description: Delegate to this agent to grade one published page or draft for search quality — helpfulness (people-first), E-E-A-T and trust signals, intent match, keyword placement, citations, readability and answer-readiness for featured snippets and AI answers — using content_score.py plus reading the content, and get back a verdict with specific edits. Run one per page in parallel to review many pages. Not for technical SEO, schema generation, or rewriting whole articles.
 tools:
   - Bash
   - Read

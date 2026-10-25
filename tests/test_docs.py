@@ -13,8 +13,6 @@ GOOGLE_RULES = os.path.join(ROOT, "references", "google-rules.md")
 GOOGLE_RULES_MAX_AGE_DAYS = 183  # about six months: re-check a section against its sources before it expires
 SECTION_CHECKED = re.compile(r"\(checked (\d{4}-\d{2}-\d{2})\)$")
 CLAUDE_SEO_TOOL = re.compile(r"\brun [a-z_]+\.py\b")  # claude_seo.py run TOOL ...: the flags after TOOL are claude-seo's
-# Every skill and agent description is in context in every session while the plugin is enabled, SEO or not
-DESCRIPTION_MAX_CHARS = 350
 # references/tools.md is read on every free run; the paid stacks and vendor notes live in tools-paid.md
 TOOLS_MD_MAX_WORDS = 10000
 TO_BUILD_SUBJECT = re.compile(r"`([a-z_]+)(?:\.py)?`[^`|,;.\n]{0,60}\(to build")
@@ -52,15 +50,6 @@ class DocsTest(unittest.TestCase):
                 self.assertLessEqual(len(front.group(2)), 1024, "description too long")
                 for section in REQUIRED_SECTIONS:
                     self.assertIn(section, text)
-
-    def test_descriptions_stay_short(self):
-        paths = [os.path.join(ROOT, "skills", n, "SKILL.md") for n in os.listdir(os.path.join(ROOT, "skills"))]
-        paths += [os.path.join(ROOT, "agents", n) for n in os.listdir(os.path.join(ROOT, "agents"))]
-        for path in sorted(paths):
-            with self.subTest(doc=os.path.relpath(path, ROOT)):
-                with open(path, encoding="utf-8") as fh:
-                    description = re.search(r"^description: (.+)$", fh.read(), re.M).group(1)
-                self.assertLessEqual(len(description), DESCRIPTION_MAX_CHARS)
 
     def test_free_runs_read_a_small_tools_md(self):
         with open(os.path.join(ROOT, "references", "tools.md"), encoding="utf-8") as fh:

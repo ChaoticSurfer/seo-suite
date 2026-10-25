@@ -1,6 +1,6 @@
 ---
 name: seo-site-auditor
-description: Runs the seo-suite technical scripts against one site (robots, sitemaps, crawl, PageSpeed, page audits, triage), writes the raw JSON/CSV to a given folder and returns a short summary with file paths, keeping large outputs out of the conversation. Run several in parallel for sites or sections.
+description: Delegate to this agent to run the seo-suite technical scripts against one site (robots.txt, sitemaps, crawl, PageSpeed/CrUX, single-page audits, triage) and write all raw JSON/CSV into a given folder, returning only a compact summary with file paths. Use it for full or section audits, re-baselines, and post-fix re-crawls, so large outputs stay out of the main conversation. Run several in parallel for different sites or sections. Not for content judgement or SERP research.
 tools:
   - Bash
   - Read

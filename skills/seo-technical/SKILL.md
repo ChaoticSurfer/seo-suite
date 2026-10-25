@@ -1,6 +1,6 @@
 ---
 name: seo-technical
-description: Technical SEO deep dive. Crawling, indexing, JavaScript rendering, status codes and redirects, canonicals, robots, sitemaps, Core Web Vitals, crawl budget, server logs. Codebase mode finds and fixes defects in Next.js, Nuxt, Astro, Remix and other frameworks, and adds CI checks. Not for whole-site audits (seo-audit) or hreflang (seo-international).
+description: Technical SEO deep dive. Covers crawling, indexing, rendering/JavaScript SEO, status codes and redirects, canonicals, robots.txt and meta robots, XML sitemaps, Core Web Vitals, HTTPS/mobile, faceted navigation, pagination, crawl budget and server-log analysis. It also has a codebase mode that finds and fixes SEO defects in Next.js, Nuxt, Astro, SvelteKit, Remix, Gatsby, WordPress, Shopify, Webflow, Frappe/Django/Rails templates, and a CI mode. Use for "pages not indexed", "Discovered/Crawled – currently not indexed", "canonical issues", "robots.txt check", "sitemap errors", "JS SEO", "is Google rendering my site", "Core Web Vitals / INP / LCP", "crawl budget", "analyse my server logs", "fix SEO in my Next.js app", "add an SEO check to CI". Not for a whole-site audit (use seo-audit), site moves (seo-migration), hreflang (seo-international) or copy and on-page rewrites (seo-onpage).
 ---
 
 # Technical SEO

@@ -1,6 +1,6 @@
 ---
 name: seo-ecommerce
-description: SEO for online stores and catalogues. Product and category pages, faceted navigation and parameter URLs, pagination, variants, out-of-stock and discontinued products, Merchant Center free listings, Shopify and WooCommerce specifics. Not for schema syntax (seo-schema), product media (seo-media) or replatforming (seo-migration).
+description: Use for online stores and catalogues — "ecommerce SEO", "product page SEO", "category page optimisation", "faceted navigation / filters creating thousands of URLs", "sort and filter parameters indexed", "out of stock or discontinued products", "product variants / colour URLs", "pagination", "Merchant Center free listings", "Shopping tab", "Shopify SEO", "WooCommerce SEO", "duplicate manufacturer descriptions". Covers URL inventory and crawl waste, index rules for facets, pagination, variants, product lifecycle, parity between page, markup and feed, internal linking and platform specifics. Not for: schema syntax and templates (seo-schema), product images and video (seo-media), replatforming or domain moves (seo-migration), keyword demand research (seo-keywords).
 ---
 
 # E-commerce SEO

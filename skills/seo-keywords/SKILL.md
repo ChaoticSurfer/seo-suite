@@ -1,6 +1,6 @@
 ---
 name: seo-keywords
-description: Keyword research and topic planning, free by default. Expands seeds into real queries (autocomplete, People Also Ask, Search Console, forums), classifies intent, clusters by SERP overlap, and builds a topical map and target list, in any language (Georgian and Russian included), saved to the shared research store. Not for one page (seo-onpage).
+description: Keyword research and topic planning. Expands seeds into real queries (Google, Bing and YouTube autocomplete, People Also Ask, related searches, Search Console, forums), classifies intent, clusters keywords by SERP overlap, builds a topical map (pillar + clusters) and a prioritised target list. Triggers include "keyword research for X", "what should we write about", "find keywords for my site", "cluster these keywords", "topical map", "pillar pages", "which keywords should this page target", "keywords in Georgian/German for market Y" and "what are people searching for". It runs free by default and adds Semrush, Ahrefs, DataForSEO or Keyword Planner volumes only for a shortlist. Results go into the shared research store (seo-research/) that every other skill reuses. It is not for optimising one page (seo-onpage), writing briefs or articles (seo-content), blog batches (seo-blog-builder), competitor domain teardowns (seo-competitors) or Search Console traffic diagnosis (seo-analytics).
 ---
 
 # Keyword research, clustering and topical maps

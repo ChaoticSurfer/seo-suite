@@ -1,6 +1,6 @@
 ---
 name: seo-content
-description: Content strategy and quality across many pages. Content audits (keep, update, merge, redirect, delete), decay, cannibalisation, SERP-based briefs, writing or refreshing one article with E-E-A-T, helpful-content checks, safe AI writing. Not for one page's tags (seo-onpage), keyword discovery (seo-keywords) or blog batches (seo-blog-builder).
+description: Content strategy and quality across many pages. Covers content audits and inventories (keep/update/merge/redirect/delete), content decay, keyword cannibalisation, SERP-derived content briefs, writing or refreshing articles with E-E-A-T signals, helpful-content self-assessment, and safe use of AI writing. Triggers include "content audit", "which pages should we prune", "traffic decaying on old posts", "two pages competing for the same keyword", "write a content brief for X", "refresh this article", "write an SEO blog post", "is our content helpful", "E-E-A-T review" and "can we use AI for content". It is not for a single page's tags (seo-onpage), keyword discovery and clustering (seo-keywords), keyword-driven blog batches or content calendars (seo-blog-builder), template-generated page sets (seo-programmatic), or technical crawl issues (seo-technical).
 ---
 
 # Content: audit, briefs, writing, refreshes

@@ -1,6 +1,6 @@
 ---
 name: seo-ai-search
-description: Visibility in AI answers (AEO/GEO) in ChatGPT, Perplexity, Google AI Overviews and AI Mode, Copilot, Claude and Gemini. Covers AI crawler policy (GPTBot, ClaudeBot), llms.txt, entity facts, citable content, and measuring AI visibility with confidence intervals. Not for classic rankings (seo-keywords) or traffic drops (seo-analytics).
+description: Use for visibility in AI answers (AEO, GEO, "LLM SEO") — "get cited by ChatGPT / Perplexity / Google AI Overviews / AI Mode / Copilot / Claude / Gemini", "why doesn't ChatGPT mention us", "should we block GPTBot or ClaudeBot", "AI crawler access", "do we need llms.txt", "track our AI visibility", "brand in AI answers", "opt out of AI Overviews". Covers eligibility, crawler policy by purpose (search vs user-fetch vs training), Bing indexing for ChatGPT and Copilot, consistent entity facts, citable content, off-site sources, and repeatable measurement with confidence intervals. Not for: classic keyword and ranking work (seo-keywords, seo-content), schema validation (seo-schema), Business Profile and maps (seo-local), traffic-drop forensics (seo-analytics).
 ---
 
 # AI search visibility (AEO / GEO)
