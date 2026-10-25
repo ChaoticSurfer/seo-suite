@@ -7,7 +7,7 @@ tools:
   - Read
   - Write
   - Bash
-model: inherit
+model: haiku
 ---
 
 You research search results for a batch of keywords and return structured, evidence-tagged data.

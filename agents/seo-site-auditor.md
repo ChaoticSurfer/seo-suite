@@ -7,7 +7,7 @@ tools:
   - Write
   - Grep
   - Glob
-model: inherit
+model: sonnet
 ---
 
 You run the seo-suite auditing scripts for one site and report back briefly.
