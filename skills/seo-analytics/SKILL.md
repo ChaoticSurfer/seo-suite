@@ -1,6 +1,6 @@
 ---
 name: seo-analytics
-description: Search performance analysis, traffic-drop diagnosis and SEO reporting. Use for "why did our traffic drop", "organic traffic fell", "lost rankings", "analyse my Search Console export", "find quick wins in GSC", "striking distance keywords", "low CTR pages", "keyword cannibalisation", "compare this month vs last", "branded vs non-branded", "did the Google update hit us", "analyse server logs / Googlebot crawl", "build an SEO dashboard / KPI report", "did my SEO change work", "rank tracking". Uses gsc_analyze.py, log_analyze.py and Looker Studio (free); explains when Semrush/Ahrefs rank tracking is worth paying for. Not for crawling the site for defects (seo-technical / seo-audit), keyword discovery for new content (seo-keywords), or competitor research (seo-competitors).
+description: Search performance analysis, traffic-drop diagnosis and SEO reporting. Use for "why did our traffic drop", "organic traffic fell", "lost rankings", "analyse my Search Console export", "find quick wins in GSC", "striking distance keywords", "low CTR pages", "keyword cannibalisation", "compare this month vs last", "branded vs non-branded", "did the Google update hit us", "analyse server logs / Googlebot crawl", "build an SEO dashboard / KPI report", "did my SEO change work", "rank tracking". Uses gsc_analyze.py, log_analyze.py, rank_compare.py and Looker Studio (free), and rank_snapshot.py for fixed-condition rank snapshots with competitor share of voice (paid, within the DataForSEO budget; Search Console positions when it is 0). Not for crawling the site for defects (seo-technical / seo-audit), keyword discovery for new content (seo-keywords), or competitor research (seo-competitors).
 ---
 
 # Analytics: measure, diagnose, report
@@ -144,26 +144,68 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --form
   - CWV (the CrUX connector, or psi.py snapshots).
 - **Monthly report:** what changed, why (evidence-tagged), what we did (from SEO-WORKLOG.md), what's next.
 
-### D. Measuring whether an SEO change worked
+### D. Measuring whether an SEO change worked: iterate on evidence
 
-1. **Pre-register.** Before the change, write down in the worklog:
-   - Changed URLs.
-   - **Control URLs** (similar, unchanged).
-   - Metric (clicks/impressions/CTR/position for the target queries).
-   - Expected direction.
-   - Window: ≥4 weeks after indexing; check the re-crawl date in URL Inspection.
-2. Export equal windows before and after for both groups, then run `gsc_analyze.py after.csv --compare before.csv` for each group.
-3. Report the treatment change *minus* the control change. With few pages or low clicks, say "inconclusive". Never claim causation from a single before/after.
+1. **Baseline.** Before the change, export Search Console Pages (or query+page) for the last 28 days. If snapshots run, keep the latest snapshot of the affected keyword set.
+2. **Log the change** in `SEO-WORKLOG.md`, pre-registered:
+   - The changed URLs, also saved one per line in `seo-work/changes/<date>-changed.txt`.
+   - **Control URLs:** similar pages left unchanged, in a `--controls` file. Without one, every other page is a control.
+   - The metric: clicks and impressions decide; position explains.
+   - The expected direction.
+   - The check dates: +14 and +28 days after Google re-crawled the pages (URL Inspection).
+3. **Compare at +14 and +28 days,** with equal windows aligned on weekdays and the last 2–3 days left out:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rank_compare.py" gsc baseline.csv plus14.csv plus28.csv --changed seo-work/changes/2026-10-01-changed.txt > seo-work/change-impact.json
+   ```
+
+   With snapshots, `rank_compare.py snapshots` with the same `--changed` file also compares the positions the changed keywords gained against the control keywords.
+
+   If a Google core update rolled out between the baseline and a check window (Search Status Dashboard), don't decide on that window: controls don't absorb an update's uneven effect. Move the check to a full week after the rollout ends, with a new baseline if the update began after the change.
+4. **Decide on clicks and impressions.** `change_impact.verdict` is the changed pages' change minus the controls', from the first file to the last:
+   - "ahead of controls" (clicks 10+ points ahead, impressions not behind): keep the change and apply the pattern to similar pages.
+   - "behind controls" (clicks 10+ points behind): revert it, or try the next variant.
+   - "no clear difference": keep a quality fix; otherwise try the next variant.
+   - "inconclusive" (fewer than 50 clicks before, or a group with no pages): wait for more data, or widen the test to more pages.
+
+   The margins are judgement, not a Google rule (`thresholds` in the output). Report "coincides with", never "caused".
+5. **Log the decision** and the next check date, then start again at step 1 with the next change.
 
 ### Rank tracking
 
-- **Free:** Search Console average position per query (impression-weighted, all locations). Fine for trends; not a "where am I right now" view.
-- **Paid:** daily positions for a fixed keyword list, by location/device, with SERP features. Justify it when:
-  - local or multi-city ranks matter,
-  - the client contract needs rank reports, or
-  - you must track keywords with no impressions yet.
+Two sources, kept apart: show them side by side and never average them.
+- **Search Console, free, own site only:** the topmost position averaged over impressions, across every location and device, 2–3 days behind. It is the default at every budget.
+- **Snapshots, paid:** `rank_snapshot.py` buys DataForSEO Google Organic SERPs in the Standard queue under fixed conditions: one location, language and device per keyword set, depth 20 by default. One snapshot gives our position, every competitor's position, share of voice, visibility and the domains an AI Overview cites [vendor data]. seo-suite never queries google.com itself.
 
-  Options: Semrush Position Tracking, Ahrefs Rank Tracker, SE Ranking, or the DataForSEO SERP API for scripted checks (tools.md).
+1. **Keyword set.** Write `seo-work/rank/<market>-<lang>-<device>.json` in the format of `rank_snapshot.py`'s docstring: the money keywords and a sample of the mid tier, volumes from the research store, the competitors from seo-competitors, and a version. Georgia is location 2268 (Tbilisi 1007469, Batumi 1007466); 21143 is the US state, which the script refuses. A change to the keywords or the conditions needs a new version.
+2. **The free default** (budgets 0):
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rank_snapshot.py" gsc seo-work/rank/ge-ka-mobile.json Queries.csv > seo-work/rank/gsc-positions.json
+   ```
+
+   It gives the set's own Search Console position, clicks and impressions per keyword, and `paid_adds`: what a snapshot would add and what one run costs. Report both.
+3. **A paid snapshot** (`dataforseo_monthly_usd` above 0):
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rank_snapshot.py" run seo-work/rank/ge-ka-mobile.json --out-dir seo-work/rank --gsc Queries.csv
+   ```
+
+   - With `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD` in the environment (read from the Keychain at launch, never written in a file; seo-automation step A3), `run` posts up to 100 tasks a call, polls the free `tasks_ready`, fetches each result free and writes the snapshot. It checks the budget and the credit guard's ledger first, records the spend there, and refuses to post or snapshot one set twice on one day: a set already posted today ends with its free `--resume` command.
+   - Without them, `rank_snapshot.py plan` prints the `task_post` bodies for the DataForSEO connector's `api_request`, where the credit guard prices each call. `rank_snapshot.py parse` then turns the saved `task_get/advanced` answers into the same snapshot.
+   - If the queue takes longer than `--wait-minutes`, the run ends with a `--resume` command. Resuming fetches the posted tasks free; results stay 30 days.
+   - `--gsc` fits the CTR curve behind share of voice and visibility from the site's own export for the same country and device. Fit it once per keyword-set version: save that export as `seo-work/rank/<version>-ctr.csv` and pass the same file to every run of the version. A new export changes share of voice and visibility even when no position moved. Refit quarterly, with a new version.
+   - Cadence: the money tier daily, the full set weekly, and every keyword daily during a migration or a Google core update.
+4. **Write the SERPs back** with the command in the output's `next` field: `research_store.py ingest serps <snapshot>.serps.json --locale ka --details <snapshot>.details.json --as-of <date>`.
+5. **Alerts** over the last three snapshots of one set:
+
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/rank_compare.py" snapshots seo-work/rank/ge-ka-mobile-v1-2026-10-11.snapshot.json seo-work/rank/ge-ka-mobile-v1-2026-10-18.snapshot.json seo-work/rank/ge-ka-mobile-v1-2026-10-25.snapshot.json
+   ```
+
+   - It flags a move of 3+ positions held for 2 runs, entering or leaving the top 3 or top 10, and an AI Overview citation gained or lost.
+   - A move seen once is `pending`: re-check it on the next run before acting on it.
+   - The thresholds are judgement, not a Google rule. Hold alerts while a Google update rolls out (Search Status Dashboard), and compare only a full week after it ends.
 
 ### E. Write back to the research store
 
@@ -188,6 +230,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest gsc query_page.
 | Googlebot crawl rate drop | coincides with 5xx/429/slow responses | google-rules §1 [Google doc] |
 | CTR expectations | site's own curve first; defaults are heuristic | heuristic |
 | Cannibalisation threshold | ≥2 pages ≥10% impressions, ≥100 impressions | heuristic |
+| Rank alerts | a move of 3+ positions held for 2 runs; entering or leaving the top 3 or top 10; AI Overview citation gained or lost | judgement |
+| Snapshot rank vs Search Console position | side by side, never averaged: one is a fixed-condition check, the other an average over impressions | judgement |
 
 ## Data: free vs paid
 
@@ -199,7 +243,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" ingest gsc query_page.
   - Their algorithm-volatility sensors (Semrush Sensor) to see whether a drop is industry-wide.
   - Justified for the "is it just us?" question during an update.
   - Cost tactic: check the free Sensor page and a single competitor's Organic Research history instead of a full project.
-- **Rank trackers:** see above. Track only money keywords and limit locations/devices to the ones that matter. Most tools bill per keyword × location × device × frequency, so prefer weekly over daily for non-volatile sets.
+- **Rank snapshots** (`rank_snapshot.py`, DataForSEO Standard queue, from `dataforseo_monthly_usd`): $0.0006 per 10 results a keyword, plus one base price for the AI Overview. 50 money keywords daily at depth 10 is about $0.03 a day; 450 keywords weekly at depth 20 about $0.54 a run; about $3.20 a month per market and language, plus $0.90 for AI Overviews on the money tier. What free can't give: a fixed-condition rank for keywords with no impressions yet, every competitor's position and share of voice, and AI Overview citations.
+- **Rank trackers** (Semrush Position Tracking, Ahrefs Rank Tracker, SE Ranking): only when stakeholders already read them. Track only money keywords and the locations and devices that matter. Most tools bill per keyword × location × device × frequency, so prefer weekly over daily for non-volatile sets.
 - **Screaming Frog Log File Analyser** (`## Screaming Frog`). Useful if logs are huge and the user prefers a GUI. `log_analyze.py` covers the core questions free.
 
 Label third-party traffic numbers `[vendor data]` / `[estimate]`. They are modelled, not measured.
@@ -212,8 +257,9 @@ Label third-party traffic numbers `[vendor data]` / `[estimate]`. They are model
    - Cannibalisation decisions.
 2. Drop diagnosis: the tree with ✅/❌ and evidence per branch, the most likely explanation in "consistent with" language, and next actions routed to the right skill.
 3. A KPI/dashboard spec (Looker Studio data sources, fields, filters) or the monthly report.
-4. Experiment record (pre-registration + result).
-5. **Assumptions:** the windows, brand regex, data sources and change dates you decided, each with its evidence, and which store data was reused and how old it was (e.g. "GSC: store data 5 days old, its export reused"). Then the questions batched for the user (missing exports or access), each with a recommendation.
+4. Experiment record (pre-registration, the `change_impact` result at +14 and +28 days, and the decision).
+5. Rank report: Search Console positions beside snapshot positions per keyword, share of voice and visibility against the competitors, AI Overview citations, and the alerts with the pending moves to re-check.
+6. **Assumptions:** the windows, brand regex, data sources and change dates you decided, each with its evidence, and which store data was reused and how old it was (e.g. "GSC: store data 5 days old, its export reused"). Then the questions batched for the user (missing exports or access, a budget stop), each with a recommendation.
 
 ## Pitfalls & myths
 
@@ -233,6 +279,7 @@ Append to `SEO-WORKLOG.md` (`${CLAUDE_PLUGIN_ROOT}/references/worklog.md`):
 - Scripts run.
 - Findings with evidence tags.
 - Diagnosis verdict.
-- Pre-registered experiments.
-- Paid-tool usage.
+- Pre-registered experiments, their `change_impact` verdicts and the decisions.
+- Keyword-set versions and snapshot files.
+- Paid-tool usage, with the spend `rank_snapshot.py` recorded.
 - The date to re-check (e.g. "re-pull GSC on 2026-11-21 for the title test").

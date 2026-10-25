@@ -1,0 +1,15 @@
+{
+  "version": "ge-ka-mobile-v1",
+  "site": "tutors.example",
+  "location_code": 2268,
+  "language_code": "ka",
+  "device": "mobile",
+  "depth": 20,
+  "ai_overview": true,
+  "competitors": ["rival.example", "market.example"],
+  "keywords": [
+    {"keyword": "ინგლისურის რეპეტიტორი თბილისში", "volume": 390},
+    {"keyword": "ielts მომზადება", "volume": 210},
+    {"keyword": "ინგლისურის კურსები ონლაინ", "volume": 140}
+  ]
+}

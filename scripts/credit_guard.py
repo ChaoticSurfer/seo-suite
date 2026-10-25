@@ -18,6 +18,10 @@ vendor's paid calls. per_run_cap_pct and ask_above_pct are percentages of the mo
 price is unknown is budgeted at the per-call threshold. PostToolUse cannot refund spend, so prevention happens in pre.
 State: ${CLAUDE_PLUGIN_DATA}/credit-guard/ (ledger.jsonl, requests.jsonl, cache/), or
 ~/.claude/plugins/data/seo-suite/credit-guard/.
+
+Scripts that call paid APIs themselves, which no hook sees (rank_snapshot.py, ai_probe.py), use script_check,
+script_reserve and script_settle: the same options, ledger, monthly budgets and per-run caps. They find the state through
+SEO_SUITE_DATA and their run through SEO_SUITE_SESSION_ID, both exported to Bash at SessionStart.
 """
 from __future__ import annotations
 
@@ -1044,6 +1048,81 @@ def handle_batch(payload: dict, env: Any, now: dt.datetime) -> dict | None:
     return {"decision": "block", "reason": (
         "credit-guard circuit breaker: " + "; ".join(crossed) + ". The run stops here. Make no more paid calls; "
         "report the overspend and what it bought in the end-of-run questions for the user.")}
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# Scripts the hooks never see (rank_snapshot.py, ai_probe.py): the same options, ledger and limits, before each batch
+
+SCRIPT_SESSION_ENV = "SEO_SUITE_SESSION_ID"  # exported at SessionStart, so a script's spend counts in its session
+SCRIPT_DATA_ENV = "SEO_SUITE_DATA"  # the hooks' CLAUDE_PLUGIN_DATA, exported at SessionStart (Bash has none)
+
+
+class BudgetStop(Exception):
+    """A script's next batch would pass a monthly budget or the per-run cap: the script stops before spending."""
+
+
+def script_state_dir(env: Any) -> str:
+    data = env.get(SCRIPT_DATA_ENV)
+    return os.path.join(data, "credit-guard") if data else state_dir(env)
+
+
+def script_run_id(env: Any) -> str:
+    """The run a script's spend counts in: its Claude Code session when known, else this process alone."""
+    return env.get(SCRIPT_SESSION_ENV) or f"script-{uuid.uuid4().hex}"
+
+
+def check_script_spend(entries: list[dict], options: dict[str, float], run_id: str, vendor: str, bucket: str,
+                       call: str, estimate: float, now: dt.datetime) -> None:
+    """Raise BudgetStop when the estimate would pass the bucket's monthly budget or per-run cap, as pre denies."""
+    currency, budget_option = BUCKETS[bucket]
+    monthly, run_cap, _ = bucket_limits(bucket, options)
+    if monthly <= 0:
+        raise BudgetStop(f"paid {vendor} calls are off because {budget_option} is 0. The user sets the budget once "
+                         f"with /plugin configure seo-suite@seo-suite; list it in the end-of-run questions.")
+    spent = totals(entries, bucket, now.strftime("%Y-%m"), run_id, now)
+    if spent.month + estimate > monthly:
+        raise BudgetStop(f"over the monthly {bucket} budget. This month {money(spent.month, currency)} of "
+                         f"{money(monthly, currency)} is used (including {money(spent.in_flight, currency)} in flight); "
+                         f"{call} is estimated at {money(estimate, currency)}; "
+                         f"{money(max(monthly - spent.month, 0), currency)} remain. Raising {budget_option} is the "
+                         f"user's decision.")
+    if spent.run + estimate > run_cap:
+        raise BudgetStop(f"over the per-run {bucket} cap ({options['per_run_cap_pct']:g}% of the monthly budget = "
+                         f"{money(run_cap, currency)}). This run used {money(spent.run, currency)}; {call} is estimated "
+                         f"at {money(estimate, currency)}. Raising per_run_cap_pct is the user's decision.")
+
+
+def script_check(env: Any, run_id: str, vendor: str, bucket: str, call: str, estimate: float,
+                 now: dt.datetime) -> None:
+    """Check a whole run before its first batch, writing nothing."""
+    options = read_options(env)
+    state = script_state_dir(env)
+    with locked(state):
+        check_script_spend(read_jsonl(ledger_path(state)), options, run_id, vendor, bucket, call, estimate, now)
+
+
+def script_reserve(env: Any, run_id: str, vendor: str, bucket: str, call: str, estimate: float,
+                   now: dt.datetime) -> dict:
+    """Check the next batch and reserve its estimate in the ledger; returns the entry script_settle settles."""
+    options = read_options(env)
+    state = script_state_dir(env)
+    payload = {"tool_name": "script", "tool_use_id": f"script-{uuid.uuid4().hex}", "session_id": run_id}
+    with locked(state):
+        check_script_spend(read_jsonl(ledger_path(state)), options, run_id, vendor, bucket, call, estimate, now)
+        entry = ledger_entry("reserve", payload, vendor, bucket, call, estimate, True, "allowed", now)
+        append_jsonl(ledger_path(state), entry)
+    return entry
+
+
+def script_settle(env: Any, reservation: dict, cost: float, estimated: bool, status: str, now: dt.datetime) -> dict:
+    """Record what a reserved batch cost. estimated=False only when the vendor's own figure gave the cost."""
+    payload = {key: reservation[key] for key in ("tool_use_id", "session_id")} | {"tool_name": reservation["tool"]}
+    entry = ledger_entry("settle", payload, reservation["vendor"], reservation["bucket"], reservation["call"], cost,
+                         estimated, status, now)
+    state = script_state_dir(env)
+    with locked(state):
+        append_jsonl(ledger_path(state), entry)
+    return entry
 
 
 HANDLERS = {"pre": handle_pre, "post": handle_post, "post-failure": handle_post_failure, "batch": handle_batch}

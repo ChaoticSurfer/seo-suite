@@ -10,6 +10,7 @@ from keyword_ideas import classify_intent  # noqa: E402
 from page_audit import audit_page  # noqa: E402
 from robots_check import evaluate, group_for, is_allowed, parse_robots  # noqa: E402
 from schema_rules import validate_json_ld  # noqa: E402
+import ai_visibility as av  # noqa: E402
 from ai_visibility import difference_ci, wilson  # noqa: E402
 from content_score import ngrams  # noqa: E402
 from triage import collect  # noqa: E402
@@ -194,6 +195,79 @@ class MiscTest(unittest.TestCase):
                "internal_links": 1, "schema_types": [], "hreflang": 0, "images": 0}
         rendered = {**raw, "word_count": 900, "internal_links": 40, "schema_types": ["Product"]}
         self.assertEqual(len(diff(raw, rendered)["warnings"]), 3)
+
+
+class AiVisibilityTest(unittest.TestCase):
+    """ai_visibility.py on rows with ai_probe.py's extra columns: share of voice, segments, the citation gap."""
+    CSV = ("query,engine,run,date,mentioned,cited,cited_url,competitors_mentioned,lang,prompt_class,prompt_set,"
+           "cited_domains\n"
+           "best tutor,openai,1,2026-10-25,1,0,,rival.example,en,category,v1@a,rival.example\n"
+           "best tutor,openai,2,2026-10-25,0,0,,rival.example;market.example,en,category,v1@a,reviews.example\n"
+           "best tutor,openai,3,2026-10-25,1,1,https://tutors.example/a,,en,category,v1@a,tutors.example\n"
+           "რეპეტიტორი,perplexity,1,2026-10-25,0,0,,,ka,category,v1@a,blog.example\n")
+
+    def rows(self, text=None):
+        import tempfile
+        with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, encoding="utf-8") as fh:
+            fh.write(text or self.CSV)
+        self.addCleanup(os.unlink, fh.name)
+        return av.load(fh.name)
+
+    def test_share_of_voice_counts_answers_naming_any_tracked_brand(self):
+        sov = av.share_of_voice(self.rows())
+        self.assertEqual(sov["answers_naming_a_tracked_brand"], 3)  # the fourth answer names nobody
+        self.assertEqual((sov["shares"]["brand"]["hits"], sov["shares"]["rival.example"]["hits"],
+                          sov["shares"]["market.example"]["hits"]), (2, 2, 1))
+        self.assertEqual(sov["shares"]["brand"]["rate"], 0.667)
+        self.assertEqual(len(sov["shares"]["brand"]["ci95"]), 2)
+
+    def test_segments_by_engine_language_and_class(self):
+        report = av.summarize(self.rows(), "tutors.example")
+        self.assertEqual(set(report["by_segment"]), {"openai|en|category", "perplexity|ka|category"})
+        self.assertEqual(report["by_segment"]["openai|en|category"]["mention_rate"]["n"], 3)
+
+    def test_mentioned_but_not_cited_and_the_citation_source_gap(self):
+        report = av.summarize(self.rows(), "tutors.example")
+        self.assertEqual(report["mentioned_not_cited"]["hits"], 1)
+        self.assertEqual(report["citation_source_gap"], [("reviews.example", 1)])
+
+    def test_old_rows_without_the_new_columns_still_work(self):
+        report = av.summarize(self.rows("query,engine,run,date,mentioned,cited,cited_url,competitors_mentioned\n"
+                                        "q,perplexity,1,2026-10-24,1,0,,preply\n"), None)
+        self.assertNotIn("by_segment", report)
+        self.assertEqual(report["competitor_mentions"], [("preply", 1)])
+
+    def test_compare_refuses_different_prompt_sets(self):
+        other = self.rows(self.CSV.replace("v1@a", "v1@b"))
+        with self.assertRaises(SystemExit) as stop:
+            av.check_same_prompt_set(self.rows(), other)
+        self.assertIn("v1@b", str(stop.exception))
+        av.check_same_prompt_set(self.rows(), self.rows())
+
+    def test_compare_counts_only_the_engines_both_files_ran(self):
+        import contextlib
+        import io
+        import json
+        import tempfile
+        from unittest import mock
+        header = "query,engine,run,date,mentioned,cited,cited_url,competitors_mentioned,prompt_set\n"
+        before = "".join(f"q{q},{engine},{run},2026-09-25,{int(q < 2)},0,,,v1@a\n"
+                         for engine in ("openai", "perplexity") for q in range(10) for run in (1, 2, 3))
+        added = "".join(f"q{q},anthropic,{run},2026-10-25,{int(q < 9)},0,,,v1@a\n" for q in range(10) for run in (1, 2, 3))
+        paths = []
+        for text in (header + before + added, header + before):
+            with tempfile.NamedTemporaryFile("w", suffix=".csv", delete=False, encoding="utf-8") as fh:
+                fh.write(text)
+            self.addCleanup(os.unlink, fh.name)
+            paths.append(fh.name)
+        out = io.StringIO()
+        with mock.patch.object(sys, "argv", ["ai_visibility.py", paths[0], "--compare", paths[1]]), \
+                contextlib.redirect_stdout(out):
+            av.main()
+        comparison = json.loads(out.getvalue())["comparison"]
+        self.assertEqual(comparison["engines_compared"], ["openai", "perplexity"])
+        mention = comparison["change_now_minus_before"]["mention_rate"]
+        self.assertEqual((mention["difference"], mention["detectable_change"]), (0.0, False))
 
 
 if __name__ == "__main__":

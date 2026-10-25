@@ -1,0 +1,20 @@
+{
+  "id": "resp_0a1b2c3d4e5f",
+  "object": "response",
+  "created_at": 1761382800,
+  "status": "completed",
+  "model": "gpt-5-mini-2025-08-07",
+  "output": [
+    {"type": "web_search_call", "id": "ws_0a1b", "status": "completed",
+     "action": {"type": "search", "query": "Tutors Example Tbilisi English tutors",
+                "sources": [{"type": "url", "url": "https://www.tutors.example/ka/"},
+                            {"type": "url", "url": "https://www.rival.example/"},
+                            {"type": "url", "url": "https://forum.example/thread/1"}]}},
+    {"id": "msg_0a1b", "type": "message", "status": "completed", "role": "assistant",
+     "content": [{"type": "output_text",
+                  "text": "Tutors Example is an English tutoring service in Tbilisi. Many learners compare it with Rival Example, which has more reviews (forum.example).",
+                  "annotations": [{"type": "url_citation", "start_index": 70, "end_index": 120, "url": "https://www.rival.example/reviews/", "title": "Rival Example reviews"},
+                                  {"type": "url_citation", "start_index": 121, "end_index": 140, "url": "https://forum.example/thread/1", "title": "Forum thread"}]}]}
+  ],
+  "usage": {"input_tokens": 9000, "output_tokens": 800, "total_tokens": 9800}
+}

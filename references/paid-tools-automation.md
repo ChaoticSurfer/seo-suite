@@ -489,16 +489,39 @@ describes what it does. If the two disagree, fix one of them.
 | `audit_profile` | auto | The audit profile when the request names none: `auto`, `quick`, `full-free` or `paid` (`references/profiles.md`). Read by `scripts/audit_profile.py`, not by the guard |
 | `semrush_monthly_units`, `ahrefs_monthly_units` | 0 | Monthly budget in vendor units. 0 = that vendor's paid calls are denied |
 | `dataforseo_monthly_usd` | 0 | Monthly DataForSEO budget in USD |
-| `other_monthly_usd` | 0 | One USD budget shared by Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly and Lumar crawls |
+| `other_monthly_usd` | 0 | One USD budget shared by Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly and Lumar crawls, and `ai_probe.py`'s OpenAI, Perplexity and Anthropic calls |
 | `per_run_cap_pct` | 25 | Share of the vendor's monthly budget one run (session) may spend |
 | `ask_above_pct` | 5 | A call estimated above this share of the monthly budget is deferred: denied and recorded in `credit-guard/requests.jsonl` for the end-of-run questions. 0 = defer every paid call |
 | `max_rows` | 50 | Row limit the guard clamps or adds |
 | `cache_ttl_days` | per data type | One TTL for every data type when set |
 | `psi_api_key` (sensitive) | unset | Exported as `PSI_API_KEY` by the core SessionStart hook; not used by the guard |
+| `openai_api_key`, `perplexity_api_key`, `anthropic_api_key` (sensitive) | unset | Exported as `SEO_SUITE_OPENAI_API_KEY`, `SEO_SUITE_PERPLEXITY_API_KEY` and `SEO_SUITE_ANTHROPIC_API_KEY` for `ai_probe.py`. The prefix keeps other tools in Bash on their own keys, and the Claude Code CLI never takes the Anthropic key as `ANTHROPIC_API_KEY` |
 
 Hooks get these variables, but commands Claude runs through Bash don't [cc-plugin-ref]. So the core SessionStart hook
-also exports `audit_profile` and the four monthly budgets to Bash under their `CLAUDE_PLUGIN_OPTION_` names, for
-`scripts/audit_profile.py`; an option changed mid-session reaches Bash at the next session.
+also exports `audit_profile`, the four monthly budgets, `per_run_cap_pct` and `max_rows` to Bash under their
+`CLAUDE_PLUGIN_OPTION_` names, the hooks' `CLAUDE_PLUGIN_DATA` as `SEO_SUITE_DATA`, and the session id from its input
+as `SEO_SUITE_SESSION_ID`. `audit_profile.py`, `rank_snapshot.py` and `ai_probe.py` then read the same options, ledger
+and run as the hooks. An option changed mid-session reaches Bash at the next session.
+
+### Scripts that pay a vendor directly
+
+The hook never sees `rank_snapshot.py run` (DataForSEO REST) or `ai_probe.py run` (OpenAI, Perplexity and Anthropic
+APIs). They use the guard's own helper, `script_check`, `script_reserve` and `script_settle` in `credit_guard.py`:
+- **Before the first call,** the whole run's estimate is checked against the bucket's monthly budget and per-run cap.
+  A budget of 0 stops the script before anything is sent.
+- **Before each batch** (all of a snapshot's `task_post` calls; one prompt's runs per engine), the batch's estimate is
+  reserved in `ledger.jsonl` under the session id, so hook calls and script calls share one per-run cap.
+- **After each batch** it is settled: DataForSEO's `cost` field, Perplexity's `usage.cost.total_cost`, or the reported
+  tokens and search calls at the script's price table (marked estimated). A failed call keeps its estimate, in case
+  it was charged.
+- **At either limit** the script stops and says which one; the run lists it in the end-of-run questions.
+- **Prices:** `rank_snapshot.py` prices tasks with the guard's own DataForSEO table. `ai_probe.py` has a table checked
+  2026-10-24: OpenAI web search $10 per 1,000 calls plus tokens (`gpt-5-mini` $0.25 / $2 per 1M), Perplexity
+  `web_search` $2.50 per 1,000 plus tokens (a preset priced as `perplexity/sonar`, $0.25 / $2.50), Anthropic web search
+  $10 per 1,000 plus tokens (`claude-haiku-5-5` $0.10 / $0.50). A model with no price stops the script
+  [openai-pricing] [pplx-pricing] [anthropic-pricing].
+- **Not covered:** the per-call threshold (`ask_above_pct`), which defers single MCP calls. A script's batches are
+  bounded by the per-run cap instead.
 
 ### Which tools it guards
 
@@ -621,12 +644,13 @@ prefix [cc-hooks]. The vendor whose pattern matches is the one guarded, so every
 | B3 Keyword research | Quarterly or on demand | Shortlist of 300: DataForSEO `search_volume` Standard (1 task) + Labs `bulk_keyword_difficulty`. SERPs for the top 20. No Keyword Planner: Labs `keyword_ideas` with `limit` 1,000 | $0.06 + $0.048 + $0.012 ≈ $0.12 (+$0.132 for ideas). Semrush 3,000 units. Ahrefs 6,300 units | ≈ $0.04 averaged | [dfs-ads-price] [dfs-labs-price] [dfs-keyword-ideas] [semrush-keyword] [ahrefs-ke-ref] |
 | B4 Competitor gap | Monthly | DataForSEO `domain_intersection` (`intersections=false`, `limit` 100, volume filter) per competitor | 3 × $0.024 = $0.072. Ahrefs 3 × 2,200 units. Semrush 3 × 1,000 units | $0.07 | [dfs-intersection] [ahrefs-ok-ref] [semrush-domain] |
 | B5 Backlink deltas | Weekly | `timeseries_new_lost_summary` (`group_range=week`). Only when non-zero: `backlinks/backlinks/live` (`one_per_domain`, `first_seen > last run`, `limit` 100) for new and for lost | ≤ $0.08 per domain; 4 domains ≤ $0.32 | ≤ $1.39 | [dfs-timeseries] [dfs-backlinks-live] [dfs-bl-price] |
-| B6 Rank tracking | Daily / weekly | SERP Standard: 50 money keywords daily at depth 10, 450 weekly at depth 20. GSC and Ahrefs Rank Tracker reads are free | $0.03 per day; $0.54 per week | ≈ $3.22 (+$0.90 with AI Overview on the money tier) | [dfs-serp-price] [ahrefs-openapi] |
+| B6 Rank tracking | Daily / weekly | `rank_snapshot.py`, SERP Standard: 50 money keywords daily at depth 10, 450 weekly at depth 20, up to 100 tasks a POST, free `tasks_ready` and `task_get/advanced`. GSC (`rank_snapshot.py gsc`) and Ahrefs Rank Tracker reads are free | $0.03 per day; $0.54 per week, per market and language | ≈ $3.22 (+$0.90 with AI Overview on the money tier) | [dfs-serp-price] [ahrefs-openapi] |
 | B7 GSC content refresh | Monthly | SERP Standard for the flagged pages' top queries (~20) | $0.012 (AIO $0.024) | ≈ $0.02 | [dfs-serp-price] [gsc-all-data] |
-| B8 AI visibility | Weekly sampling, monthly report | LLM Scraper Standard: 25 prompts × 2 engines × 3 runs. LLM Mentions monthly with `limit` 100 | $0.18 per week; $0.20 per month | ≈ $0.98 | [dfs-llm-responses] [dfs-llm-mentions] |
+| B8 AI visibility | Monthly | `ai_probe.py` through the official APIs: 40 prompts × 2 engines (OpenAI main, Perplexity cross-check) × 3 runs = 240 probes, at about 10,000 tokens in and 1,000 out each [estimate]. From `other_monthly_usd`, not DataForSEO. LLM Scraper is out: it drives chatgpt.com and gemini.google.com | ≈ $2.60 (OpenAI `gpt-5-mini` ≈ $0.0145 a probe, Perplexity `fast` preset ≈ $0.0075); Claude `claude-haiku-5-5` adds ≈ $1.40 | ≈ $2.60 | [openai-pricing] [pplx-pricing] |
 | B9 Multilingual blog QA | Weekly or per PR | Optional SERP check per target keyword per locale | $0.0006 per keyword-locale (10 posts × 3 locales ≈ $0.018) | ≈ $0.08 | [dfs-serp-price] |
 | B10 Blog batch | Weekly | SERP Standard only for the topics whose snapshot is stale (`next-topics --limit 12` per locale). Volumes for the shortlisted head terms only when they are missing or stale: `search_volume` Standard as in B3, one task per locale | $0.0006 per keyword-locale (12 topics × 3 locales ≈ $0.022). Volumes $0.06 per task | ≈ $0.09 (+$0.06 per locale whose volumes are refreshed, at most monthly) | [dfs-serp-price] [dfs-ads-price] |
-| **Total scheduled (DataForSEO)** | | | | **≈ $5.9 a month**; budget $10 | |
+| **Total scheduled (DataForSEO)** | | | | **≈ $4.9 a month** (≈ $5.8 with AI Overview on the money tier); budget $10 | |
+| **Total scheduled (`other_monthly_usd`)** | | | | **≈ $2.60 a month** for B8; budget $12, so one run stays under the $3 per-run cap | |
 
 **Semrush and Ahrefs** fit interactive, targeted work: competitor keyword sets, link-index lookups and Semrush-only
 metrics. Keep them ≤ 40% of the included allowance, so other skills still have room.
@@ -766,6 +790,9 @@ Each bracketed label in the text links to the URL defined below. The definitions
 [dfs-onpage-price]: https://dataforseo.com/pricing/on-page/onpage-api
 [dfs-llm-mentions]: https://dataforseo.com/pricing/ai-optimization/llm-mentions
 [dfs-llm-responses]: https://dataforseo.com/pricing/ai-optimization/llm-responses
+[openai-pricing]: https://developers.openai.com/api/docs/pricing
+[pplx-pricing]: https://docs.perplexity.ai/docs/getting-started/pricing.md
+[anthropic-pricing]: https://platform.claude.com/docs/en/about-claude/pricing
 [dfs-autocomplete]: https://dataforseo.com/pricing/google-serp/google-autocomplete-serp-api
 [dfs-pricing]: https://dataforseo.com/pricing
 [dfs-sandbox]: https://docs.dataforseo.com/v3/appendix/sandbox.md

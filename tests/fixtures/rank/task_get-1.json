@@ -1,0 +1,243 @@
+{
+ "version": "0.1.20261020",
+ "status_code": 20000,
+ "status_message": "Ok.",
+ "time": "0.0620 sec.",
+ "cost": 0,
+ "tasks_count": 1,
+ "tasks_error": 0,
+ "tasks": [
+  {
+   "id": "10250900-1111-0066-0000-000000000001",
+   "status_code": 20000,
+   "status_message": "Ok.",
+   "time": "0.0500 sec.",
+   "cost": 0,
+   "result_count": 1,
+   "path": [
+    "v3",
+    "serp",
+    "google",
+    "organic",
+    "task_get",
+    "advanced",
+    "10250900-1111-0066-0000-000000000001"
+   ],
+   "data": {
+    "api": "serp",
+    "function": "task_get",
+    "se": "google",
+    "se_type": "organic",
+    "keyword": "ინგლისურის რეპეტიტორი თბილისში",
+    "location_code": 2268,
+    "language_code": "ka",
+    "device": "mobile",
+    "os": "android",
+    "depth": 20,
+    "priority": 1,
+    "load_async_ai_overview": true,
+    "tag": "seo-suite|ge-ka-mobile-v1"
+   },
+   "result": [
+    {
+     "keyword": "ინგლისურის რეპეტიტორი თბილისში",
+     "type": "organic",
+     "se_domain": "google.ge",
+     "location_code": 2268,
+     "language_code": "ka",
+     "check_url": "https://www.google.ge/search?q=ინგლისურის+რეპეტიტორი+თბილისში&hl=ka&gl=GE",
+     "datetime": "2026-10-25 09:04:12 +00:00",
+     "spell": null,
+     "refinement_chips": null,
+     "item_types": [
+      "ai_overview",
+      "organic",
+      "people_also_ask"
+     ],
+     "se_results_count": 120000,
+     "pages_count": 2,
+     "items_count": 7,
+     "items": [
+      {
+       "type": "ai_overview",
+       "rank_group": 1,
+       "rank_absolute": 1,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]/div[1]",
+       "asynchronous_ai_overview": true,
+       "markdown": "A short AI Overview answer.",
+       "items": [
+        {
+         "type": "ai_overview_element",
+         "position": "left",
+         "title": null,
+         "text": "Answer part.",
+         "markdown": "Answer part.",
+         "links": null,
+         "images": null,
+         "references": [
+          {
+           "type": "ai_overview_reference",
+           "source": "Rival Example",
+           "domain": "www.rival.example",
+           "url": "https://www.rival.example/tbilisi/",
+           "title": "Rival Example page",
+           "text": "Text the AI Overview used."
+          }
+         ]
+        }
+       ],
+       "references": [
+        {
+         "type": "ai_overview_reference",
+         "source": "Rival Example",
+         "domain": "www.rival.example",
+         "url": "https://www.rival.example/tbilisi/",
+         "title": "Rival Example page",
+         "text": "Text the AI Overview used."
+        },
+        {
+         "type": "ai_overview_reference",
+         "source": "Tutors Example",
+         "domain": "www.tutors.example",
+         "url": "https://www.tutors.example/ka/tbilisi/",
+         "title": "Tutors Example page",
+         "text": "Text the AI Overview used."
+        },
+        {
+         "type": "ai_overview_reference",
+         "source": "Wiki Example",
+         "domain": "wiki.example",
+         "url": "https://wiki.example/english",
+         "title": "Wiki Example page",
+         "text": "Text the AI Overview used."
+        }
+       ],
+       "rectangle": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 1,
+       "rank_absolute": 2,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]",
+       "domain": "www.rival.example",
+       "title": "Rival: English tutors in Tbilisi",
+       "url": "https://www.rival.example/tbilisi/",
+       "breadcrumb": "https://www.rival.example › tbilisi",
+       "is_featured_snippet": false,
+       "is_image": false,
+       "is_video": false,
+       "description": "Short snippet.",
+       "highlighted": [],
+       "links": null,
+       "rating": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 2,
+       "rank_absolute": 3,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]",
+       "domain": "www.tutors.example",
+       "title": "Tutors Example: English tutors in Tbilisi",
+       "url": "https://www.tutors.example/ka/tbilisi/",
+       "breadcrumb": "https://www.tutors.example › ka/tbilisi",
+       "is_featured_snippet": false,
+       "is_image": false,
+       "is_video": false,
+       "description": "Short snippet.",
+       "highlighted": [],
+       "links": null,
+       "rating": null
+      },
+      {
+       "type": "people_also_ask",
+       "rank_group": 1,
+       "rank_absolute": 4,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[4]",
+       "items": [
+        {
+         "type": "people_also_ask_element",
+         "title": "რა ღირს ინგლისურის რეპეტიტორი?",
+         "seed_question": null,
+         "xpath": "/html[1]/body[1]/div[4]/div[1]",
+         "expanded_element": []
+        },
+        {
+         "type": "people_also_ask_element",
+         "title": "როგორ ავირჩიო რეპეტიტორი?",
+         "seed_question": null,
+         "xpath": "/html[1]/body[1]/div[4]/div[2]",
+         "expanded_element": []
+        }
+       ]
+      },
+      {
+       "type": "organic",
+       "rank_group": 3,
+       "rank_absolute": 5,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]",
+       "domain": "market.example",
+       "title": "Market: English tutors",
+       "url": "https://market.example/tutors/english",
+       "breadcrumb": "https://market.example › tutors/english",
+       "is_featured_snippet": false,
+       "is_image": false,
+       "is_video": false,
+       "description": "Short snippet.",
+       "highlighted": [],
+       "links": null,
+       "rating": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 4,
+       "rank_absolute": 6,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]",
+       "domain": "blog.rival.example",
+       "title": "Rival blog: top 10 tutors",
+       "url": "https://blog.rival.example/top-10-tutors/",
+       "breadcrumb": "https://blog.rival.example › top-10-tutors",
+       "is_featured_snippet": false,
+       "is_image": false,
+       "is_video": false,
+       "description": "Short snippet.",
+       "highlighted": [],
+       "links": null,
+       "rating": null
+      },
+      {
+       "type": "organic",
+       "rank_group": 5,
+       "rank_absolute": 7,
+       "page": 1,
+       "position": "left",
+       "xpath": "/html[1]/body[1]/div[3]",
+       "domain": "forum.example",
+       "title": "Forum: which tutor?",
+       "url": "https://forum.example/thread/1",
+       "breadcrumb": "https://forum.example › thread/1",
+       "is_featured_snippet": false,
+       "is_image": false,
+       "is_video": false,
+       "description": "Short snippet.",
+       "highlighted": [],
+       "links": null,
+       "rating": null
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

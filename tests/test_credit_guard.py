@@ -504,8 +504,75 @@ class BatchTest(GuardCase):
         self.assertEqual((code, out), (0, None), err)
 
 
+class ScriptBudgetTest(GuardCase):
+    """The helper for scripts the hooks never see (rank_snapshot.py, ai_probe.py): same options, ledger and limits."""
+
+    def setUp(self):
+        super().setUp()
+        self.env["SEO_SUITE_DATA"] = ""
+        self.now = cg.utc_now()
+
+    def test_a_zero_budget_stops_before_anything_is_written(self):
+        self.env["CLAUDE_PLUGIN_OPTION_OTHER_MONTHLY_USD"] = "0"
+        with self.assertRaises(cg.BudgetStop) as stop:
+            cg.script_reserve(self.env, "run-1", "openai", "other", "ai_probe.py 3 probes", 0.05, self.now)
+        self.assertIn("other_monthly_usd is 0", str(stop.exception))
+        self.assertEqual(self.ledger_entries(), [])
+
+    def test_reserve_then_settle_counts_once(self):
+        reservation = cg.script_reserve(self.env, "run-1", "dataforseo", "dataforseo", "rank_snapshot.py 3 SERP tasks",
+                                        0.0054, self.now)
+        self.assertEqual((reservation["event"], reservation["session_id"], reservation["estimated"]),
+                         ("reserve", "run-1", True))
+        cg.script_settle(self.env, reservation, 0.005, False, "ok", self.now)
+        reserve, settle = self.ledger_entries()
+        self.assertEqual((settle["event"], settle["tool_use_id"], settle["cost"], settle["estimated"]),
+                         ("settle", reserve["tool_use_id"], 0.005, False))
+        spent = cg.totals(self.ledger_entries(), "dataforseo", self.now.strftime("%Y-%m"), "run-1", self.now)
+        self.assertAlmostEqual((spent.month, spent.run, spent.in_flight), (0.005, 0.005, 0.0))
+
+    def test_the_monthly_budget_stops_a_batch(self):
+        self.seed_ledger(self.settled(49.99, bucket="dataforseo", session="elsewhere"))
+        with self.assertRaises(cg.BudgetStop) as stop:
+            cg.script_reserve(self.env, "run-1", "dataforseo", "dataforseo", "batch", 0.02, self.now)
+        self.assertIn("monthly", str(stop.exception))
+
+    def test_the_per_run_cap_stops_a_batch_in_the_same_run_only(self):
+        self.seed_ledger(self.settled(12.49, bucket="dataforseo", session="run-1"))  # cap: 25% of $50 = $12.50
+        with self.assertRaises(cg.BudgetStop) as stop:
+            cg.script_reserve(self.env, "run-1", "dataforseo", "dataforseo", "batch", 0.02, self.now)
+        self.assertIn("per-run", str(stop.exception))
+        cg.script_reserve(self.env, "run-2", "dataforseo", "dataforseo", "batch", 0.02, self.now)
+
+    def test_check_reads_without_writing(self):
+        cg.script_check(self.env, "run-1", "openai", "other", "whole run", 4.0, self.now)
+        self.assertEqual(self.ledger_entries(), [])
+        with self.assertRaises(cg.BudgetStop):
+            cg.script_check(self.env, "run-1", "openai", "other", "whole run", 6.0, self.now)  # cap $5
+
+    def test_script_spend_counts_against_the_hooks_per_run_cap(self):
+        reservation = cg.script_reserve(self.env, "run-1", "dataforseo", "dataforseo", "batch", 12.4, self.now)
+        cg.script_settle(self.env, reservation, 12.4, False, "ok", self.now)
+        hit = self.pre({"session_id": "run-1", "tool_use_id": "toolu_dfs", "tool_name": "mcp__dataforseo__api_request",
+                        "tool_input": {"method": "POST", "path": "/v3/serp/google/organic/task_post",
+                                       "data": [{"keyword": f"k{n}", "depth": 20} for n in range(100)]}})
+        self.assertEqual(hit["permissionDecision"], "deny")
+        self.assertIn("per-run", hit["permissionDecisionReason"])
+
+    def test_scripts_find_the_hooks_state_through_seo_suite_data(self):
+        self.assertEqual(cg.script_state_dir({"SEO_SUITE_DATA": "/data/x", "CLAUDE_PLUGIN_DATA": "/data/y"}),
+                         os.path.join("/data/x", "credit-guard"))
+        self.assertEqual(cg.script_state_dir({"CLAUDE_PLUGIN_DATA": "/data/y"}), os.path.join("/data/y", "credit-guard"))
+
+    def test_run_id_is_the_session_when_known(self):
+        self.assertEqual(cg.script_run_id({"SEO_SUITE_SESSION_ID": "abc"}), "abc")
+        first, second = cg.script_run_id({}), cg.script_run_id({})
+        self.assertTrue(first.startswith("script-"))
+        self.assertNotEqual(first, second)
+
+
 class SessionStartTest(unittest.TestCase):
-    def run_hook(self, key, options=None):
+    def run_hook(self, key, options=None, payload=None, plugin_data=""):
         hook = HOOKS["SessionStart"][0]["hooks"][0]
         with tempfile.TemporaryDirectory() as tmp:
             env_file = os.path.join(tmp, "env.sh")
@@ -513,12 +580,32 @@ class SessionStartTest(unittest.TestCase):
             env["CLAUDE_ENV_FILE"] = env_file
             if key:
                 env["CLAUDE_PLUGIN_OPTION_PSI_API_KEY"] = key
+            if plugin_data:
+                env["CLAUDE_PLUGIN_DATA"] = plugin_data
             env.update({"CLAUDE_PLUGIN_OPTION_" + name: value for name, value in (options or {}).items()})
-            subprocess.run([sys.executable] + hook["args"], env=env, check=True, timeout=30)
+            stdin = json.dumps(payload or {"hook_event_name": "SessionStart", "source": "startup"})
+            subprocess.run([sys.executable] + hook["args"], env=env, input=stdin, text=True, check=True, timeout=30)
             if not os.path.exists(env_file):
                 return None
             with open(env_file, encoding="utf-8") as fh:
                 return fh.read()
+
+    def test_ai_keys_are_exported_under_seo_suite_names(self):
+        exported = self.run_hook("", {"OPENAI_API_KEY": "sk-test-1", "PERPLEXITY_API_KEY": "pplx-test",
+                                      "ANTHROPIC_API_KEY": "sk-ant-test"})
+        self.assertEqual(exported, "export SEO_SUITE_OPENAI_API_KEY=sk-test-1\n"
+                                   "export SEO_SUITE_PERPLEXITY_API_KEY=pplx-test\n"
+                                   "export SEO_SUITE_ANTHROPIC_API_KEY=sk-ant-test\n")
+        self.assertNotIn("export OPENAI_API_KEY", exported)  # other tools in Bash keep their own keys
+
+    def test_session_and_guard_state_reach_bash_scripts(self):
+        exported = self.run_hook("", {"PER_RUN_CAP_PCT": "20", "MAX_ROWS": "100"},
+                                 payload={"session_id": "abc-123", "hook_event_name": "SessionStart"},
+                                 plugin_data="/tmp/plugin data")
+        self.assertEqual(exported, "export CLAUDE_PLUGIN_OPTION_PER_RUN_CAP_PCT=20\n"
+                                   "export CLAUDE_PLUGIN_OPTION_MAX_ROWS=100\n"
+                                   "export SEO_SUITE_DATA='/tmp/plugin data'\n"
+                                   "export SEO_SUITE_SESSION_ID=abc-123\n")
 
     def test_psi_key_is_exported_for_bash(self):
         self.assertEqual(self.run_hook("AIzaTest-key_123"), "export PSI_API_KEY=AIzaTest-key_123\n")

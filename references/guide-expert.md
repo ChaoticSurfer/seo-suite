@@ -361,8 +361,9 @@ say they're experienced.
     `robots_check.py`.
 - **Content:** citable passages, statistics with sources, first-hand data, entity consistency (Organization
   `sameAs`). The GEO paper reports up to ~40% visibility gains on its benchmark; treat that as directional.
-- **Measurement:** a frozen query set, 3–5 runs per engine, logged to CSV, then `ai_visibility.py` (Wilson
-  95% CIs). Call a change only when the CI of the difference excludes 0 (`--compare` reports it); overlapping CIs don't rule one out.
+- **Measurement:** a frozen, versioned prompt set, 3–5 runs per engine, logged to CSV (`ai_probe.py` through the
+  official APIs, or spot checks by hand), then `ai_visibility.py` (Wilson 95% CIs). Call a change only when the CI of
+  the difference excludes 0 (`--compare` reports it); overlapping CIs don't rule one out.
 
 **Paid trackers:** see `## AI visibility trackers` in `references/tools.md`.
 **Skill:** seo-ai-search.
@@ -391,7 +392,19 @@ say they're experienced.
 - Report clicks and conversions per cluster.
 - Annotate deployments and Google updates (Search Status Dashboard).
 
-**Scripts:** `gsc_analyze.py`, `log_analyze.py`, `ai_visibility.py`.
+**Rank and AI-answer tracking**
+- Search Console position is an impression-weighted average; a snapshot rank is one check under fixed conditions
+  (location, language, device). Show both side by side, never averaged.
+- `rank_snapshot.py`: DataForSEO Standard-queue snapshots of a versioned keyword set, with every competitor's
+  position, share of voice (volume × CTR, the curve fitted from the site's own GSC data) and AI Overview citations
+  [vendor data]. At budget 0, `rank_snapshot.py gsc` gives own positions and what a snapshot would add.
+- `ai_probe.py`: the frozen prompt set through the OpenAI (main) and Perplexity (cross-check) APIs, models pinned,
+  rows labelled "API stand-in". Never the consumer apps.
+- `rank_compare.py`: alerts on a 3+ position move held for 2 runs and on top-3 or top-10 crossings; change impact at
+  +14 and +28 days against control pages, decided on clicks and impressions. The thresholds are judgement.
+
+**Scripts:** `gsc_analyze.py`, `log_analyze.py`, `ai_visibility.py`, `rank_snapshot.py`, `rank_compare.py`,
+`ai_probe.py`.
 **Skills:** seo-analytics, seo-strategy.
 
 ## 8. 90-day plan (expert cadence)

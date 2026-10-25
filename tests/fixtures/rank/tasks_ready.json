@@ -1,0 +1,18 @@
+{
+  "version": "0.1.20261020",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "time": "0.0480 sec.",
+  "cost": 0,
+  "tasks_count": 1,
+  "tasks_error": 0,
+  "tasks": [
+    {"id": "10250905-0000-0066-0000-0000000000aa", "status_code": 20000, "status_message": "Ok.", "time": "0.0400 sec.", "cost": 0, "result_count": 4, "path": ["v3", "serp", "google", "organic", "tasks_ready"], "data": {"api": "serp", "function": "tasks_ready", "se": "google", "se_type": "organic"},
+     "result": [
+       {"id": "10250900-1111-0066-0000-000000000001", "se": "google", "se_type": "organic", "date_posted": "2026-10-25 09:00:01 +00:00", "tag": "seo-suite|ge-ka-mobile-v1", "endpoint_regular": "/v3/serp/google/organic/task_get/regular/10250900-1111-0066-0000-000000000001", "endpoint_advanced": "/v3/serp/google/organic/task_get/advanced/10250900-1111-0066-0000-000000000001", "endpoint_html": "/v3/serp/google/organic/task_get/html/10250900-1111-0066-0000-000000000001"},
+       {"id": "10250900-1111-0066-0000-000000000002", "se": "google", "se_type": "organic", "date_posted": "2026-10-25 09:00:01 +00:00", "tag": "seo-suite|ge-ka-mobile-v1", "endpoint_regular": "/v3/serp/google/organic/task_get/regular/10250900-1111-0066-0000-000000000002", "endpoint_advanced": "/v3/serp/google/organic/task_get/advanced/10250900-1111-0066-0000-000000000002", "endpoint_html": "/v3/serp/google/organic/task_get/html/10250900-1111-0066-0000-000000000002"},
+       {"id": "10250900-1111-0066-0000-000000000003", "se": "google", "se_type": "organic", "date_posted": "2026-10-25 09:00:01 +00:00", "tag": "seo-suite|ge-ka-mobile-v1", "endpoint_regular": "/v3/serp/google/organic/task_get/regular/10250900-1111-0066-0000-000000000003", "endpoint_advanced": "/v3/serp/google/organic/task_get/advanced/10250900-1111-0066-0000-000000000003", "endpoint_html": "/v3/serp/google/organic/task_get/html/10250900-1111-0066-0000-000000000003"},
+       {"id": "10250800-2222-0066-0000-000000000099", "se": "google", "se_type": "organic", "date_posted": "2026-10-25 08:10:00 +00:00", "tag": "another-run", "endpoint_regular": "/v3/serp/google/organic/task_get/regular/10250800-2222-0066-0000-000000000099", "endpoint_advanced": "/v3/serp/google/organic/task_get/advanced/10250800-2222-0066-0000-000000000099", "endpoint_html": "/v3/serp/google/organic/task_get/html/10250800-2222-0066-0000-000000000099"}
+     ]}
+  ]
+}

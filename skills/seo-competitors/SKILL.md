@@ -62,6 +62,13 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export clusters --loca
      - Content publishers/aggregators.
      - Marketplaces/UGC (Reddit, YouTube, Wikipedia).
    - You compete with the publishers for clicks but not for customers. Strategy differs: outrank vs. get listed/mentioned.
+   - **Who is winning: share of voice.** When seo-analytics keeps rank snapshots for this market (`seo-work/rank/*.snapshot.json` from `rank_snapshot.py`), read them before counting slots. They cost nothing extra here.
+     - `metrics.top_domains`: each domain's share of the estimated clicks across the keyword set, best first [estimate]. `metrics.share_of_voice` and `metrics.visibility_pct` give the same for us and the named competitors.
+     - `metrics.ai_overview.citation_share`: how often each domain is cited when an AI Overview shows [vendor data].
+     - The trend: the same figures in earlier snapshots of the same keyword-set version and the same `meta.ctr_curve`. A competitor that gained share across three snapshots is the one to study first (steps 4 and 8).
+     - A domain high in `top_domains` that isn't a named competitor joins the list, and the keyword set gets a new version.
+     - Without snapshots (budget 0), the share of top-10 slots in the WebSearch sample stands in, tagged `[measured: WebSearch sample]`.
+   - **In AI answers:** `ai_visibility.py` on `ai_probe.py` observations (seo-ai-search) gives `share_of_voice` per engine, the answers naming each brand out of those naming any tracked brand, and `citation_source_gap`: the domains cited where a competitor is named and we aren't. Hand those domains to seo-links as PR and listing targets.
 3. **Intent and format check.** If 7+ of the top 10 are a different page type than yours (e.g. lists vs your product page), the fix is format, not optimisation (heuristic). Report this first.
 4. **Page-level comparison.** For each priority keyword:
 
@@ -142,13 +149,13 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export clusters --loca
   - Justified for content + backlink gap together.
   - Cost tactic: Top pages by traffic + Content Gap, limited to rivals' top 50 pages. Avoid repeated full exports.
 - **Similarweb** (`## Other paid tools`). Total traffic and channel-mix estimates (organic vs paid vs referral) for market sizing.
-- **DataForSEO SERP API** (`## DataForSEO`). Exact, location-specific SERPs with feature parsing, at scale and pay-per-call. Justified when WebSearch samples aren't precise enough (local, multi-city, daily).
+- **DataForSEO SERP API** (`## DataForSEO`). Exact, location-specific SERPs with feature parsing, at scale and pay-per-call: $0.0006 per 10 results in the Standard queue. Justified when WebSearch samples aren't precise enough (local, multi-city, daily). `rank_snapshot.py` buys them for seo-analytics' keyword sets, and the same snapshots give every competitor's position and share of voice, so reuse them before buying SERPs here.
 
 Never present vendor traffic or keyword numbers as measurements. They are `[vendor data]`/`[estimate]` and can be off by multiples, especially for small sites.
 
 ## Output
 
-1. **Competitor map:** domain, type (business / publisher / UGC), share of top-10 slots across the keyword set, top overlapping keywords.
+1. **Competitor map:** domain, type (business / publisher / UGC), share of voice and its trend from the rank snapshots (or the share of top-10 slots without them), AI Overview citation share, AI-answer share of voice, top overlapping keywords.
 2. **SERP table per keyword:** intent, dominant format, features present, can we win it (yes/no/how).
 3. **Page comparison summary per priority keyword:** your metrics vs median rival, gap phrases worth covering, missing schema/trust signals, routed actions.
 4. **Gap list:** keywords rivals rank for that you don't (free sample or paid export), clustered and handed to seo-keywords/seo-strategy.
@@ -169,7 +176,7 @@ Never present vendor traffic or keyword numbers as measurements. They are `[vend
 Append to `SEO-WORKLOG.md` (`${CLAUDE_PLUGIN_ROOT}/references/worklog.md`):
 - Keyword set and market.
 - Store data reused (with its age) and the SERP batches ingested.
-- Competitor list.
+- Competitor list, with the snapshot files and keyword-set version its share of voice came from.
 - Comparison files.
 - Gap decisions.
 - Paid-tool units/credits used.

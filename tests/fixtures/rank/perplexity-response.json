@@ -1,0 +1,19 @@
+{
+  "id": "11c1c78d-0000-4442-8563-a79b7faac177",
+  "model": "perplexity/sonar",
+  "effort": "fast@2026-10-16.0",
+  "status": "completed",
+  "output": [
+    {"type": "search_results", "queries": ["Тьюторс Экзампл Райвал Экзампл сравнение"],
+     "results": [
+       {"id": 1, "url": "https://tutors.example/ka/ielts/", "title": "Tutors Example IELTS", "snippet": "IELTS courses.", "date": "2026-09-01", "last_updated": "2026-10-01", "source": "web"},
+       {"id": 2, "url": "https://www.rival.example/", "title": "Rival Example", "snippet": "Tutors in Tbilisi.", "date": "2026-08-01", "last_updated": "2026-09-15", "source": "web"},
+       {"id": 3, "url": "https://blog.example/ielts-tbilisi", "title": "IELTS in Tbilisi", "snippet": "A comparison.", "date": "2026-07-20", "last_updated": "2026-07-20", "source": "web"}
+     ]},
+    {"type": "message", "role": "assistant",
+     "content": [{"type": "output_text", "text": "Тьюторс Экзампл предлагает подготовку к IELTS [1], а обзоры сравнивают школы Тбилиси [3]."}]}
+  ],
+  "usage": {"input_tokens": 1200, "output_tokens": 300, "total_tokens": 1500,
+            "tool_calls_details": {"search_web": {"invocation": 1}},
+            "cost": {"total_cost": 0.0021}}
+}

@@ -81,6 +81,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status
    | Ahrefs (Lite plan or higher) | `/mcp` → `ahrefs` → Authenticate → log in, pick the workspace, **Allow**. Then in app.ahrefs.com → Account → API keys, lower the MCP key's default 200,000-unit monthly cap to the budget, and switch off pay-as-you-go units under Limits & usage |
    | DataForSEO | `dataforseo_login` and `dataforseo_password` in `/plugin configure seo-suite-dataforseo@seo-suite`. Input is masked and stored in the macOS Keychain ([plugin-ref]). In the DataForSEO dashboard (API Settings), set a daily spending limit; calls over it fail with error 40203 |
    | PageSpeed Insights | Optional `psi_api_key` in `/plugin configure seo-suite@seo-suite`. The core plugin's SessionStart hook exports it as `PSI_API_KEY` for `psi.py` |
+   | OpenAI, Perplexity, Anthropic (the AI-answer probe) | `openai_api_key` (main engine), `perplexity_api_key` (cross-check) and the optional `anthropic_api_key` in `/plugin configure seo-suite@seo-suite`, masked and kept in the Keychain. SessionStart exports them as `SEO_SUITE_OPENAI_API_KEY`, `SEO_SUITE_PERPLEXITY_API_KEY` and `SEO_SUITE_ANTHROPIC_API_KEY` for `ai_probe.py`, so other tools in Bash keep their own keys. At each vendor, the user turns off auto-recharge or sets a monthly limit as the backstop |
+   | DataForSEO for `rank_snapshot.py run` | By default snapshots go through the connector: `rank_snapshot.py plan`, the connector's `api_request`, then `rank_snapshot.py parse`. For one scripted call per batch instead, the user gives `DATAFORSEO_LOGIN` and `DATAFORSEO_PASSWORD` to the process that starts Claude, read from the Keychain at launch (for example `security find-generic-password -s dataforseo -w` in the launchd command), never written in a file |
    | GA4 (optional, not bundled) | The user signs in with Application Default Credentials: `gcloud auth application-default login --scopes https://www.googleapis.com/auth/analytics.readonly,https://www.googleapis.com/auth/cloud-platform --client-id-file=<client.json>`, or `--impersonate-service-account=<email>`. Then they add Google's official server: `claude mcp add analytics-mcp --scope user -e "GOOGLE_APPLICATION_CREDENTIALS=<path gcloud printed>" -e "GOOGLE_PROJECT_ID=<id>" -- pipx run analytics-mcp`. It is read-only unless started with `--allow-write`; never add that flag ([ga4-mcp]) |
    | Search Console | No official MCP. Default: the user drops a monthly Performance export into `seo-work/gsc/` for `gsc_analyze.py`. Option: a community GSC MCP the user audits and pins, authenticated as a service account added as a property user. That is the user's trust decision |
    | Bing Webmaster | The user generates the API key under Settings → API Access in BWT |
@@ -98,12 +100,13 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status
    | `semrush_monthly_units` | 0 (paid calls denied) | ≤ 20,000 of the 50,000 units Starter, Pro+, Pro and Guru include |
    | `ahrefs_monthly_units` | 0 | ≤ 20,000 (Lite includes 200,000) |
    | `dataforseo_monthly_usd` | 0 | 10 (the scheduled pipelines below cost about $5–6 a month for one site) |
-   | `other_monthly_usd` | 0 | 0 until another vendor is connected |
+   | `other_monthly_usd` | 0 | 12 once the AI-probe keys are set: a monthly run of 40 prompts × 2 engines × 3 runs is about $2.60 [estimate], under the per-run cap of $3. Otherwise 0 until another vendor is connected |
    | `per_run_cap_pct` | 25 | 25: one run may spend a quarter of each vendor's monthly budget (5,000 of 20,000 units; $2.50 of $10) |
    | `ask_above_pct` | 5 | 5: one call estimated above 5% of the monthly budget is deferred to the end-of-run questions (1,000 of 20,000 units; $0.50 of $10) |
    | `max_rows` | 50 | 50 |
    | `cache_ttl_days` | per data type (`paid-tools-automation.md` § 8) | leave unset |
    | `psi_api_key` (sensitive) | unset | set it if PageSpeed runs hit the keyless quota |
+   | `openai_api_key`, `perplexity_api_key`, `anthropic_api_key` (sensitive) | unset | the first two for B8; the third only when Claude answers matter |
 
 5. **Permission rules. Propose them, then apply them only after the user's one-time OK.**
    - A plugin cannot ship permission rules: a plugin's `settings.json` honours only `agent` and
@@ -182,6 +185,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status
   (`ingest volumes … --source <vendor>`); the raw response stays in the guard cache.
 - Start with the free balance checks.
 - Estimate the spend before any paid call and stop a step that would pass `per_run_cap_pct` of a vendor's budget.
+- **Scripts that pay a vendor directly** (`rank_snapshot.py run`, `ai_probe.py run`) are invisible to the hook. They
+  read the same budgets and the guard's ledger before each batch, record their spend there in the run's session, and
+  stop at the monthly budget or the per-run cap. A stop goes to `inbox.md` like a guard denial.
 - Shortlist before paying, and send an explicit row limit (`max_rows`) on every call.
 - One country or database per call, no history columns unless the step needs them, and DataForSEO Standard queue,
   never Live.
@@ -195,9 +201,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" status
 | B3 | Keyword research (`seo-keywords`) | On demand, refresh quarterly | Free expansion (`keyword_ideas.py`, GSC queries, PAA) → cluster and shortlist locally → paid volume and KD for the shortlist only → SERP check of the top 20 | 300 shortlisted terms: DataForSEO ≈ $0.11 (search_volume $0.06 + bulk KD $0.048), SERPs $0.012. Same 300: Semrush 3,000 units (`phrase_these` with the Kd column; no Kd surcharge is documented, not metered) or Ahrefs ≈ 6,300 units |
 | B4 | Competitor gap (`seo-competitors`) | Monthly | Competitors from the SERPs → per competitor, one gap call with a 100-row limit and a volume filter → diff locally against GSC | DataForSEO `domain_intersection` $0.024/competitor. Ahrefs `organic-keywords` (4 fields, 100 rows) ≈ 2,200 units. Semrush `domain_organic` 100 lines = 1,000 units (not `domain_domains`, 8,000 per 100 lines) |
 | B5 | Backlink deltas (`seo-links`) | Weekly | Change detector first; pull new and lost rows only when it shows change, never the full profile | DataForSEO ≈ $0.024 (summary) + 2 × $0.0276 ≈ $0.08/site. Ahrefs ≤ 600 units/100 rows (no `traffic`/`refdomains` fields). Semrush 40 (overview) + 4,000 per 100 delta lines |
-| B6 | Rank tracking | Daily money tier, weekly mid tier | GSC position (free, 2–3 day lag) for everything. Ahrefs Rank Tracker reads are free (updates weekly). DataForSEO SERP Standard for ~50 money keywords daily (depth 10) and ~450 weekly (depth 20) | ≈ $0.03/day + $0.54/week ≈ $3.22/month. Semrush Position Tracking positions cost 100 units per keyword: avoid |
+| B6 | Rank tracking (`seo-analytics`) | Daily money tier, weekly mid tier | Search Console positions for everything (free, 2–3 day lag): `rank_snapshot.py gsc`. Ahrefs Rank Tracker reads are free (updates weekly). Paid: `rank_snapshot.py run` per keyword set in the DataForSEO Standard queue, ~50 money keywords daily (depth 10) and ~450 weekly (depth 20), AI Overview references on the money tier. Then `research_store.py ingest serps`, `rank_compare.py snapshots` for alerts, and `rank_compare.py gsc` at +14 and +28 days for each logged change | ≈ $0.03/day + $0.54/week ≈ $3.22/month per market and language (+$0.90 with AI Overview on the money tier). Semrush Position Tracking positions cost 100 units per keyword: avoid |
 | B7 | GSC-driven content refresh (`seo-content`) | Monthly | Page-level GSC last 3 months vs a year earlier → flag pages −20% clicks → classify (decay, lost position, SERP/AI Overview change) → SERP check of the flagged pages' top queries only | ≈ $0.01–0.02 for 10 pages |
-| B8 | AI-visibility tracking (`seo-ai-search`) | Weekly sampling, monthly report | Frozen prompt set + `ai_visibility.py`. GSC Generative AI report via UI export (no API). Paid: DataForSEO LLM Scraper Standard for repeat runs; LLM Mentions monthly | 25 prompts × 2 engines × 3 runs ≈ $0.18/week; LLM Mentions ≈ $0.10 + $0.001/row per month |
+| B8 | AI-visibility tracking (`seo-ai-search`) | Monthly run of the full frozen set; weekly only when the budget covers four runs | Frozen prompt set → `ai_probe.py run` through the OpenAI (main) and Perplexity (cross-check) APIs, Anthropic when asked → `ai_visibility.py --compare` against the last run. GSC Generative AI report via UI export (no API). Never the consumer apps, and never DataForSEO's LLM Scraper, which drives them | 40 prompts × 2 engines × 3 runs = 240 probes ≈ $2.60 a run [estimate], from `other_monthly_usd`; Claude adds ≈ $1.40, so run it separately or raise the budget |
 | B9 | Multilingual blog QA (`seo-blog-review`) | On each new or changed post (PR trigger), or weekly | Fetch changed posts → `content_score.py`, `page_audit.py`, the blog-review checks per language. Paid only to confirm a target query's SERP per locale | $0 by default. SERP check $0.0006 per keyword per locale |
 | B10 | Blog batch (`seo-blog-builder`) | Weekly | Store `status` → refresh only stale or missing data (the site's post list included, `ingest posts`) → `next-topics` → briefs and posts → the blog-review checks per language → ship per level (PR, merge, CMS publish) → IndexNow and sitemap submission → store status → indexing and ranking checks of earlier posts | $0 by default. Paid only for stale SERP refreshes ($0.0006 per keyword per locale) and the volume shortlist (B3 prices) |
 
@@ -318,7 +324,7 @@ A scheduled prompt is not live user input and never counts as approval for a gat
   - every connected vendor answers its free balance check;
   - `setup.md` lists each vendor's tool-name form;
   - the user confirms `/hooks` shows the credit guard on PreToolUse, PostToolUse, PostToolUseFailure and PostToolBatch,
-    plus the SessionStart hook if `psi_api_key` is set;
+    plus the SessionStart hook, which hands the keys, budgets, the guard's data folder and the session id to Bash;
   - one repeated paid call comes back as a cache hit (deny with a file path) instead of a second charge;
   - one scheduled dry run finished with outputs, a ledger entry and no permission denials other than intended ones.
 - **Every run:**
@@ -347,8 +353,8 @@ All ten pipelines run at $0 with paid steps skipped. Those steps are marked `[ne
 - competitors' keywords and gaps;
 - third-party backlinks and deltas;
 - volumes and difficulty for terms the site doesn't rank for;
-- rank tracking beyond your own GSC;
-- multi-engine AI answers at scale.
+- rank tracking beyond your own GSC (`rank_snapshot.py`);
+- multi-engine AI answers at scale (`ai_probe.py`).
 
 Cheapest source per data type, call shapes and traps: `paid-tools-automation.md`. Plans and prices: `tools.md`.
 

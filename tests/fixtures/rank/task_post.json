@@ -1,0 +1,14 @@
+{
+  "version": "0.1.20261020",
+  "status_code": 20000,
+  "status_message": "Ok.",
+  "time": "0.0921 sec.",
+  "cost": 0.0054,
+  "tasks_count": 3,
+  "tasks_error": 0,
+  "tasks": [
+    {"id": "10250900-1111-0066-0000-000000000001", "status_code": 20100, "status_message": "Task Created.", "time": "0.0031 sec.", "cost": 0.0018, "result_count": 0, "path": ["v3", "serp", "google", "organic", "task_post"], "data": {"api": "serp", "function": "task_post", "se": "google", "se_type": "organic", "keyword": "ინგლისურის რეპეტიტორი თბილისში", "location_code": 2268, "language_code": "ka", "device": "mobile", "depth": 20, "priority": 1, "load_async_ai_overview": true, "tag": "seo-suite|ge-ka-mobile-v1"}, "result": null},
+    {"id": "10250900-1111-0066-0000-000000000002", "status_code": 20100, "status_message": "Task Created.", "time": "0.0029 sec.", "cost": 0.0018, "result_count": 0, "path": ["v3", "serp", "google", "organic", "task_post"], "data": {"api": "serp", "function": "task_post", "se": "google", "se_type": "organic", "keyword": "ielts მომზადება", "location_code": 2268, "language_code": "ka", "device": "mobile", "depth": 20, "priority": 1, "load_async_ai_overview": true, "tag": "seo-suite|ge-ka-mobile-v1"}, "result": null},
+    {"id": "10250900-1111-0066-0000-000000000003", "status_code": 20100, "status_message": "Task Created.", "time": "0.0030 sec.", "cost": 0.0018, "result_count": 0, "path": ["v3", "serp", "google", "organic", "task_post"], "data": {"api": "serp", "function": "task_post", "se": "google", "se_type": "organic", "keyword": "ინგლისურის კურსები ონლაინ", "location_code": 2268, "language_code": "ka", "device": "mobile", "depth": 20, "priority": 1, "load_async_ai_overview": true, "tag": "seo-suite|ge-ka-mobile-v1"}, "result": null}
+  ]
+}

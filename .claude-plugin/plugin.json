@@ -56,21 +56,21 @@
     "dataforseo_monthly_usd": {
       "type": "number",
       "title": "DataForSEO monthly budget (USD)",
-      "description": "Monthly budget for paid DataForSEO calls, in US dollars. 0 (default) denies paid DataForSEO calls; free tools and cached results still work. Counted per UTC calendar month by the credit guard.",
+      "description": "Monthly budget for paid DataForSEO calls, in US dollars. 0 (default) denies paid DataForSEO calls; free tools and cached results still work. Counted per UTC calendar month by the credit guard, including the SERP snapshots scripts/rank_snapshot.py buys itself.",
       "default": 0,
       "min": 0
     },
     "other_monthly_usd": {
       "type": "number",
       "title": "Other paid SEO tools monthly budget (USD)",
-      "description": "One shared monthly budget, in US dollars, for Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly and Lumar crawls. Their per-call prices aren't in the guard's table, so each call is budgeted at the per-call threshold. 0 (default) denies their paid calls.",
+      "description": "One shared monthly budget, in US dollars, for Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly and Lumar crawls, and for the OpenAI, Perplexity and Anthropic calls of scripts/ai_probe.py. The MCP vendors' per-call prices aren't in the guard's table, so each of their calls is budgeted at the per-call threshold; ai_probe.py prices its own calls. 0 (default) denies their paid calls.",
       "default": 0,
       "min": 0
     },
     "per_run_cap_pct": {
       "type": "number",
       "title": "Per-run cap (% of monthly budget)",
-      "description": "The most one session may spend from each monthly budget, as a percentage of it. Default 25. 0 denies paid calls.",
+      "description": "The most one session may spend from each monthly budget, as a percentage of it, MCP calls and the scripts' own calls together. Default 25. 0 denies paid calls.",
       "default": 25,
       "min": 0,
       "max": 100
@@ -103,6 +103,24 @@
       "type": "string",
       "title": "PageSpeed Insights API key",
       "description": "Optional Google API key for PageSpeed Insights, which raises the quota for scripts/psi.py. It is stored in the system keychain and exported to Bash as PSI_API_KEY at session start. Never paste it into chat.",
+      "sensitive": true
+    },
+    "openai_api_key": {
+      "type": "string",
+      "title": "OpenAI API key (AI-answer probe, main engine)",
+      "description": "Optional key for scripts/ai_probe.py, which runs the frozen prompt set through the OpenAI Responses API with web search as the stand-in for ChatGPT. It is stored in the system keychain and exported to Bash as SEO_SUITE_OPENAI_API_KEY at session start, so other tools keep their own OPENAI_API_KEY. Spend counts against other_monthly_usd. Never paste it into chat.",
+      "sensitive": true
+    },
+    "perplexity_api_key": {
+      "type": "string",
+      "title": "Perplexity API key (AI-answer probe, cross-check)",
+      "description": "Optional key for scripts/ai_probe.py's cross-check engine, the Perplexity Agent API with web search. It is stored in the system keychain and exported to Bash as SEO_SUITE_PERPLEXITY_API_KEY at session start. Spend counts against other_monthly_usd. Never paste it into chat.",
+      "sensitive": true
+    },
+    "anthropic_api_key": {
+      "type": "string",
+      "title": "Anthropic API key (AI-answer probe, optional)",
+      "description": "Optional key for scripts/ai_probe.py's third engine, the Claude API with web search, used only when a run asks for it. It is stored in the system keychain and exported to Bash as SEO_SUITE_ANTHROPIC_API_KEY at session start, so the Claude Code CLI never picks it up as ANTHROPIC_API_KEY. Spend counts against other_monthly_usd. Never paste it into chat.",
       "sensitive": true
     }
   }
