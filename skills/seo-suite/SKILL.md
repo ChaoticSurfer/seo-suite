@@ -135,6 +135,12 @@ Delegate bulky data collection to the `seo-site-auditor` agent, SERP batches to 
    - Never put secrets, raw paid responses or personal data in it.
 8. **Log the work.** End every task by appending an entry to `SEO-WORKLOG.md` per
    `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`.
+9. **Pick the model for the job; never Haiku.** Opus decides: query relevance and intent, page mapping, priorities,
+   and final copy in any language other than English. Sonnet carries out decided changes, runs the scripts and
+   collects data (the `seo-site-auditor` and `seo-serp-researcher` agents). Sonnet is the lowest model for any
+   agent, subagent or session. In a blind test on one site's real tasks in ka, ru, en, he and ar (2026-10-25, two
+   judges), Opus made no wrong relevance calls in 75 queries. Haiku accepted 4 off-topic queries, and its Russian
+   and Hebrew copy scored lowest [measured: one site, directional].
 
 ## 4. Quick start
 

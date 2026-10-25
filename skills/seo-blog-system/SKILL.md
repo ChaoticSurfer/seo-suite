@@ -137,7 +137,7 @@ it obvious; otherwise build nothing that depends on it and ask once, at the end 
 | Each post: 200 without a redirect, indexable, self-canonical | ✓ `blog-post-indexable` | google-rules §1 |
 | BlogPosting/Article JSON-LD that passes `schema_rules.py` (headline, image, dates, author with url) | ✓ `blog-post-article-schema` | google-rules §5 |
 | BreadcrumbList with 2+ items | ✓ `blog-post-breadcrumb-schema` | google-rules §5 |
-| `datePublished` set, with a zone, not in the future, equal to `article:published_time`; `dateModified` never earlier | ✓ `blog-post-dates` | google-rules §4–5; Google Article doc |
+| `datePublished` set, with a zone, not in the future, equal to `article:published_time` and `<time datetime>`, all on the site's own UTC offset so their calendar date is the printed date; `dateModified` never earlier | ✓ `blog-post-dates` | google-rules §4–5; Google Article doc |
 | A real author: Person or Organization as appropriate, with a url, printed as a byline | ✓ `blog-post-byline` | google-rules §4; Google Article doc and structured-data policies |
 | Author pages return 200 with Person or ProfilePage markup | ✓ `blog-author-pages` | google-rules §5 |
 | The hero image is not lazy, is prioritised, has its size and a `srcset` | ✓ `blog-post-lcp-image`; `psi.py` for the field LCP | google-rules §2 |
@@ -202,6 +202,14 @@ Lessons from Geotour (a Next.js App Router site in seven languages), which this 
   doc wants `Organization` for organisations, and a real person needs an author page.
 - **A soft 404 for empty topics.** A `?tag=` with no posts rendered an empty list with a 200. Fixed with `notFound()`.
   Call it before any `<Suspense>` boundary streams, or the 200 stays.
+- **Dates a day early in the markup.** Once posts went live at a time of day, a post published at midnight in Tbilisi
+  was `20:00Z` the day before. `toISOString()` in JSON-LD, `article:published_time` and `<time datetime>` gave the
+  previous calendar date, so 41 posts disagreed with the date they printed. Fixed by writing the same instant with
+  the site's offset (`2026-10-25T00:00:00+04:00`) everywhere; sitemap `lastmod` can stay UTC.
+- **IndexNow for posts only.** Tour and destination saves never pinged, and a route pattern (`/tours/[id]`) can't be
+  announced. Announce every content type by the concrete URL of each language version, from the admin save, and send
+  the existing URLs once after the change ships. The first ping can return 403 while the engines verify the key file:
+  re-send, and confirm with the deploy's logs, since a ping that logs only failures is silent on success.
 - **The same related posts on every article.** Topic first, then next/previous by date, so every post gets a link.
 - **No feed.** The blog shipped without RSS. A feed is cheap, and Google reads RSS and Atom as sitemaps.
 - **Myths:** `rel=prev/next` is not used by Google; `priority` and `changefreq` in the sitemap are ignored;

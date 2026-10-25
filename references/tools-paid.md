@@ -381,6 +381,12 @@ Costs in the lists are at the intended call shapes. **Budget settings** for the 
 difficulty at scale, PPC/ad intelligence, or market and traffic estimates. These come from Semrush's ranking database.
 The free path cannot replicate them.
 
+**Shared-access ("group buy") proxies.** A Semrush session on a domain other than `semrush.com` (for example
+`1.semrush.com.in`) is a third-party reseller. Semrush's terms may forbid shared accounts, the operator sees every
+query, data can be cached or partial, and sessions expire without warning. Use it read-only, in the user's own
+browser, never type credentials into it, tag its numbers `[vendor data: proxy]` with the database and date, and log
+what was queried, since the credit guard never sees browser use.
+
 **Stack:** Reserve (small, big). Use when the owner already pays Starter or Pro+ and a scheduled run has kept its
 sign-in working; then it is a third Georgian keyword database and a backlinks opinion. See the
 [Main stack](#keywords-and-competitors). Free plan (10 reports a day): Reserve in every list, use when a person wants a

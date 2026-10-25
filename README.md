@@ -6,11 +6,11 @@ with a stated reason.
 
 ## What's inside
 
-- **21 skills.** The `seo-suite` router plus audit, technical, onpage, content, blog-builder, blog-review,
-  keywords, schema, ai-search, local, international, ecommerce, media, links, migration, analytics,
+- **22 skills.** The `seo-suite` router plus audit, technical, onpage, content, blog-builder, blog-review,
+  blog-system, keywords, schema, ai-search, local, international, ecommerce, media, links, migration, analytics,
   competitors, programmatic, strategy and automation.
-- **3 agents.** `seo-site-auditor` collects data, `seo-serp-researcher` runs SERP batches in parallel,
-  and `seo-content-reviewer` grades pages.
+- **3 agents.** `seo-site-auditor` collects data and `seo-serp-researcher` runs SERP batches in parallel, both on
+  Sonnet; `seo-content-reviewer` grades pages on the session's model. No agent uses Haiku.
 - **Scripts.** Python standard library only, no installs. They cover page audit, crawler, robots,
   sitemaps, PageSpeed/CrUX, keyword ideas, Search Console analysis, log analysis, redirect-map QA,
   content scoring, competitor comparison, render diff, SERP-overlap clustering, code-based triage (P0–P3), AI-visibility

@@ -390,6 +390,12 @@ Cheapest source per data type, call shapes and traps: `paid-tools-automation.md`
 - **"`--bare` makes scheduled runs faster and safer."** It drops the hooks, so the credit guard is gone.
 - **"The cloud routine has my plugin and keys."** It has neither unless they are committed or added as connectors and
   network secrets.
+- **"The merge shipped."** On a Vercel Hobby team, a commit whose author isn't a member of the team is blocked from
+  deploying ("Deployment was blocked"), and a GitHub squash or merge commit carries the merger's GitHub identity.
+  Check the commit's Vercel status after every merge; when it is blocked, push an empty commit authored by an
+  identity that deploys (one taken from an earlier commit that did), then verify the live site.
+- **Stacked PRs merged into a merged branch.** A PR based on another PR's branch lands in that branch, not `main`,
+  if the first was merged first. Check `baseRefName` before merging, and cherry-pick onto `main` when it happened.
 - **"Driving the Semrush UI slowly is fine."** Scraping (§3.3(p)) and AI use of outputs (§3.3(r)) are banned at any
   speed. Treat even a pasted Semrush export as a ToS question for the user.
 - **Polling AI answers daily.** Answers vary run to run and vendor indexes refresh weekly to monthly. Sample weekly and
