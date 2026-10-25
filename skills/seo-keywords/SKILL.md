@@ -1,6 +1,6 @@
 ---
 name: seo-keywords
-description: Keyword research and topic planning. Expands seeds into real queries (Google, Bing and YouTube autocomplete, People Also Ask, related searches, Search Console, forums), classifies intent, clusters keywords by SERP overlap, builds a topical map (pillar + clusters) and a prioritised target list. Triggers include "keyword research for X", "what should we write about", "find keywords for my site", "cluster these keywords", "topical map", "pillar pages", "which keywords should this page target", "keywords in Georgian/German for market Y" and "what are people searching for". It runs free by default and adds Semrush, Ahrefs, DataForSEO or Keyword Planner volumes only for a shortlist. Results go into the shared research store (seo-research/) that every other skill reuses. It is not for optimising one page (seo-onpage), writing briefs or articles (seo-content), blog batches (seo-blog-builder), competitor domain teardowns (seo-competitors) or Search Console traffic diagnosis (seo-analytics).
+description: Keyword research and topic planning, free by default. Expands seeds into real queries (autocomplete, People Also Ask, Search Console, forums), classifies intent, clusters by SERP overlap, and builds a topical map and target list, in any language (Georgian and Russian included), saved to the shared research store. Not for one page (seo-onpage).
 ---
 
 # Keyword research, clustering and topical maps
@@ -73,7 +73,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - **4 or more shared URLs → same page.** 2–3 shared → separate pages that interlink. 0–1 → separate topics [heuristic, consistent with common SERP-overlap practice].
    - **WebSearch results are US-located:** the tool describes itself as US-only. Tag them `[measured: WebSearch sample, US-located, <date>]`. They fit an en-US market; for any other market they are directional.
    - **Georgia-located results** (ka-GE, ru-GE, en-GE) come from one of two places:
-     - DataForSEO's Google Organic SERP with `location_code` 2268. It is paid, so run it only within the configured budget, which the credit guard enforces (tools.md `## DataForSEO`).
+     - DataForSEO's Google Organic SERP with `location_code` 2268. It is paid, so run it only within the configured budget, which the credit guard enforces (tools-paid.md `## DataForSEO`).
      - A watched browser session: a person opens Google with `gl=ge` and the locale's `hl`, and records the top 10. Never automate google.com/search.
    - With neither available, cluster on the WebSearch samples, mark those clusters `[directional: US-located SERPs]`, and add the DataForSEO budget for the head terms to the requests batched at the end.
    - **Parallelise:** split the keywords in `gaps.<locale>.needs_serp` (up to 50 per `status` run, strongest demand first) into batches of about 10 and give each batch to a `seo-serp-researcher` subagent with an output path such as `seo-work/serps-en-1.json`. Each writes that details file and `seo-work/serps-en-1.serps.json` (`{"keyword": [top10 urls]}`). Ingest every batch, then cluster the locale's whole SERP set (the fresh snapshots already in the store plus the new ones) centrally, so every cluster uses the same rule:
@@ -130,12 +130,12 @@ Autocomplete proves a query is typed, **not how often**. Count completions witho
 - **Google Ads Keyword Planner** (free with an Ads account): volume **ranges** for free; exact volumes only with active spend. It's the cheapest volume source. Query only the shortlisted head terms.
 - **Semrush / Ahrefs:** estimated volume, keyword difficulty, clickstream-based clicks per search, a competitor's ranking keywords (the fastest gap finder), and SERP history.
   - Justified when you need competitor keyword sets or difficulty at scale.
-  - Cost tactics: query only cluster head terms, limit rows, use one database/country, export once and cache (tools.md `## Semrush`, `## Ahrefs`, `## Cost-optimisation playbook`).
+  - Cost tactics: query only cluster head terms, limit rows, use one database/country, export once and cache (tools-paid.md `## Semrush`, `## Ahrefs`, `## Cost-optimisation playbook`).
 - **DataForSEO Keywords Data API:** Google Ads volumes, pay as you go, batches up to the API limit per task.
   - Cheapest for bulk volumes of a few hundred to thousands of terms.
-  - Batch everything into as few tasks as possible (tools.md `## DataForSEO`).
-- **Keywords Everywhere:** cheap per-keyword credits for spot checks (tools.md `## Other paid tools`).
-- **DataForSEO Google Organic SERP:** Georgia-located top 10s (`location_code` 2268) for clustering ka-GE and ru-GE, which WebSearch can't give. Query only the cluster head terms (tools.md `## DataForSEO`).
+  - Batch everything into as few tasks as possible (tools-paid.md `## DataForSEO`).
+- **Keywords Everywhere:** cheap per-keyword credits for spot checks (tools-paid.md `## Other paid tools`).
+- **DataForSEO Google Organic SERP:** Georgia-located top 10s (`location_code` 2268) for clustering ka-GE and ru-GE, which WebSearch can't give. Query only the cluster head terms (tools-paid.md `## DataForSEO`).
 
 Without one of these, the volume column is `[needs data]`. Never estimate it.
 

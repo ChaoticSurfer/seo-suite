@@ -167,7 +167,7 @@ say they're experienced.
 - **Free path:** `robots_check.py`, `sitemap_check.py --urls-out`, `crawl.py --sitemap-urls --csv`,
   `page_audit.py`, `render_diff.py`, `psi.py` (free `PSI_API_KEY`), `log_analyze.py --verify-dns`,
   `redirect_check.py`, then `triage.py` over all the JSON outputs.
-- **Screaming Frog** (see `## Screaming Frog` in `references/tools.md`) is justified for sites over ~2,000 URLs
+- **Screaming Frog** (see `## Screaming Frog` in `references/tools-paid.md`) is justified for sites over ~2,000 URLs
   or sites that rely on JavaScript. It adds JS-rendered crawling at scale, custom extraction, and scheduled
   crawls with GSC/PSI joins. Its free tier is capped at 500 URLs.
 - **Skills:** seo-audit, seo-technical, seo-migration, seo-international, seo-ecommerce.
@@ -251,7 +251,7 @@ say they're experienced.
     with spend).
   - Competitor keyword universes (Semrush Organic Research / Ahrefs Organic Keywords).
   - Cost tactic: pull volumes only for shortlisted cluster head terms. See `## Semrush`, `## Ahrefs`,
-    `## DataForSEO` and `## Cost-optimisation playbook` in `references/tools.md`.
+    `## DataForSEO` and `## Cost-optimisation playbook` in `references/tools-paid.md`.
 - **Skills:** seo-keywords, seo-content, seo-blog-builder, seo-blog-review, seo-onpage, seo-programmatic,
   seo-strategy.
 
@@ -307,7 +307,7 @@ say they're experienced.
   WebSearch footprints for prospecting.
 - **Paid adds:** competitor backlink gap, link intersect, lost and new link alerts, anchor analysis (Ahrefs,
   Semrush Backlink Gap, Majestic, Moz). See `## Ahrefs`, `## Semrush`, `## Moz` and
-  `## Cost-optimisation playbook` in `references/tools.md`.
+  `## Cost-optimisation playbook` in `references/tools-paid.md`.
 - **Safety:** outreach and disavows are always gated; links that pass ranking value are never bought
   (`references/autonomy.md`). List each outreach
   message (recipient and text) and the disavow file as items in the end-of-run approval batch, and carry out only
@@ -365,7 +365,7 @@ say they're experienced.
   official APIs, or spot checks by hand), then `ai_visibility.py` (Wilson 95% CIs). Call a change only when the CI of
   the difference excludes 0 (`--compare` reports it); overlapping CIs don't rule one out.
 
-**Paid trackers:** see `## AI visibility trackers` in `references/tools.md`.
+**Paid trackers:** see `## AI visibility trackers` in `references/tools-paid.md`.
 **Skill:** seo-ai-search.
 
 ## 7. Measuring

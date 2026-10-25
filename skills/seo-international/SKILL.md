@@ -1,6 +1,6 @@
 ---
 name: seo-international
-description: International and multilingual SEO. Covers hreflang (HTML, HTTP header or sitemap), x-default, language and region codes, return links, URL structure (ccTLD vs subdomain vs subfolder), locale-adaptive serving pitfalls, translation quality vs machine translation at scale, per-market keyword research, and currency/address signals. Use when the user says "hreflang", "multilingual site", "translate my site for SEO", "expand to another country", "wrong language showing in Google", "en-GB vs en-US", "Georgian and English versions", "x-default", or "which URL structure for countries". Not for a full audit (use seo-audit), a domain move (seo-migration), general crawling or canonical bugs (seo-technical), or local Business Profile work (seo-local).
+description: International and multilingual SEO. hreflang and x-default, language and region codes, return links, URL structure per country (ccTLD, subdomain, subfolder), locale-adaptive serving, translation at scale, per-market keywords. Use for "hreflang", "wrong language in Google", "expand to another country". Not for site moves (seo-migration).
 ---
 
 # International SEO
@@ -141,10 +141,10 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
   - The built-in browser for checking rendered language.
   - Google Trends per country.
 - **Semrush / Ahrefs** add per-country keyword volumes and difficulty, and each competitor's traffic share by country. Only paid tools have this. They're justified when choosing *which* markets to enter or how to size them.
-  - **Cost:** query only the target country database, export the top N with display limits, and cache the results in `seo-work/` (tools.md `## Semrush`, `## Ahrefs`, `## Cost-optimisation playbook`).
+  - **Cost:** query only the target country database, export the top N with display limits, and cache the results in `seo-work/` (tools-paid.md `## Semrush`, `## Ahrefs`, `## Cost-optimisation playbook`).
   - **Check coverage:** some small markets, including Georgia, have thin databases in these tools. Check `[vendor data]` row counts before trusting them.
-- **DataForSEO Keywords Data API** gives Google Ads volumes per location and language, pay-as-you-go. It's the cheapest path to real volumes for one or two markets (tools.md `## DataForSEO`).
-- **Screaming Frog** adds hreflang reciprocity checks across a full crawl, including sitemap-based hreflang. Justified for large multi-locale sites (tools.md `## Screaming Frog`).
+- **DataForSEO Keywords Data API** gives Google Ads volumes per location and language, pay-as-you-go. It's the cheapest path to real volumes for one or two markets (tools-paid.md `## DataForSEO`).
+- **Screaming Frog** adds hreflang reciprocity checks across a full crawl, including sitemap-based hreflang. Justified for large multi-locale sites (tools-paid.md `## Screaming Frog`).
 
 ## Output
 

@@ -1,6 +1,6 @@
 ---
 name: seo-media
-description: Use for images, video and news/feed surfaces — "image SEO", "Google Images traffic", "alt text", "image sitemap", "WebP/AVIF", "hero image hurting LCP", "video SEO", "why isn't my video indexed", "Video isn't on a watch page", "key moments", "YouTube vs self-hosted", "Google Discover traffic", "get into Google News / Top stories", "news sitemap", "podcast SEO". Covers indexable image markup, image sitemaps, preview controls, video watch pages, VideoObject and video sitemaps, key moments, Discover eligibility and images, Google News requirements, and podcast basics. Not for: overall page speed (seo-technical), schema beyond VideoObject/Article/ImageObject (seo-schema), article quality and E-E-A-T (seo-content), product feed images (seo-ecommerce).
+description: Images, video and news surfaces. Alt text, image sitemaps, WebP/AVIF, hero images and LCP, video watch pages, VideoObject and key moments, YouTube vs self-hosted, Google Discover, Google News and Top stories, podcasts. Not for overall page speed (seo-technical) or schema beyond media types (seo-schema).
 ---
 
 # Images, video, Discover and News
@@ -159,7 +159,7 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
   - Justified only for a channel strategy at scale.
   - Autocomplete via `keyword_ideas.py --sources youtube` is the free first step.
 - **Semrush and Ahrefs** add little for images. Their Discover and News visibility estimates are weak, so use Search Console.
-- Prices and cost tactics: `${CLAUDE_PLUGIN_ROOT}/references/tools.md` (## Screaming Frog, ## Ahrefs, ## Cost-optimisation playbook).
+- Prices and cost tactics: `${CLAUDE_PLUGIN_ROOT}/references/tools-paid.md` (## Screaming Frog, ## Ahrefs, ## Cost-optimisation playbook).
 
 ## Output
 1. **Media inventory by template** [measured].

@@ -1,6 +1,6 @@
 ---
 name: seo-blog-review
-description: Reviews blogs whose posts an LLM such as Claude writes and translates, for SEO and quality in every language. Finds posts and language versions from sitemaps and hreflang, samples each language, runs the translation, AI-text, content and page checks, then reads source and translation side by side and grades them on MQM categories (accuracy, fluency, terminology, register, locale, numbers, names, markup). Returns a per-language scorecard, a P0–P3 fix list and fixes to the user's translation prompts, glossary and QA steps. Triggers include "review my blog", "check translations", "is my AI content OK for SEO", "multilingual blog audit", "are my Claude translations good" and "review our Georgian/Russian posts". Not for one page's tags (seo-onpage), hreflang on a non-blog site (seo-international), content pruning or briefs (seo-content), or templated page sets (seo-programmatic).
+description: Reviews LLM-written and translated blogs for SEO and quality in every language. Samples each language, runs the translation, AI-text and page checks, grades source against translation on MQM categories, and returns a per-language scorecard, fix list and prompt fixes. Use for "review my blog", "check our Georgian/Russian translations".
 ---
 
 # Blog review: AI-written and AI-translated posts
@@ -275,8 +275,8 @@ separately in either mode.
 - **DataForSEO SERP Standard:** confirm a target query's SERP per locale for about $0.0006 per keyword-locale (the
   B9 pipeline in `seo-automation`; `references/paid-tools-automation.md`).
 - **Semrush / Ahrefs:** per-country volumes. Georgia's databases are thin, so check `[vendor data]` row counts
-  first (tools.md `## Semrush`, `## Ahrefs`).
-- **Screaming Frog:** hreflang reciprocity across a full crawl, including sitemap hreflang, for large blogs (tools.md
+  first (tools-paid.md `## Semrush`, `## Ahrefs`).
+- **Screaming Frog:** hreflang reciprocity across a full crawl, including sitemap hreflang, for large blogs (tools-paid.md
   `## Screaming Frog`).
 
 ## Output

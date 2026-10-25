@@ -1,6 +1,6 @@
 ---
 name: seo-competitors
-description: Competitor and SERP analysis. Use for "who are my SEO competitors", "why does X outrank me", "compare my page with the top results", "competitor content gap", "keyword gap vs competitors", "what is ranking for <keyword>", "SERP features for <keyword>", "competitor backlinks", "how much traffic does competitor get", "what did competitor change on their page", "monitor competitor sites". Finds real SERP competitors (not just business rivals), compares pages with compare_pages.py, inventories SERP features and intent, tracks competitor page changes via the Wayback Machine, and states exactly when Semrush/Ahrefs/Similarweb are worth paying for. Not for keyword discovery from seeds (seo-keywords), link building execution (seo-links), or your own traffic analysis (seo-analytics).
+description: Competitor and SERP analysis. Use for "who are my SEO competitors", "why does X outrank me", content and keyword gaps, SERP features, competitor traffic and page changes. Finds real SERP competitors, compares pages, tracks changes via the Wayback Machine. Not for keyword discovery (seo-keywords) or link building (seo-links).
 ---
 
 # Competitors: who actually wins the SERP, and why

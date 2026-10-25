@@ -1,6 +1,6 @@
 ---
 name: seo-onpage
-description: Optimise one page (or one page template) for a target query, covering the title link, meta description, H1/H2 outline, an answer-first intro, internal links in and out, image alt text and filenames, and a check that the page type matches search intent. Triggers include "optimise this page for X", "improve the title and meta", "on-page SEO for /pricing", "why doesn't this page rank for X", "rewrite my H1", "page-level SEO review" and "fix the SEO on this template/component". It works on a live URL, a saved or rendered HTML file, or the page's source in the codebase (shown as diffs). It is not for whole-site audits (seo-audit / seo-technical), content inventories or briefs (seo-content), keyword discovery (seo-keywords), JSON-LD writing (seo-schema) or AI-answer citations (seo-ai-search).
+description: Optimises one page or page template for a target query (title, meta description, headings, answer-first intro, internal links, image alt text, intent match). Works on a live URL, saved HTML or the page's source code (as diffs). Use for "optimise this page for X", "rewrite my title". Not for whole-site audits (seo-audit).
 ---
 
 # On-page optimisation
@@ -128,9 +128,9 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 - internal link candidates (crawl CSV).
 
 **What paid tools add (never required):**
-- **Semrush / Ahrefs:** every keyword this URL ranks for, with estimated volume and position history, beyond GSC's top rows and 16-month window. They also give competitor URLs' keyword sets. Pull one URL's organic keywords report and cap the rows (see tools.md `## Semrush` / `## Ahrefs`).
-- **DataForSEO SERP API:** localised SERP snapshots at scale, when WebSearch can't pin the country or device. It's pay-per-call; see tools.md `## DataForSEO`.
-- **Screaming Frog:** rendered-DOM audits of many templates at once (tools.md `## Screaming Frog`).
+- **Semrush / Ahrefs:** every keyword this URL ranks for, with estimated volume and position history, beyond GSC's top rows and 16-month window. They also give competitor URLs' keyword sets. Pull one URL's organic keywords report and cap the rows (see tools-paid.md `## Semrush` / `## Ahrefs`).
+- **DataForSEO SERP API:** localised SERP snapshots at scale, when WebSearch can't pin the country or device. It's pay-per-call; see tools-paid.md `## DataForSEO`.
+- **Screaming Frog:** rendered-DOM audits of many templates at once (tools-paid.md `## Screaming Frog`).
 
 Volume and difficulty without data are always `[needs data]`.
 

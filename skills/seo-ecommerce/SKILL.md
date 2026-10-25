@@ -1,6 +1,6 @@
 ---
 name: seo-ecommerce
-description: Use for online stores and catalogues — "ecommerce SEO", "product page SEO", "category page optimisation", "faceted navigation / filters creating thousands of URLs", "sort and filter parameters indexed", "out of stock or discontinued products", "product variants / colour URLs", "pagination", "Merchant Center free listings", "Shopping tab", "Shopify SEO", "WooCommerce SEO", "duplicate manufacturer descriptions". Covers URL inventory and crawl waste, index rules for facets, pagination, variants, product lifecycle, parity between page, markup and feed, internal linking and platform specifics. Not for: schema syntax and templates (seo-schema), product images and video (seo-media), replatforming or domain moves (seo-migration), keyword demand research (seo-keywords).
+description: SEO for online stores and catalogues. Product and category pages, faceted navigation and parameter URLs, pagination, variants, out-of-stock and discontinued products, Merchant Center free listings, Shopify and WooCommerce specifics. Not for schema syntax (seo-schema), product media (seo-media) or replatforming (seo-migration).
 ---
 
 # E-commerce SEO
@@ -150,7 +150,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
   - Justified when indexing decisions affect hundreds of facet combinations. One month's subscription during planning is often enough.
 - **DataForSEO Google Shopping / Merchant APIs:** competitor price and listing data, priced per use. Justified for price-sensitive verticals.
 - **Botify or Lumar:** enterprise crawl and log analytics, justified for catalogues of 1M+ URLs.
-- Prices and cost tactics: `${CLAUDE_PLUGIN_ROOT}/references/tools.md` (## Screaming Frog, ## Semrush, ## Ahrefs, ## DataForSEO, ## Cost-optimisation playbook).
+- Prices and cost tactics: `${CLAUDE_PLUGIN_ROOT}/references/tools-paid.md` (## Screaming Frog, ## Semrush, ## Ahrefs, ## DataForSEO, ## Cost-optimisation playbook).
 
 ## Output
 1. **URL inventory by pattern,** with counts, indexable share and crawl-waste share [measured].

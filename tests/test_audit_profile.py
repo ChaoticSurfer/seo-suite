@@ -391,9 +391,9 @@ class DriftTest(unittest.TestCase):
         self.assertTrue(line.group(2).startswith("`seo-audit`"), line.group(2))
 
     def test_tools_md_still_has_the_stacks_the_profiles_point_to(self):
-        tools = self.read("references", "tools.md")
-        self.assertIn("### Default: big website, free only", tools)
-        self.assertEqual((tools.count("**Small sites**"), tools.count("**Big sites**")), (5, 5))
+        self.assertIn("### Default: big website, free only", self.read("references", "tools.md"))
+        paid = self.read("references", "tools-paid.md")
+        self.assertEqual((paid.count("**Small sites**"), paid.count("**Big sites**")), (5, 5))
 
     def test_plugin_option_matches_the_picker(self):
         option = json.loads(self.read(".claude-plugin", "plugin.json"))["userConfig"]["audit_profile"]

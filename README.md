@@ -38,8 +38,9 @@ with a stated reason.
 - **3 optional connectors** for Semrush, Ahrefs and DataForSEO, each the vendor's official MCP server.
 - **References.**
   - `google-rules.md`: dated, verified Google and Bing rules, with an explicit list of unverified items.
-  - `tools.md`: the ranked tool stacks (the default free stack, and paid stacks for small and big sites, each tool
-    Main, Cross-check or Reserve), why each paid tool is worth it, and how to spend less on it.
+  - `tools.md`: the default free stack every run uses, the labels (Main, Cross-check, Reserve) and the rules behind
+    every list. `tools-paid.md`: the paid stacks for small and big sites, each category's Reserve table, the
+    credit-guard limits, why each paid tool is worth it and how to spend less on it. `tools-sources.md`: their sources.
   - `guide-beginner.md` and `guide-expert.md`: the same SEO pillars at two depths. The router picks one
     for the user's level.
   - `autonomy.md`: what Claude decides on its own, what it asks, and the autonomy levels.
@@ -132,8 +133,8 @@ summary.
   do, and which data only Semrush, Ahrefs or similar tools can provide.
 - [INTEGRATIONS.md](INTEGRATIONS.md): every tool the plugin connects to, how each connects, what it costs, and
   what is planned.
-- [references/tools.md](references/tools.md): free and paid tools, the case for each paid one, and how to
-  keep the bill down.
+- [references/tools.md](references/tools.md) and [references/tools-paid.md](references/tools-paid.md): the free
+  stack, then the paid stacks, the case for each paid tool and how to keep the bill down.
 - [references/guide-beginner.md](references/guide-beginner.md) and
   [references/guide-expert.md](references/guide-expert.md): SEO strategy at two depths.
 

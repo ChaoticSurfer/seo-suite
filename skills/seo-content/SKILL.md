@@ -1,6 +1,6 @@
 ---
 name: seo-content
-description: Content strategy and quality across many pages. Covers content audits and inventories (keep/update/merge/redirect/delete), content decay, keyword cannibalisation, SERP-derived content briefs, writing or refreshing articles with E-E-A-T signals, helpful-content self-assessment, and safe use of AI writing. Triggers include "content audit", "which pages should we prune", "traffic decaying on old posts", "two pages competing for the same keyword", "write a content brief for X", "refresh this article", "write an SEO blog post", "is our content helpful", "E-E-A-T review" and "can we use AI for content". It is not for a single page's tags (seo-onpage), keyword discovery and clustering (seo-keywords), keyword-driven blog batches or content calendars (seo-blog-builder), template-generated page sets (seo-programmatic), or technical crawl issues (seo-technical).
+description: Content strategy and quality across many pages. Content audits (keep, update, merge, redirect, delete), decay, cannibalisation, SERP-based briefs, writing or refreshing one article with E-E-A-T, helpful-content checks, safe AI writing. Not for one page's tags (seo-onpage), keyword discovery (seo-keywords) or blog batches (seo-blog-builder).
 ---
 
 # Content: audit, briefs, writing, refreshes
@@ -186,9 +186,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" set-status --cluster e
 - question mining (PAA via WebSearch, `keyword_ideas.py`).
 
 **What paid tools add (never required):**
-- **Ahrefs / Semrush:** backlinks per URL, which is the decisive input for redirect-vs-delete decisions. The free alternatives are the GSC Links export and Ahrefs Webmaster Tools for your own verified site. They also give per-page keyword sets beyond GSC's top rows and competitors' top pages for gap finding. Pull only "top pages" and "referring domains per URL" for in-scope sections (tools.md `## Ahrefs`, `## Semrush`).
-- **Screaming Frog:** content extraction (custom XPath for dates and authors) across thousands of URLs, and near-duplicate detection (tools.md `## Screaming Frog`).
-- **AlsoAsked / AnswerThePublic:** structured question trees for briefs (tools.md `## Other paid tools`).
+- **Ahrefs / Semrush:** backlinks per URL, which is the decisive input for redirect-vs-delete decisions. The free alternatives are the GSC Links export and Ahrefs Webmaster Tools for your own verified site. They also give per-page keyword sets beyond GSC's top rows and competitors' top pages for gap finding. Pull only "top pages" and "referring domains per URL" for in-scope sections (tools-paid.md `## Ahrefs`, `## Semrush`).
+- **Screaming Frog:** content extraction (custom XPath for dates and authors) across thousands of URLs, and near-duplicate detection (tools-paid.md `## Screaming Frog`).
+- **AlsoAsked / AnswerThePublic:** structured question trees for briefs (tools-paid.md `## Other paid tools`).
 
 Volumes and difficulty without data are always `[needs data]`.
 

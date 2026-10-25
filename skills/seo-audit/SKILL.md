@@ -1,6 +1,6 @@
 ---
 name: seo-audit
-description: Full SEO audit orchestrator for a whole site or a single page, run on measured evidence. Use when the user says "audit my site", "SEO audit", "site health check", "why isn't my site ranking", "check my website for SEO issues", "technical + content audit", "give me an SEO fix list", or "quick SEO check of this URL". It runs the robots, sitemap, crawl, PageSpeed, page and render checks, turns every finding into a P0–P3 plan with triage.py, groups issues by template, and offers to fix code in repo-backed sites. Not for a deep dive on one area: use seo-technical (crawling, rendering, CWV, framework code), seo-onpage (one page's copy and tags), seo-content, seo-keywords, seo-links, seo-migration (site moves), seo-international (hreflang), seo-local, seo-ecommerce, seo-ai-search, or seo-analytics (traffic drops, GSC data).
+description: Full SEO audit of a site or one URL on measured evidence ("audit my site", "SEO health check", "quick SEO check of this URL"). Runs the robots, sitemap, crawl, speed, page and render checks, then a P0-P3 fix plan grouped by template, and fixes code in repo-backed sites. For a deep dive on one area, use that area's skill.
 ---
 
 # SEO Audit
@@ -120,7 +120,7 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    - Check `unmapped_findings`; rank any by hand with the same impact rules and say so.
    - Raise `cwv-fail` on a money template one level (P2 → P1): the table can't know which templates earn revenue.
 8. **Competitor check, then the judgement pass.** The competitor check runs in full profiles:
-   1. Send each money page's head term (from its title or H1) that the store has no fresh SERP for to `seo-serp-researcher`, per market-language pair, with an output path such as `seo-work/serps-<locale>-<n>.json`. On a paid profile with DataForSEO set up, use the SERP API row instead and keep WebSearch as its Cross-check (tools.md Keywords).
+   1. Send each money page's head term (from its title or H1) that the store has no fresh SERP for to `seo-serp-researcher`, per market-language pair, with an output path such as `seo-work/serps-<locale>-<n>.json`. On a paid profile with DataForSEO set up, use the SERP API row instead and keep WebSearch as its Cross-check (tools-paid.md, Keywords and competitors).
    2. Ingest each batch once the store exists (step 10 runs `init` first): `python3 "$S/research_store.py" ingest serps seo-work/serps-<locale>-<n>.serps.json --locale <locale> --details seo-work/serps-<locale>-<n>.json`.
    3. Name the `competitors` domains (the number in `profile.json`) with the most top-10 slots.
    4. Compare each money page with the rivals that win its term: `python3 "$S/compare_pages.py" MONEY_URL RIVAL1 RIVAL2 RIVAL3 --keyword "<term>"`.
@@ -196,7 +196,7 @@ The profile in `profile.json` decides the data (`${CLAUDE_PLUGIN_ROOT}/reference
 - **`paid-small` and `paid-big`** (only when a usable budget is set, or the user asks): each category's **Small sites** or **Big sites** list takes over, per category. A paid row whose vendor isn't set up (not signed in, or budget 0) falls back to the default row that does the same job, so a partial setup never leaves a gap. The credit guard enforces every budget.
 - **`quick`** (on request only): the quick profile's three scripts. No paid calls.
 - **A vendor the user refuses** ("don't use Semrush", "without Ahrefs") is left out of the run, whatever its budget: its rows fall back to the default row, as for a vendor that isn't set up. The picker ignores the refused phrase (profiles.md §5).
-- Paid data is for prioritising and gaps (backlinks, competitor keywords and volumes, rank at scale), never for finding the technical defects the scripts measure (tools.md `## Cost-optimisation playbook`).
+- Paid data is for prioritising and gaps (backlinks, competitor keywords and volumes, rank at scale), never for finding the technical defects the scripts measure (tools-paid.md `## Cost-optimisation playbook`).
 
 ## Output
 

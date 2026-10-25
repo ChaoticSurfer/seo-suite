@@ -1,6 +1,6 @@
 ---
 name: seo-automation
-description: Sets up and runs SEO unattended. Connects Semrush, Ahrefs, DataForSEO, GA4 and other vendor MCPs once (OAuth or keys go into Claude Code's secure plugin config, never into chat), sets the autonomy level and paid-data budgets once, proposes the permission rules, and schedules pipelines that each use the cheapest data source (full audit, weekly technical monitor, keyword research, competitor gap, backlink deltas, rank tracking, GSC content refresh, AI-visibility tracking, multilingual blog QA, weekly blog batch) while a credit guard caches, clamps and budgets every paid call. Triggers include "automate SEO", "connect Semrush", "connect Ahrefs", "set up SEO automation", "run SEO weekly", "schedule an SEO audit", "budget for SEO tools" and "stop burning Semrush units". Not for a one-off audit (seo-audit) or for choosing which tools to buy (seo-strategy).
+description: Sets up and runs SEO unattended. Connects Semrush, Ahrefs, DataForSEO and GA4 once, sets the autonomy level and paid budgets, and schedules pipelines (audits, monitors, rank and AI-visibility tracking, blog batches) under a credit guard. Use for "automate SEO", "connect Semrush", "run SEO weekly". Not for a one-off audit (seo-audit).
 ---
 
 # SEO automation: connect once, budget once, run unattended
@@ -356,7 +356,7 @@ All ten pipelines run at $0 with paid steps skipped. Those steps are marked `[ne
 - rank tracking beyond your own GSC (`rank_snapshot.py`);
 - multi-engine AI answers at scale (`ai_probe.py`).
 
-Cheapest source per data type, call shapes and traps: `paid-tools-automation.md`. Plans and prices: `tools.md`.
+Cheapest source per data type, call shapes and traps: `paid-tools-automation.md`. Plans and prices: `tools-paid.md`.
 
 ## Output
 - `seo-work/automation/setup.md`: connected vendors and name forms, plans and balances, chosen level and budgets, the

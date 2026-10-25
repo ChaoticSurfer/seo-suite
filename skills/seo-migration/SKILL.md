@@ -1,6 +1,6 @@
 ---
 name: seo-migration
-description: Plan, validate and monitor site moves without losing search traffic. Covers domain changes, URL restructures, CMS or platform replatforms (e.g. WordPress→Next.js, Shopify→headless), HTTP→HTTPS, www changes, subdomain↔subfolder merges, and site consolidations. Use when the user says "we're migrating", "moving to a new domain", "redesign with new URLs", "replatforming", "build a redirect map", "check my redirects", "traffic dropped after the migration", "launch checklist", or "Change of Address". It builds the URL inventory, the redirect map, staging safeguards, the launch-day checklist and the day 1/7/30/90 monitoring with rollback triggers. Not for a routine audit (use seo-audit), single redirect or canonical bugs (seo-technical), or hreflang setup (seo-international).
+description: Plans, checks and monitors site moves without losing traffic (domain changes, URL restructures, replatforms, HTTPS or www changes, subdomain and subfolder merges). Builds the URL inventory, redirect map, launch checklist and day 1/7/30/90 monitoring with rollback triggers. Not for single redirect bugs (seo-technical).
 ---
 
 # SEO Migration
@@ -159,8 +159,8 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
   - Search Console: Pages, Links, Change of Address, URL Inspection.
   - Ahrefs Webmaster Tools (free) for backlink targets on the verified domain.
   - Analytics exports.
-- **Ahrefs / Semrush** (paid) add the complete list of externally linked old URLs, including links Search Console samples out. Justified for sites with valuable link equity. Pull "Best by links" / "Indexed pages" once, export it, and don't re-query (tools.md `## Ahrefs`, `## Semrush`, `## Cost-optimisation playbook`).
-- **Screaming Frog** adds list-mode redirect auditing for 10k+ URL maps, and crawl comparison between old and new. Justified for large migrations (tools.md `## Screaming Frog`). `redirect_check.py` covers maps up to tens of thousands of rows if run with more workers.
+- **Ahrefs / Semrush** (paid) add the complete list of externally linked old URLs, including links Search Console samples out. Justified for sites with valuable link equity. Pull "Best by links" / "Indexed pages" once, export it, and don't re-query (tools-paid.md `## Ahrefs`, `## Semrush`, `## Cost-optimisation playbook`).
+- **Screaming Frog** adds list-mode redirect auditing for 10k+ URL maps, and crawl comparison between old and new. Justified for large migrations (tools-paid.md `## Screaming Frog`). `redirect_check.py` covers maps up to tens of thousands of rows if run with more workers.
 - **Wayback Machine CDX** (free) recovers old URLs when the inventory is incomplete: `https://web.archive.org/cdx/search/cdx?url=old.example.com/*&output=json&fl=original&collapse=urlkey`. Fetch it with WebFetch.
 
 ## Output

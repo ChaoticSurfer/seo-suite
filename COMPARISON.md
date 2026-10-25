@@ -71,7 +71,7 @@ which rewards llms.txt, FAQPage and HowTo against Google's dated rules.
 2. **Reach Search Console without a sign-in.** The API needs the user's one-time OAuth sign-in or a service account; otherwise it works from exports or the browser. GA4 goes through Google's `analytics-mcp`. PSI works without a key, within the shared quota.
 3. **Validate the full schema.org vocabulary.** It covers Google's main rich-result types, including nested required fields, but not all of schema.org.
 4. **Check deep sitemap extensions.** It counts video and news entries but doesn't check their required child tags or the 2-day / 1,000-item news rules.
-5. **Track rankings over time, query AI engines automatically, or keep history.** Each run stands alone, and AI-visibility observations are collected by hand or by an agent.
+5. **Track exact rankings or AI answers for free.** `rank_snapshot.py` (DataForSEO) and `ai_probe.py` (the OpenAI, Anthropic and Perplexity APIs) keep fixed-condition snapshots, and `rank_compare.py` and `ai_visibility.py` compare runs, but both need a paid budget. At $0, rank history is Search Console's average positions, and AI answers are checked by hand.
 6. **Get past bot protection.** Correctly, it stops that step at a Cloudflare challenge, finishes everything else, and lists the access it needs with the end-of-run questions.
 7. **Crawl huge sites in one pass.** Above ~10k URLs, use section crawls (`--path-prefix`) in parallel subagents, or Screaming Frog.
 

@@ -1,6 +1,6 @@
 ---
 name: seo-blog-builder
-description: Keyword-driven blog builder. Reads the shared research store (seo-research/) first and refreshes only stale keyword, SERP and inventory data, picks the next topics from keyword clusters, briefs each from its SERP, then writes people-first posts with real bylines, cited sources, BlogPosting schema and internal links from the topical map, plus native versions per language (that locale's own keywords, the store glossary, seo-blog-review checks). Ships each post per autonomy level, up to publishing it at level 3 and above, then submits its URL and schedules indexing and ranking checks, in weekly batches sized to review capacity. Triggers include "write blog posts", "build our blog", "content calendar from keywords", "next blog topics", "weekly blog batch" and "write in Georgian/Russian too". Not for keyword research alone (seo-keywords), one article on a chosen topic or a refresh (seo-content), reviewing existing posts (seo-blog-review) or template page sets (seo-programmatic).
+description: Writes and ships blog posts from keyword research. Picks topics from the research store's clusters, briefs each from its SERP, writes people-first posts with sources, schema and internal links, plus native versions per language, then publishes per autonomy level. Use for "write blog posts", "weekly blog batch". Not for one article (seo-content).
 ---
 
 # Blog builder: from keyword clusters to reviewed posts
@@ -395,7 +395,7 @@ really changes (review §6). Re-translating doesn't refresh dates.
   (DataForSEO, Semrush, Ahrefs or Keyword Planner), ingested with `ingest volumes --source`. Costs: `seo-automation`
   pipeline B10, with B3 for volumes. Ads-based tools have thin or no `ka` data (review §7): keep those volumes
   `[needs data]` unless the tool states its method.
-- **AlsoAsked or AnswerThePublic** for question trees in briefs (tools.md `## Other paid tools`).
+- **AlsoAsked or AnswerThePublic** for question trees in briefs (tools-paid.md `## Other paid tools`).
 - Every paid call goes through the credit guard. The store keeps only the derived values with their source and date;
   the raw response stays in the guard's cache.
 

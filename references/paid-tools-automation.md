@@ -1,7 +1,7 @@
 # Paid SEO tools from Claude Code: the automation playbook (verified 2026-10-24)
 
 How to connect each vendor, what every call costs, and what the vendor's terms allow, for unattended, credit-safe runs.
-The `seo-automation` skill uses this file. Plans and prices for buying decisions are in `tools.md`.
+The `seo-automation` skill uses this file. Plans and prices for buying decisions are in `tools-paid.md`.
 
 **Rules:**
 - **Official MCP or API, never the vendor's web UI.** Semrush, Ahrefs and Similarweb restrict automated UI use (§7).

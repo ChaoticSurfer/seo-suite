@@ -1,6 +1,6 @@
 ---
 name: seo-ai-search
-description: Use for visibility in AI answers (AEO, GEO, "LLM SEO") — "get cited by ChatGPT / Perplexity / Google AI Overviews / AI Mode / Copilot / Claude / Gemini", "why doesn't ChatGPT mention us", "should we block GPTBot or ClaudeBot", "AI crawler access", "do we need llms.txt", "track our AI visibility", "brand in AI answers", "opt out of AI Overviews". Covers eligibility, crawler policy by purpose (search vs user-fetch vs training), Bing indexing for ChatGPT and Copilot, consistent entity facts, citable content, off-site sources, and repeatable measurement with confidence intervals. Not for: classic keyword and ranking work (seo-keywords, seo-content), schema validation (seo-schema), Business Profile and maps (seo-local), traffic-drop forensics (seo-analytics).
+description: Visibility in AI answers (AEO/GEO) in ChatGPT, Perplexity, Google AI Overviews and AI Mode, Copilot, Claude and Gemini. Covers AI crawler policy (GPTBot, ClaudeBot), llms.txt, entity facts, citable content, and measuring AI visibility with confidence intervals. Not for classic rankings (seo-keywords) or traffic drops (seo-analytics).
 ---
 
 # AI search visibility (AEO / GEO)
@@ -152,7 +152,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" export keywords --loca
   - If one of these tools is already part of a Semrush or Ahrefs subscription, use that before buying a separate tracker.
 - **DataForSEO's AI endpoints:** AI Mode answers and LLM Mentions' `google` data are vendor-collected Google results [vendor data]. Its LLM Scraper drives chatgpt.com and gemini.google.com, so it stays out, except a one-off parity check the owner approves, labelled "vendor-scraped" and kept out of trend lines.
 - **Treat vendor numbers as samples.** Ask how many runs, which locale, logged-in or not, and which model version. Keep the frozen-set method so results stay comparable.
-- Prices and cost tactics: `${CLAUDE_PLUGIN_ROOT}/references/tools.md` (## AI visibility trackers, ## Cost-optimisation playbook).
+- Prices and cost tactics: `${CLAUDE_PLUGIN_ROOT}/references/tools-paid.md` (## AI visibility trackers, ## Cost-optimisation playbook).
 
 ## Output
 1. **Access matrix:** bot → allowed/blocked → whether that's intended, plus any CDN caveats.

@@ -1,6 +1,6 @@
 ---
 name: seo-technical
-description: Technical SEO deep dive. Covers crawling, indexing, rendering/JavaScript SEO, status codes and redirects, canonicals, robots.txt and meta robots, XML sitemaps, Core Web Vitals, HTTPS/mobile, faceted navigation, pagination, crawl budget and server-log analysis. It also has a codebase mode that finds and fixes SEO defects in Next.js, Nuxt, Astro, SvelteKit, Remix, Gatsby, WordPress, Shopify, Webflow, Frappe/Django/Rails templates, and a CI mode. Use for "pages not indexed", "Discovered/Crawled – currently not indexed", "canonical issues", "robots.txt check", "sitemap errors", "JS SEO", "is Google rendering my site", "Core Web Vitals / INP / LCP", "crawl budget", "analyse my server logs", "fix SEO in my Next.js app", "add an SEO check to CI". Not for a whole-site audit (use seo-audit), site moves (seo-migration), hreflang (seo-international) or copy and on-page rewrites (seo-onpage).
+description: Technical SEO deep dive. Crawling, indexing, JavaScript rendering, status codes and redirects, canonicals, robots, sitemaps, Core Web Vitals, crawl budget, server logs. Codebase mode finds and fixes defects in Next.js, Nuxt, Astro, Remix and other frameworks, and adds CI checks. Not for whole-site audits (seo-audit) or hreflang (seo-international).
 ---
 
 # Technical SEO
@@ -227,8 +227,8 @@ Read the existing files first and match their style. Show a diff, and write it p
   - PSI/CrUX (free key).
   - Server logs.
   - claude-seo's Playwright renderer and drift rules through `claude_seo.py`, installed on first use (headless Chrome renders when claude-seo can't be set up), and the built-in browser for DevTools performance traces.
-- **Screaming Frog** adds JS-rendered crawling at scale, crawl comparison, custom extraction (e.g. find every page missing a component), and its log file analyser. Justified for big or JS-heavy sites and recurring scheduled crawls (tools.md `## Screaming Frog`).
-- **Sitebulb / Lumar / Botify** add enterprise crawl scheduling and log pipelines. Only justified for very large sites (tools.md `## Other paid tools`).
+- **Screaming Frog** adds JS-rendered crawling at scale, crawl comparison, custom extraction (e.g. find every page missing a component), and its log file analyser. Justified for big or JS-heavy sites and recurring scheduled crawls (tools-paid.md `## Screaming Frog`).
+- **Sitebulb / Lumar / Botify** add enterprise crawl scheduling and log pipelines. Only justified for very large sites (tools-paid.md `## Other paid tools`).
 - **Semrush / Ahrefs site audits** duplicate the free crawler here. Use them only if the user already pays and wants the dashboards. Their unique value is off-site data, which this skill doesn't need.
 
 ## Output

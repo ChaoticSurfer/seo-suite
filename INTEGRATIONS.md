@@ -114,7 +114,7 @@ starts with, and "paid" is the small and big lists that apply once paid tools ar
 | Your server's access logs | Built in | Which bots crawl what, fake Googlebots, sitemap URLs never crawled | Supply the log files | Free | Main in every list |
 | Semrush | Connector | Competitors' keywords and traffic, keyword volume and difficulty | Install the connector, sign in, set `semrush_monthly_units` | A Semrush plan that includes API units | Reserve |
 | Ahrefs | Connector | Backlinks, competitor link profiles, organic keywords | Install the connector, sign in, lower the key's cap in Ahrefs, set `ahrefs_monthly_units` | Lite plan ($129/mo) or higher | `domain-rating-free` (to build): Main (default), Cross-check (small, big). REST v3 on Standard (to build): Cross-check (big). Lite, Site Audit, the GSC endpoints and the MCP: Reserve, the MCP only in sessions you watch |
-| DataForSEO | Connector | Bulk keyword volumes, search result snapshots, backlinks, AI-answer data | Install the connector, enter the API login, set a daily limit at DataForSEO, set `dataforseo_monthly_usd` | Pay as you go, $50 minimum top-up | Main (small, big); labels per API in [references/tools.md](references/tools.md#dataforseo). Reserve (default) |
+| DataForSEO | Connector | Bulk keyword volumes, search result snapshots, backlinks, AI-answer data | Install the connector, enter the API login, set a daily limit at DataForSEO, set `dataforseo_monthly_usd` | Pay as you go, $50 minimum top-up | Main (small, big); labels per API in [references/tools.md](references/tools-paid.md#dataforseo). Reserve (default) |
 | Similarweb, SE Ranking, Keywords Everywhere, AlsoAsked, Otterly, Lumar | Add it yourself | Traffic estimates, rank tracking, volumes, question research, AI-answer tracking, crawling | Add the vendor's MCP server (named after the vendor), set `other_monthly_usd` | The vendor's own plan | SE Ranking Data API (to build): Main (small). In the big list it splits by market: Main for the GE pairs and the markets DataForSEO Labs lacks, and Cross-check in the markets Labs covers. Reserve (default). SE Ranking's other APIs and the other vendors: Reserve |
 | Screaming Frog | Your licence | Large crawls with JavaScript rendering | CLI for scheduled crawls, MCP in sessions you watch | £199/year. Free mode crawls 500 URLs and has no MCP | Big: Main (licensed CLI). Small and the default stack: Reserve |
 | Sitebulb | Your licence | Reading finished crawls (its MCP is read-only and can't start crawls) | Add its MCP server (OAuth) | A Sitebulb plan | Reserve |
@@ -125,7 +125,7 @@ starts with, and "paid" is the small and big lists that apply once paid tools ar
 | Google Business Profile, Merchant Center | Your account | Local and shopping visibility | Share exports or read-only access | Free | Main in every list where they apply (Business Profile client to build) |
 | IndexNow | Your account | Telling Bing, Yandex and others that a page changed | Host a key file at your site's root | Free | Main in every list (submitter to build) |
 | Live search results | Web | Who ranks, what the results page shows, People Also Ask | Nothing | Free on a Claude subscription; an API-key run pays Anthropic's web search fee (up to 8 searches a call) | WebSearch samples: Main (default), Cross-check (small, big) |
-| ChatGPT, Perplexity, Google AI Overviews and AI Mode, Copilot, Claude, Gemini | Web | Whether AI answers mention or cite you | Nothing, or collect answers yourself | Free stack: GA4 AI referrals and SerpApi Free. Paid: official APIs through `ai_probe` (planned); DataForSEO SERP and AI Mode for Google AI answers ([Main stack](#main-stack)) | `ai_probe` (to build): Main (small, big), Reserve (default). Checks by hand: Reserve. Never automated in the apps |
+| ChatGPT, Perplexity, Google AI Overviews and AI Mode, Copilot, Claude, Gemini | Web | Whether AI answers mention or cite you | Nothing, or collect answers yourself | Free stack: GA4 AI referrals and SerpApi Free. Paid: official APIs through `ai_probe.py`; DataForSEO SERP and AI Mode for Google AI answers ([Main stack](#main-stack)) | `ai_probe.py`: Main (small, big), Reserve (default). Checks by hand: Reserve. Never automated in the apps |
 | Wayback Machine | Web | Old versions of pages | Nothing | Free | Cross-check in every list; Reserve for a site move |
 | Rich Results Test, Schema Markup Validator | Web (by hand) | A final check of structured data | Run them yourself | Free | Reserve |
 
@@ -235,7 +235,7 @@ is more. Markets, competitors, keywords and locations multiply the costs but don
 - **Rank and AI answers**
   1. Search Console API (through claude-seo): our own positions and clicks.
   2. DataForSEO Google organic SERP API: rank snapshots, competitors, AI Overview citations.
-  3. `ai_probe` (to build): ChatGPT, Claude and Perplexity answers through their official APIs.
+  3. `ai_probe.py`: ChatGPT, Claude and Perplexity answers through their official APIs.
   4. DataForSEO Google AI Mode API: AI Mode answers and citations (no Georgian).
   5. Bing Webmaster Tools API (to build): Bing positions, all markets.
   6. Google Search Status Dashboard feed: dates of Google updates.
@@ -290,7 +290,7 @@ is about $400–710, with Ahrefs Standard as the one SEO subscription.
   1. Search Console API (through claude-seo).
   2. Search Console bulk export to BigQuery.
   3. DataForSEO Google organic SERP API.
-  4. `ai_probe` (to build).
+  4. `ai_probe.py`.
   5. DataForSEO Google AI Mode API.
   6. Bing Webmaster Tools API (to build).
   7. Google Search Status Dashboard feed.
@@ -391,7 +391,7 @@ Vendor details:
     Account settings → API keys, and turn off pay-as-you-go units under Limits & usage so overage is never charged.
   - Ahrefs' terms forbid scripted use of its MCP server, so Ahrefs' MCP is used only in sessions you are watching.
     Scheduled runs reach Ahrefs only through the REST v3 client (to build:
-    [build order](references/tools.md#build-order) item 8), for `domain-rating-free` and the big-site cross-checks,
+    [build order](#planned-not-built-yet) item 8), for `domain-rating-free` and the big-site cross-checks,
     never through the MCP. Until that client exists, scheduled runs use DataForSEO for links and rankings.
 - **DataForSEO.**
   - Also set a daily spending limit in DataForSEO's dashboard (API Settings). Calls over it fail instead of costing
@@ -434,7 +434,7 @@ estimated above 1,000 units (5%) is held for your decision.
 
 - **The default free stack needs no budget.** It makes no paid calls, so every budget can stay at 0.
 - **The paid stacks:** use the Small or Big values in
-  [references/tools.md](references/tools.md#credit-guard-changes-the-stack-needs). `dataforseo_monthly_usd` is 25
+  [references/tools.md](references/tools-paid.md#credit-guard-limits). `dataforseo_monthly_usd` is 25
   small and 270 big. `other_monthly_usd` is 12 small and 35 big, for SE Ranking and `ai_probe`, after the credit guard
   changes listed there. `ahrefs_monthly_units` is 0 small, and up to 320,000 of Ahrefs Standard's 800,000 big, read
   by the REST client.
@@ -553,16 +553,16 @@ decide.
   and AI Mode, Copilot, Claude, Gemini), and the answers are logged for `ai_visibility.py`, which reports mention and
   citation rates with confidence intervals.
   - Only you check the apps, by hand. Claude never drives chatgpt.com, perplexity.ai, gemini.google.com, claude.ai or
-    Copilot. The [Main stack](references/tools.md#rank-and-ai-answer-visibility) keeps these manual checks as
+    Copilot. The [Main stack](references/tools-paid.md#rank-and-ai-answer-visibility) keeps these manual checks as
     Reserve: 5 prompts before the first client report, logged as surface "app".
   - Today, the AI-visibility pipeline (B8) in the seo-automation skill still samples weekly through the DataForSEO
     connector with DataForSEO's LLM Scraper (about $0.18 a week for 25 questions × 2 engines × 3 runs), and adds LLM
     Mentions monthly. This conflicts with the Main stack's rule: the LLM Scraper collects its answers from
     chatgpt.com and gemini.google.com, so they aren't stored for analysis, and of LLM Mentions only the `google`
-    platform data qualifies. The pipeline is to move to `ai_probe` ([build order](references/tools.md#build-order)
+    platform data qualifies. The pipeline is to move to `ai_probe` ([build order](#planned-not-built-yet)
     item 5).
   - The [Main stack](#main-stack) keeps the LLM Scraper as Reserve, only for a one-off parity check of a few prompts
-    that the owner explicitly approves, labelled "vendor-scraped" and kept out of trend lines. The planned `ai_probe`,
+    that the owner explicitly approves, labelled "vendor-scraped" and kept out of trend lines. `ai_probe.py`,
     which uses the engines' official APIs, is the Main route.
 - **Wayback Machine.** Its free CDX API shows how competitors' pages, and your own, looked before. It also recovers old
   URLs during a site move.
@@ -616,7 +616,7 @@ their cross-checks. Ranks are in the [Main stack](#main-stack); every Reserve co
 | Your own backlinks | Bing Webmaster Tools API (to build). Cross-checks: Moz API Free and a live `page_audit.py` check. Ahrefs Free and the Search Console Links report are Reserve, exported by a person | DataForSEO Backlinks API. Big cross-check: Ahrefs Standard |
 | Competitors' backlinks | Common Crawl web graph (to build), domain level, and Ahrefs `domain-rating-free` (to build) for authority | DataForSEO Backlinks API. Big cross-check: Ahrefs Standard |
 | Rank tracking | Search Console positions, and SerpApi Free (to build) snapshots for the money tier. Cross-check: Bing Webmaster positions | DataForSEO Google organic SERP snapshots for competitors and other locales. Cross-checks: SerpApi Free (small), Ahrefs Rank Tracker (big) |
-| Visibility in AI answers | GA4 AI-referral sessions, and SerpApi Free for AI Overview and AI Mode. Checks by hand are Reserve | `ai_probe` (to build) and DataForSEO Google AI Mode and AI Overview. Big cross-check: Ahrefs Brand Radar's Claude, AI Overview and AI Mode data |
+| Visibility in AI answers | GA4 AI-referral sessions, and SerpApi Free for AI Overview and AI Mode. Checks by hand are Reserve | `ai_probe.py` and DataForSEO Google AI Mode and AI Overview. Big cross-check: Ahrefs Brand Radar's Claude, AI Overview and AI Mode data |
 | What a page looked like before | Wayback Machine CDX API (a Cross-check for competitor history) | — |
 
 ## What to connect, by budget
@@ -699,8 +699,7 @@ The Stack column gives each one's label in the [Main stack](#main-stack); every 
 
 ## Planned, not built yet
 
-The order, and which categories each item unblocks, is the [build order](references/tools.md#build-order) in
-references/tools.md. This list follows it:
+In build order, the items that unblock the most categories first:
 
 1. Done: the **Search Console API** runs through claude-seo (`claude_seo.py gsc-export`, `run gsc_inspect.py`,
    `submit-sitemap`), with `webmasters.readonly` by default. It writes the same CSVs `gsc_analyze.py` reads, so
@@ -709,14 +708,12 @@ references/tools.md. This list follows it:
 3. **Credit guard changes:** an SE Ranking price table and a budget per vendor, row limits per endpoint, and the
    missing price rows (AI Mode, Maps, Clickstream and others).
 4. An **IndexNow submitter** that checks the key file before sending, since level 3 promises IndexNow.
-5. **`ai_probe`:** direct AI-answer checks through the official APIs of OpenAI, Anthropic and Perplexity: a fixed
+5. Done: **`ai_probe.py`**, direct AI-answer checks through the official APIs of OpenAI, Anthropic and Perplexity: a fixed
    question set, several runs each, fed to `ai_visibility.py`. They use the APIs because OpenAI's terms forbid automated
    extraction from the ChatGPT app. API answers can differ from what the app shows. Gemini is Reserve: answers grounded
    with Google Search are never stored for analysis, because its terms forbid it, and the API without grounding is
    brought in only when GA4 shows gemini.google.com at 10% or more of AI-referral sessions for two months [heuristic].
-   With it, **a rank-tracking script** (the rank-snapshot store) that stores positions and compares runs. Today the
-   rank-tracking pipeline in the [seo-automation skill](skills/seo-automation/SKILL.md) uses Search Console positions
-   from exports and DataForSEO search snapshots on a schedule, plus Ahrefs Rank Tracker in sessions you watch.
+   With it, `rank_snapshot.py` and `rank_compare.py` store fixed-condition positions and compare runs.
 6. **CrUX LCP subparts and the full 40-week history** in `psi.py`, through the CrUX API and History API, using the
    same Google key.
 7. A **polite competitor inventory:** competitor sitemap diffs that honour robots.txt, send one request at a time per
@@ -728,7 +725,7 @@ references/tools.md. This list follows it:
 11. A **Common Crawl graph reader** for the free domain-level link graph.
 12. A **Google Business Profile client** for local businesses.
 
-Also planned, outside the build order:
+Also planned, outside that order:
 
 - **Competitor modules:** share of voice and Wayback change history as scripts (competitor sitemap diffs are item 7).
   Today these are manual steps in the seo-competitors skill.
