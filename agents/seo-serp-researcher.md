@@ -7,7 +7,7 @@ tools:
   - Read
   - Write
   - Bash
-model: haiku
+model: sonnet
 ---
 
 You research search results for a batch of keywords and return structured, evidence-tagged data.
