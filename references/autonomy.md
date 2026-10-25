@@ -18,6 +18,7 @@ and carry on:
 | Keyword seeds | Titles, H1s and nav labels of money pages, plus GSC queries when available |
 | Whether to research again | The research store (`seo-research/`, `references/research-store.md`): `research_store.py status` lists the stale and missing datasets per locale. Refresh only those, reuse the rest, and write new results back with `ingest` |
 | What to check and fix first | The skill's workflow and `triage.py` priorities |
+| Whether an AI-written post needs a human sign-off before it goes live | The project's publishing mode: `research_store.py status` → `publishing` (`references/research-store.md` §2). `unset` runs as `review` and adds one question at the end (below) |
 | Paid data calls | Allowed when inside the configured budget, and only for data free sources can't give (`tools.md`) |
 | Beginner vs expert output | Infer from the user's wording. If unsure, give a plain summary with an expert appendix |
 
@@ -27,7 +28,7 @@ and carry on:
    exports, repo access, or a CDN allowlist when a bot challenge blocks the crawl. Finish everything possible first.
    Then list exactly what each missing access would add.
 2. **Business decisions:** markets or languages to enter, positioning, deleting or merging pages that earn traffic
-   or revenue, and spend above the budget.
+   or revenue, spend above the budget, and the publishing mode while it is unset (below).
 3. **Actions above the configured level** (below). The run finishes everything up to that level, stops at the
    boundary and says which level or credential would finish it (for example, level 2: the pull request is open;
    level 3 merges it).
@@ -36,6 +37,31 @@ and carry on:
 
 Never ask "should I continue?", never ask to confirm a read-only step, and never stop a run to ask something that
 an assumption plus a note can cover.
+
+### The publishing mode, while it is unset
+
+Each project chooses how its AI-written posts and their translations go live: `automatic`, once every automated gate
+passes, or `review`, after a named human sign-off (`references/research-store.md` §2). The mode and the autonomy level
+are separate. The level decides whether a run may merge or publish at all; the mode decides whether a person signs
+off first.
+
+While `status` shows `publishing.mode` as `unset`, a run behaves as `review` and never stops to ask. It adds one
+question to the end-of-run batch, however many posts it held, with a recommendation:
+
+- **Recommend `review`** when a person already signs posts off (`reviewed_by` in existing posts), or the blog covers
+  YMYL topics such as health, money, law or safety (`references/google-rules.md` §4), or EU public-interest topics
+  (`references/ai-content-review.md` §1, row 27).
+- **Otherwise recommend `automatic`.** Posts and translations then go live as soon as every gate in
+  `seo-blog-builder`'s Checks passes, and a post that fails one still waits.
+
+For example: "Publishing mode is unset, so this run held 4 posts for a human sign-off and shipped 8 translations
+`noindex`. Recommendation: `automatic`, since nobody signs posts off today and the automated gates still hold back any
+post that fails one. Answer `automatic` or `review`."
+
+When the user answers in chat, record it:
+`python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" set-publishing --mode automatic`. The next run follows it,
+and the next step 1 of `seo-blog-builder` ships what was held back once its gates pass. A scheduled run writes the
+question to `seo-work/automation/inbox.md` and never sets the mode: a scheduled prompt is not the user.
 
 ## Autonomy levels (set once by the user)
 

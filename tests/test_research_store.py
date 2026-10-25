@@ -1,6 +1,6 @@
-"""Research store: init, every ingest format, merge provenance, TTL staleness, next-topics, set-status, glossary and
-export. Inputs have the exact shapes keyword_ideas.py, serp_cluster.py, gsc_analyze.py and crawl.py write (the last
-three are run for real here). Run: python3 -m unittest discover -s tests"""
+"""Research store: init, every ingest format, merge provenance, TTL staleness, next-topics, set-status, the publishing
+mode, glossary and export. Inputs have the exact shapes keyword_ideas.py, serp_cluster.py, gsc_analyze.py and crawl.py
+write (the last three are run for real here). Run: python3 -m unittest discover -s tests"""
 from __future__ import annotations
 
 import codecs
@@ -1276,6 +1276,68 @@ class SetStatusTest(StoreCase):
         self.assertIn("no cluster", self.cli_fails("set-status", "--cluster", "en-999", "--status", "briefed"))
         self.assertIn("needs --locale", self.cli_fails("set-status", "--keyword", "english tutor", "--status", "skip"))
         self.assertIn("invalid choice", self.cli_fails("set-status", "--cluster", "en-001", "--status", "done"))
+
+
+class PublishingTest(StoreCase):
+    def site_json(self) -> dict:
+        return rs.read_json(os.path.join(self.dir, "site.json"))
+
+    def write_publishing(self, publishing) -> None:
+        site = self.site_json()
+        site["publishing"] = publishing
+        write_file(os.path.join(self.dir, "site.json"), rs.dump_json(site))  # as the store writes it
+
+    def test_a_store_without_a_publishing_mode_reads_as_unset(self):
+        self.assertNotIn("publishing", self.site_json())  # init leaves it unset: the first run asks once
+        self.assertEqual(self.cli("status")["publishing"], {"mode": "unset", "set_at": None})
+
+    def test_set_publishing_records_the_mode_and_its_date_in_site_json(self):
+        result = self.cli("set-publishing", "--mode", "automatic")
+        self.assertEqual(result, {"publishing": {"mode": "automatic", "set_at": days_ago(0)}, "previous": "unset",
+                                  "changed": True})
+        self.assertEqual(self.site_json()["publishing"], {"mode": "automatic", "set_at": days_ago(0)})
+        self.assertEqual(self.cli("status")["publishing"], {"mode": "automatic", "set_at": days_ago(0)})
+
+    def test_the_same_mode_again_keeps_its_date_and_a_switch_dates_it_today(self):
+        self.write_publishing({"mode": "review", "set_at": "2026-01-02"})
+        before = store_bytes(self.dir)
+        again = self.cli("set-publishing", "--mode", "review")
+        self.assertEqual((again["changed"], again["publishing"]["set_at"]), (False, "2026-01-02"))
+        self.assertEqual(store_bytes(self.dir), before)
+        switched = self.cli("set-publishing", "--mode", "automatic")
+        self.assertEqual((switched["previous"], switched["changed"], switched["publishing"]),
+                         ("review", True, {"mode": "automatic", "set_at": days_ago(0)}))
+
+    def test_other_commands_keep_the_mode(self):
+        self.cli("set-publishing", "--mode", "review")
+        self.cli("ingest", "crawl", self.files["crawl"])
+        self.cli("init", "--site", "https://example.com", "--locales", "en,de")
+        cluster = self.cluster_of("how to become an english tutor")
+        self.cli("set-status", "--cluster", cluster["cluster_id"], "--status", "briefed")
+        self.assertEqual(self.site_json()["publishing"], {"mode": "review", "set_at": days_ago(0)})
+
+    def test_a_hand_edited_mode_that_is_not_valid_is_named_and_set_publishing_fixes_it(self):
+        for publishing in ({"mode": "auto", "set_at": "2026-01-02"}, {"mode": "review"}, "automatic",
+                           {"mode": "review", "set_at": "02/01/2026"}):
+            with self.subTest(publishing=publishing):
+                self.write_publishing(publishing)
+                stderr = self.cli_fails("status")
+                for fragment in ("site.json", "publishing", "set-publishing"):
+                    self.assertIn(fragment, stderr)
+        self.assertEqual(self.cli("set-publishing", "--mode", "review")["publishing"]["mode"], "review")
+        self.assertEqual(self.cli("status")["publishing"]["mode"], "review")
+
+    def test_only_automatic_and_review_are_modes(self):
+        self.assertEqual(rs.PUBLISHING_MODES, ("automatic", "review"))
+        self.assertIn("invalid choice", self.cli_fails("set-publishing", "--mode", "auto"))
+        self.assertIn("--mode", self.cli_fails("set-publishing"))
+
+    def test_research_store_md_documents_the_command_and_both_modes(self):
+        with open(os.path.join(ROOT, "references", "research-store.md"), encoding="utf-8") as fh:
+            doc = fh.read()
+        self.assertIn("set-publishing --mode", doc)
+        for mode in (*rs.PUBLISHING_MODES, "unset"):
+            self.assertIn(f"`{mode}`", doc)
 
 
 class GlossaryTest(StoreCase):

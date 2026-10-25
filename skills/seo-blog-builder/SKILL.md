@@ -42,6 +42,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | Voice and register per language | The site's top posts, the majority form of address in existing posts, glossary notes | The majority form. For a new language, the review §9 defaults: თქვენ forms in `ka`, вы in `ru` |
 | GSC export | A connector, or an export in `seo-work/` | Run without it, with demand from autocomplete and SERPs. **Ask, batched at the end** |
 | Autonomy level and budgets | `seo-automation` configuration | Level 1, paid budget 0 |
+| Publishing mode: how posts and translations go live | `publishing` in the step 1 `status` output (`seo-research/site.json`, research-store §2): `automatic` or `review` | `unset`: run as `review`, and add the mode question to the end-of-run batch (`references/autonomy.md`). Never ask mid-run, and never set the mode yourself |
 
 ## Workflow
 `S="${CLAUDE_PLUGIN_ROOT}/scripts"`, `W="seo-work/blog-builder/$(date +%F)"`; `$LOC` is a locale code and `$CID` a
@@ -81,13 +82,16 @@ cluster id. Run independent steps in parallel:
      `set-status` (step 7) or `input`. With no target, or one derived from its keywords (`keywords`, `gsc`), which can
      be another page, take the planned URL from the cluster's brief and set it with `--url` as in step 7.
      `summary.status` 200 and `summary.indexable` true: it is live, so set it to `published` with that URL (step 7).
-     A noindexed version (shipped unreviewed, step 5) stays `drafted` and counts towards the review backlog. One
-     that went live and indexable without a human sign-off, or with gates failing, is still `published`, and the
-     report lists it (Checks).
+     A noindexed version (shipped unreviewed in `review` mode, step 5) stays `drafted` and counts towards the review
+     backlog. One that went live and indexable with gates failing, or in `review` mode without a human sign-off, is
+     still `published`, and the report lists it (Checks).
    - **Pick up held-back posts.** For each `drafted` cluster that is not live, find its post: the open PR whose
      branch starts with `seo/blog-` (`gh pr list --state open --json headRefName,url`), the repo file of a version
      shipped `noindex` (step 5), or else the newest file for its slug under `seo-work/blog-builder/*/posts/<locale>/`.
-     Re-run the Checks gates on it, the human sign-off included, and ship it per step 4's levels once all pass.
+     Re-run the Checks gates on it, the Human review gate for the current publishing mode included, and ship it per
+     step 4's levels once all pass. After a switch to `automatic`, a `noindex` version that passes turns indexable
+     and joins the sitemap and its siblings' hreflang. After a switch to `review`, versions already live as
+     `llm_reviewed` stay live, and the report lists them for the reviewer.
    - Note each dataset you reused and its age (`updated_at` in `manifest.json`), for *Assumptions*.
 2. **Pick the topics.**
    ```bash
@@ -186,13 +190,15 @@ cluster id. Run independent steps in parallel:
 
      - **Level 1:** files in `$W/posts/<locale>/`. The run stops there and says level 2 would open the PR.
      - **Level 2:** a branch `seo/blog-<date>` and a PR, left open. The report says level 3 would merge it.
-     - **Level 3:** level 2, then merge the PR once CI passes and every source post in it passes every gate in Checks,
-       with a named human sign-off (`reviewed_by`, `reviewed_at`). Merging publishes the posts. Versions still
-       waiting for their native reviewer ship as in step 5.
+     - **Level 3:** level 2, then merge the PR once CI passes and every source post in it passes every gate in Checks.
+       The Human review gate follows the publishing mode: in `automatic` the automated gates are enough, and in
+       `review` or `unset` each post needs a named human sign-off (`reviewed_by`, `reviewed_at`). Merging publishes
+       the posts. Their other language versions ship as step 5 says.
      - **Level 4:** level 3, and on a CMS, publish each post that passes the same gates through the connector.
-     - A post that fails a gate, or has no sign-off yet, stays `drafted` (written, not yet live): in the open PR, or
-       as a file in `$W/posts/<locale>/` for a CMS. The report names the gate, and the next run checks it again and
-       ships it once it passes. A post queued for a future publish date is `scheduled` (step 7).
+     - A post that fails a gate stays `drafted` (written, not yet live), and so does one with no sign-off yet in
+       `review` mode: in the open PR, or as a file in `$W/posts/<locale>/` for a CMS. The report names the gate, and
+       the next run checks it again and ships it once it passes. A post queued for a future publish date is
+       `scheduled` (step 7).
 5. **Other locales: localise, don't translate the keyword.**
    - Each version targets **that locale's own cluster** for the topic, from `export clusters --locale`, and uses its
      head keyword as the target query. Never a translation of the source keyword (review §7). With no matching
@@ -216,17 +222,23 @@ cluster id. Run independent steps in parallel:
      expected. Check the URL wiring after the build with `translation_check.py --urls en:URL ka:URL ru:URL`.
      After both scripts, run the LLM reviewer pass on every version, with the review §11 reviewer brief and never
      the translation prompt's framing. Fix every critical and major error, re-run both scripts, and record the pass
-     as `llm_reviewed`, never as human-reviewed.
+     as `llm_reviewed`, never as human-reviewed: `review_state: llm_reviewed` in the version's front-matter or CMS
+     field. `reviewed_by` names a person, so the run never fills it.
    - **Glossary: approved terms only.** Every later translation must use the glossary exactly (review §11), so add a
      term only when a native reviewer approved it, or a brand or product name with `--do-not-translate`:
      `python3 "$S/research_store.py" glossary add --locale "$LOC" --term "$TERM" --translation "$TRANSLATION" --note "$WHY"`.
      List the other terms this batch settled in the report, for the reviewer. `seo-blog-review` step 11 adds the ones
      the review approves.
    - **hreflang for the cluster.** Every version lists all indexable versions of the post, itself, and `x-default`
-     pointing at the source, emitted the way the site already emits hreflang (`seo-international`). A version without a
-     native reviewer's sign-off ships `noindex`, out of the sitemap and out of its siblings' hreflang, until it is
-     reviewed (review §2, §6). If the template has no per-post robots field, keep that version out of the PR, as a
-     file in `$W/posts/<locale>/` for the reviewer, and ship it in a later run once they sign it off.
+     pointing at the source, emitted the way the site already emits hreflang (`seo-international`).
+   - **Indexed or `noindex`, by publishing mode.**
+     - `automatic`: a version that passes every gate in Checks ships indexed, in the sitemap and in its siblings'
+       hreflang, as `llm_reviewed`. One that fails a gate stays out of the PR, as a file in `$W/posts/<locale>/`,
+       until a later run finds it passing.
+     - `review` or `unset`: a version without a fluent or native reviewer's sign-off ships `noindex`, out of the
+       sitemap and out of its siblings' hreflang, until it is reviewed (review §2, §6). If the template has no
+       per-post robots field, keep that version out of the PR, as a file in `$W/posts/<locale>/` for the reviewer,
+       and ship it in a later run once they sign it off.
 6. **Score and gate every post.**
    ```bash
    python3 "$S/content_score.py" --file "$W/built/$LOC-$SLUG.html" --base-url "$PLANNED_URL" --keyword "$TARGET_QUERY" > "$W/score/$LOC-$SLUG.json"
@@ -236,6 +248,13 @@ cluster id. Run independent steps in parallel:
      a Markdown-only post by hand. In `ka` and `ru` its placement counts are rough (review §7).
    - From the main thread, once the posts are written, give each source-language post to the `seo-content-reviewer`
      agent (one per post, in parallel) with its target query and the brief's competitor URLs, and apply its edits.
+     That is the source post's LLM review pass: record it as `review_state: llm_reviewed`, as in step 5.
+   - Rank the findings for the Blog review gate with `seo-blog-review`'s severity map (its Checks):
+     ```bash
+     python3 "$S/triage.py" "$W"/translation/*.json "$W"/text/*.json > "$W/triage.json"
+     ```
+     Leave out the translation files when no post in the batch has another language. Rank `unmapped_findings`, and
+     what the reviewer passes found, by that map by hand.
    - Run the gates in **Checks**. A post that fails one stays `drafted`, and the failure goes in the report.
 7. **Submit, verify and write back to the store.**
    ```bash
@@ -266,8 +285,8 @@ cluster id. Run independent steps in parallel:
 ## Cadence and scheduled runs
 - **Weekly batch.** One run a week, N topics per locale (default 4). Small, steady batches beat bursts: publishing
   velocity per language is one of the scaled-content signals `seo-blog-review` checks (review §2).
-- **Review capacity sets the pace.** When a locale already has more than N `drafted` posts waiting for review, the
-  run writes briefs only for that locale and says so. Unreviewed pages never pile up.
+- **Review capacity sets the pace.** When a locale already has more than N `drafted` posts waiting for review or
+  held by a gate, the run writes briefs only for that locale and says so. Unreviewed pages never pile up.
 - **Calendar.** Each report lists the next four weeks of topics per locale from `next-topics`, so the user can correct
   the plan before it's written.
 - **Research refresh follows the store's TTLs.** Step 1 re-fetches only stale or missing data, so most weekly runs
@@ -288,7 +307,8 @@ cluster id. Run independent steps in parallel:
     the CMS connector's publish tools.
   - In a scheduled run, a paid call the guard would ask about is denied and lands in `inbox.md`. The run carries on
     with free data.
-  - A scheduled prompt is not the user. It never approves a gated action or a new language.
+  - A scheduled prompt is not the user. It never approves a gated action or a new language, and never sets the
+    publishing mode: while it is unset, the mode question goes to `inbox.md`.
 
 ## Checks
 **Quality gates.** The gates decide what this skill delivers and publishes: it never publishes, or makes indexable, a
@@ -307,15 +327,20 @@ thresholds are [heuristic]; the policies are google-rules §4 and review §1–3
 | Byline | A real person or the organisation, with an author page | The post |
 | Placement | The target query is in the title, H1 and first 100 words (check stems by hand in `ka` and `ru`) | `content_score.py` `placement` |
 | Translation | MQM verdict Pass (review §5), no critical or high `translation-` finding left unexplained, one register | `translation_check.py`, the reviewer pass |
-| Human review | `reviewed_by` and `reviewed_at` set by a person; for a translation, a fluent or native reviewer | Front-matter or CMS field |
+| Blog review | No P0 or P1 in `seo-blog-review`'s severity map for the post or any of its versions (step 6) | `triage.py`, the reviewer passes |
+| Human review | By the publishing mode (`status` → `publishing`). `automatic`: no person; the LLM review passes (steps 5 and 6) are recorded as `review_state: llm_reviewed`. `review` or `unset`: `reviewed_by` and `reviewed_at` set by a person, and for a translation a fluent or native reviewer | `status`; front-matter or CMS field |
 
 **Scaled content abuse** (google-rules §4, review §2). The risk is many pages with little added value, however they
 were made. Stay in review §2's "fine" column: a few posts a week, each with something original, reviewed before it's
 indexable, with translations localised and reviewed. Never write one post per keyword variant, never fill the
-calendar with "N tips" posts that add nothing, and never raise N above what the reviewers can sign off.
+calendar with "N tips" posts that add nothing, and in `review` mode never raise N above what the reviewers can sign
+off. In `automatic` mode the gates and the LLM review passes stand in for the person, so keep N at the requested size
+and the gates strict. Google staff still point to a native speaker's review for translations (review §1, row 9).
 
 **AI disclosure** (google-rules §4, review §3): recommended where readers would reasonably wonder. For AI-translated
-posts a note is reasonably expected [inference]. EU public-interest text: review §1, row 27.
+posts a note is reasonably expected [inference]. EU public-interest text: review §1, row 27. In `automatic` mode no
+person reviews the text, so row 27's exemption doesn't apply: a post on a matter of public interest for EU readers
+carries the AI note.
 
 **Dates.** `datePublished` is set once, when a version goes live. `dateModified` moves only when that version's text
 really changes (review §6). Re-translating doesn't refresh dates.
@@ -351,7 +376,7 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
 - `$W/batch.md`:
   ```
   # Blog batch: <site>, <date>
-  Locales · topics per locale · autonomy level · store data reused (dataset, age) and refreshed
+  Locales · topics per locale · autonomy level · publishing mode · store data reused (dataset, age) and refreshed
   ## Posts
   | Locale | Cluster | Target query | Planned URL | Status | Submitted (IndexNow, sitemap) | Gates failed | Placement | Review (llm_reviewed / human) | Open markers | Links added |
   ## Passed over: topic → reason (landing-page intent → seo-content, existing page → refresh, has a post, no demand in locale)
@@ -375,6 +400,7 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
   - a native reviewer per language, and their verdict on the terms pending review;
   - GSC access, and a budget for volumes;
   - for each post the run stopped short of publishing, the level or credential that would finish it;
+  - the publishing mode, while it is unset: one question with a recommendation (`references/autonomy.md`);
   - any language the data suggests but nobody asked for.
 
 ## Pitfalls & myths
@@ -387,7 +413,8 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
 - **One post per keyword variant** cannibalises. One cluster, one URL.
 - **Writing to the competitor phrase list** turns into keyword stuffing. Use it to find missing subtopics.
 - **Re-researching every run** wastes credits and time. The store's TTLs decide what is stale.
-- **Translations published unreviewed and indexable.** Keep them `noindex` until a native reviewer signs off, and never
+- **Translations published unreviewed and indexable.** In `review` mode, keep them `noindex` until a native reviewer
+  signs off. In `automatic` mode, a version is indexed only once the Translation and Blog review gates pass. Never
   block them in robots.txt (review §6).
 - **Bumping dates on re-translation or touch-ups** is faking freshness (google-rules §4).
 - **Word-count targets** don't make content helpful (google-rules §4).
@@ -398,8 +425,8 @@ Without paid data, volume stays `[needs data]`. Never estimate it.
 Append an entry to `SEO-WORKLOG.md` per `${CLAUDE_PLUGIN_ROOT}/references/worklog.md`. Include:
 - the store datasets reused (with their age) and refreshed;
 - the topics picked per locale and why, and those passed over;
-- the posts briefed, drafted and published per locale, with URLs or PR links, the URLs submitted, and the autonomy
-  level;
+- the posts briefed, drafted and published per locale, with URLs or PR links, the URLs submitted, the autonomy
+  level, and the publishing mode with each post's review state (`llm_reviewed` or the human reviewer);
 - the gates failed and the markers still open;
 - paid units spent;
 - what wasn't verified (e.g. "no native reviewer for ka", "GSC not provided");

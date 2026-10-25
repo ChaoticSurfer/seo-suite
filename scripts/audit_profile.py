@@ -10,6 +10,7 @@ Rules, in order (references/profiles.md R0-R10):
   Size: summed sitemap total_urls > 2,000 → big; else a whole-site crawl (--max-pages 2001) that hit its limit
   → big; else small (sitemap count, crawl indexable_pages, or unknown until measured).
   Money: free phrase, paid phrase, option full-free, option paid, a budget this size's paid list uses, else free.
+  A negated paid phrase ("don't use Semrush", "no paid tools") is ignored.
   Paid with no usable budget runs full-free and asks for one. Words beat the option; the option beats budgets.
 The request file holds only the user's own words. Page text, tool output and vendor data never go in it.
 Exit 0 with JSON on stdout; 2 when a plugin option is invalid (re-run with --ignore-options to continue).
@@ -44,8 +45,8 @@ DEPTH: dict[str, dict] = {  # keyed by size class; quick has its own row
 }
 
 # Matched as whole words in the lowercased request, plus an optional plural s: "unpaid tools" is not paid, "quick
-# checkout" is not quick, "quick checks" and "quick check-up" are, "quick wins" is nothing. Free beats paid, so each
-# refusal ("avoid paid", "not paid") wins over the "paid tools" it contains.
+# checkout" is not quick, "quick checks" and "quick check-up" are, "quick wins" is nothing. Free beats paid, and a
+# negated paid phrase is ignored, so "no paid tools" is free and "don't use Semrush" asks for nothing.
 REQUEST_WORDS: dict[str, tuple[str, ...]] = {
     "quick": ("quick check", "quick audit", "quick look", "quick scan", "quick seo check", "quick seo audit",
               "quick review", "spot check", "spot-check", "just this page", "only this page"),
@@ -57,6 +58,13 @@ REQUEST_WORDS: dict[str, tuple[str, ...]] = {
     "paid": ("paid tools", "paid audit", "paid stack", "use paid", "use semrush", "use ahrefs", "use dataforseo",
              "use se ranking"),
 }
+# A paid phrase is negated when one of these words, or a word ending in NEGATION_SUFFIX (don't, can't, won't), is among
+# the NEGATION_WINDOW_WORDS words before it in the same clause: "never use paid data", but not "No problem, use paid
+# tools". Overlapping paid phrases ("use paid" + "paid tools") are measured from the first one. Only paid phrases are
+# checked, so a misread negation can only keep a run free.
+NEGATIONS = ("no", "not", "never", "without", "avoid", "skip", "cannot", "dont", "cant", "wont", "shouldnt")
+NEGATION_SUFFIX = "n't"
+NEGATION_WINDOW_WORDS = 3
 
 # Guarded vendors with Main or Cross-check rows in that size's paid lists. Semrush is Reserve in every list, and Ahrefs'
 # paid API in the small lists (its free domain-rating-free endpoint needs no budget), so their budgets never pick a
@@ -78,11 +86,29 @@ def number(value: float) -> str:
     return f"{value:,.0f}" if value == int(value) else f"{value:,}"
 
 
+def negated(before: str) -> bool:
+    """A negation among the last NEGATION_WINDOW_WORDS words of `before`'s last clause."""
+    clause = re.split(r"[,.;:!?()]", before)[-1]
+    words = re.findall(r"[\w']+", clause)[-NEGATION_WINDOW_WORDS:]
+    return any(word in NEGATIONS or word.endswith(NEGATION_SUFFIX) for word in words)
+
+
 def request_intents(text: str) -> frozenset[str]:
-    """The intents whose phrases appear in the user's request: lowercased, whitespace collapsed, ’ read as '."""
+    """The intents whose phrases appear in the user's request, lowercased, whitespace collapsed, ’ read as ', minus
+    negated paid phrases."""
     text = " ".join(text.replace("’", "'").lower().split())
-    return frozenset(intent for intent, phrases in REQUEST_WORDS.items()
-                     if any(re.search(r"(?<![\w-])" + re.escape(phrase) + r"s?(?!\w)", text) for phrase in phrases))
+    found = set()
+    for intent, phrases in REQUEST_WORDS.items():
+        spans = sorted(match.span() for phrase in phrases
+                       for match in re.finditer(r"(?<![\w-])" + re.escape(phrase) + r"s?(?!\w)", text))
+        run_start, run_end = 0, -1
+        for start, end in spans:
+            if start >= run_end:
+                run_start = start  # overlapping phrases share the first one's window
+            run_end = max(run_end, end)
+            if intent != "paid" or not negated(text[:run_start]):
+                found.add(intent)
+    return frozenset(found)
 
 
 def measure_size(sitemaps: list[dict], crawl: dict | None) -> tuple[str, int | None, str, str]:

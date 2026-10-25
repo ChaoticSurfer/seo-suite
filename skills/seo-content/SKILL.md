@@ -43,6 +43,8 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" next-topics --locale e
 ```
 - **No store yet:** `python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" init --site "$SITE" --locales en`, with
   every locale the site publishes, default first. With no topic given and no clusters stored, run `seo-keywords` first.
+- **Publishing mode:** `publishing` in `store-status.json` decides whether a written page needs a human sign-off before
+  it goes live (C step 6).
 - **Audit (A):** still crawl and pull both GSC periods, because the store keeps neither link depth nor an earlier
   period. Keywords whose `demand.gsc_pages` lists 2+ URLs are early cannibalisation candidates, while that list's own
   `provenance` date is within the `gsc` TTL (research-store §6). The store lists a page by its own rule
@@ -107,7 +109,11 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/research_store.py" next-topics --locale e
    - add the missing subtopics;
    - change `dateModified` only for substantive edits.
 5. Score the page with `content_score.py --file page.html --base-url https://site/<planned-slug> --keyword "$KW"` and fix the placement and structure gaps.
-6. **Ship it per autonomy level (references/autonomy.md):** a file in `seo-work/` at level 1, a branch and PR at level 2, merged once CI passes at level 3, published through an authorised CMS connector at level 4. Level 3 merges, and level 4 publishes, only a page with a named human sign-off (`reviewed_by`, `reviewed_at`), as in `seo-blog-builder`. Without it the PR stays open, the page stays `drafted`, and the report asks for the sign-off. A page with an open `[needs data]` marker stays unpublished until it is filled. Below the level an action needs, stop there and say which level or credential would finish it.
+6. **Ship it per autonomy level (references/autonomy.md):** a file in `seo-work/` at level 1, a branch and PR at level 2, merged once CI passes at level 3, published through an authorised CMS connector at level 4. What level 3 merges and level 4 publishes follows the project's publishing mode (`publishing` in the step 0 `status` output, research-store §2), with the gates of `seo-blog-builder`'s Checks:
+   - **`automatic`:** an AI-written page goes live as soon as every automated gate there passes (no P0 or P1, every claim sourced, no open marker). Record the review state as `review_state: llm_reviewed`, never in `reviewed_by`.
+   - **`review`:** only a page with a named human sign-off (`reviewed_by`, `reviewed_at`). Without it the PR stays open, the page stays `drafted`, and the report asks for the sign-off.
+   - **`unset`:** as `review`, plus the one mode question in the end-of-run batch (autonomy.md). Never ask it mid-run.
+   - Either way, a page with an open `[needs data]` marker stays unpublished until it is filled. Below the level an action needs, stop there and say which level or credential would finish it.
 7. **Once it is live** (level 3 and above): check it with `page_audit.py` (status 200, indexable), submit its URL to IndexNow when the site serves its key file, and set its store status (D). Re-check its GSC position 6–8 weeks later (Log the work).
 
 ### D. Write back to the store

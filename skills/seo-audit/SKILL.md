@@ -95,9 +95,23 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
    python3 "$S/psi.py" URL --strategy mobile > seo-work/psi-<template>.json
    ```
    **PSI quota:** if PSI returns 429, continue without it and add a free key (how to get one is in the `hint` field) to the access requests batched at the end. Field data is `field_url` / `field_origin`; `null` means CrUX has too little traffic, so fall back to lab data.
-5. **JavaScript sites.** This step applies if a page has `likely-client-rendered`, an SPA framework, or very few links. With no built-in browser (a scheduled `claude -p` run), skip it and list those templates under *What could not be verified*.
-   1. Open the URL in the built-in browser.
-   2. Run `document.documentElement.outerHTML` and save the result as `seo-work/rendered-<template>.html`.
+5. **JavaScript sites.** This step applies if a page has `likely-client-rendered`, an SPA framework, or very few links. Headless Chrome renders each such template URL without a person, so scheduled `claude -p` runs check rendering too, once the run's `--allowedTools` allows these commands: `seo-automation`'s launchd recipe allows only `Bash(python3 *)` in Bash, and `--permission-mode dontAsk` denies the rest. A denied render counts as no Chrome found (profiles.md `js-render`).
+   1. Find Chrome or Chromium: the macOS apps, then the Linux binaries on `PATH`. Set `CHROME` to use another binary. Run this block and the render block below in one Bash call: `CHROME` is a shell variable, and the next call starts a new shell without it.
+      ```bash
+      CHROME="$(for c in "${CHROME:-}" "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" "/Applications/Chromium.app/Contents/MacOS/Chromium" google-chrome google-chrome-stable chromium chromium-browser; do [ -n "$c" ] && command -v "$c" && break; done)"
+      ```
+   2. Render the URL. Chrome gets a fresh temporary profile (no cookies, no sign-ins) and keeps its default User-Agent: a Googlebot one from a non-Google IP looks spoofed. Scripts, timers and data fetches get 10 seconds of page time to settle (without that, `--dump-dom` prints the DOM at the load event, before most single-page apps fetch their content). After 30 seconds of real time Chrome stops loading and prints the DOM it has, and a page whose script never yields is killed at 60 seconds, leaving an empty file. The profile is deleted after the render.
+      ```bash
+      if [ -n "$CHROME" ]; then
+        PROFILE="$(mktemp -d)"
+        python3 -c 'import subprocess, sys; subprocess.run(sys.argv[2:], timeout=float(sys.argv[1]))' 60 "$CHROME" --headless --use-mock-keychain --user-data-dir="$PROFILE" --virtual-time-budget=10000 --timeout=30000 --dump-dom URL > seo-work/rendered-<template>.html 2> /dev/null
+        rm -rf "$PROFILE"
+      else
+        echo "no Chrome or Chromium found: JavaScript rendering not checked"
+      fi
+      ```
+      - **No Chrome found.** With the built-in browser in the session, open the URL there, run `document.documentElement.outerHTML`, and save the result as `seo-work/rendered-<template>.html`. Without it (a scheduled run), skip the rest of this step. List those templates under *What could not be verified*, with the note, and add "install Google Chrome or Chromium" to the access requests batched at the end.
+      - **An empty file** means Chrome failed on that URL. List the template the same way.
    3. Run the diff:
       ```bash
       python3 "$S/render_diff.py" URL --rendered seo-work/rendered-<template>.html > seo-work/render-<template>.json
@@ -144,7 +158,7 @@ Use a working folder `seo-work/<host>-<YYYYMMDD>/`, in the project or the scratc
     - Record the money pages, templates and stack you decided in `seo-research/site.json` (`money_pages`, `templates`, `stack`), with their evidence in `assumptions`.
 11. **Write the report and the work log** (see below).
 
-**Quick profile (on request only; one URL, about 5 minutes).** Run `page_audit.py`, `psi.py` and `robots_check.py` on that URL in parallel. Add `render_diff` if it's a JS site. Apply the step 1 stop checks to the `page_audit.py` output. Then run `triage.py` on the JSONs and report the top 10 issues with fixes. Put the step 0 profile lines under *Assumptions*. State clearly that site-wide issues (duplicates, orphans, depth, sitemap) were not checked.
+**Quick profile (on request only; one URL, about 5 minutes).** Run `page_audit.py`, `psi.py` and `robots_check.py` on that URL in parallel. If it's a JS site, add step 5 on that URL. Apply the step 1 stop checks to the `page_audit.py` output. Then run `triage.py` on the JSONs and report the top 10 issues with fixes. Put the step 0 profile lines under *Assumptions*. State clearly that site-wide issues (duplicates, orphans, depth, sitemap) were not checked.
 
 ## Checks
 
@@ -191,6 +205,7 @@ The profile in `profile.json` decides the data (`${CLAUDE_PLUGIN_ROOT}/reference
 - **`full-free`** (the default at every size, enough for a full audit): tools.md `### Default: big website, free only`, all five categories, Main and Cross-check rows that are built and have access. Depth follows the size: a whole-site crawl up to 2,000 URLs, section crawls and samples above. Reserve rows come in under their own "use when" rule.
 - **`paid-small` and `paid-big`** (only when a usable budget is set, or the user asks): each category's **Small sites** or **Big sites** list takes over, per category. A paid row whose vendor isn't set up (not signed in, or budget 0) falls back to the default row that does the same job, so a partial setup never leaves a gap. The credit guard enforces every budget.
 - **`quick`** (on request only): the quick profile's three scripts. No paid calls.
+- **A vendor the user refuses** ("don't use Semrush", "without Ahrefs") is left out of the run, whatever its budget: its rows fall back to the default row, as for a vendor that isn't set up. The picker ignores the refused phrase (profiles.md §5).
 - Paid data is for prioritising and gaps (backlinks, competitor keywords and volumes, rank at scale), never for finding the technical defects the scripts measure (tools.md `## Cost-optimisation playbook`).
 
 ## Output

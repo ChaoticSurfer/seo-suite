@@ -19,6 +19,7 @@ Usage:
   research_store.py next-topics [--locale en] [--limit 10]
   research_store.py set-status --cluster en-001 --status briefed
   research_store.py set-status --keyword "english tutor" --locale en --status published --url https://example.com/x/
+  research_store.py set-publishing --mode automatic|review                  # how AI-written posts go live
   research_store.py glossary add --locale ka --term Claude --translation Claude --do-not-translate
   research_store.py glossary show --locale ka
   research_store.py export keywords|clusters|inventory|posts [--locale en] --format csv|json
@@ -53,6 +54,10 @@ DEFAULT_DIR = "seo-research"
 STORE_VERSION = 1
 STATUSES = ("planned", "briefed", "drafted", "scheduled", "published", "skip")
 ROLES = ("pillar", "cluster", "support")
+# site.json publishing.mode: how AI-written posts and their translations go live. automatic: once every automated
+# gate passes; review: after a named human sign-off. A store without one is unset: runs behave as review and ask once.
+PUBLISHING_MODES = ("automatic", "review")
+UNSET_PUBLISHING = {"mode": "unset", "set_at": None}
 # Days before a dataset is stale. Clusters and glossaries are decisions, not observations, so they never go stale.
 TTL_DAYS = {"keywords": 90, "volumes": 30, "serps": 30, "gsc": 7, "inventory": 30, "competitors": 90,
             "clusters": None, "glossary": None, "posts": 7}
@@ -233,6 +238,12 @@ def require(condition: bool, path: str, where: str, expected: str) -> None:
 
 def is_text_list(value) -> bool:
     return isinstance(value, list) and all(isinstance(item, str) for item in value)
+
+
+def is_publishing(value) -> bool:
+    """A site.json publishing object: {"mode": one of PUBLISHING_MODES, "set_at": "YYYY-MM-DD"}."""
+    return (isinstance(value, dict) and value.get("mode") in PUBLISHING_MODES
+            and re.fullmatch(r"\d{4}-\d{2}-\d{2}", str(value.get("set_at"))) is not None)
 
 
 def is_group_id(value) -> bool:
@@ -454,6 +465,16 @@ class Store:
     @property
     def locales(self) -> list[str]:
         return self.site["locales"]
+
+    @property
+    def publishing(self) -> dict:
+        """site.json publishing, checked: a store written before the field has none, which reads as unset."""
+        publishing = self.site.get("publishing")
+        if publishing is None:
+            return dict(UNSET_PUBLISHING)
+        require(is_publishing(publishing), self.file("site.json"), "publishing",
+                '{"mode": "automatic" or "review", "set_at": "YYYY-MM-DD"}; set it with set-publishing --mode')
+        return publishing
 
     @property
     def own_hosts(self) -> set[str]:
@@ -1425,7 +1446,7 @@ def status(store: Store, args, now: str) -> dict:
             "glossary_terms": len(read_json(store.file("glossary", f"{locale}.json"), {})),
         }
     return {"store": store.dir, "site": store.site["site"], "locales": store.locales, "checked_at": now,
-            "datasets": datasets, "stale": stale, "missing": missing, "gaps": gaps,
+            "publishing": store.publishing, "datasets": datasets, "stale": stale, "missing": missing, "gaps": gaps,
             "note": "Reuse fresh data, refresh only what is stale or missing, and say in Assumptions what was reused "
                     "and how old it was."}
 
@@ -1513,6 +1534,17 @@ def set_status(store: Store, args, now: str) -> dict:
         raise SystemExit(f"no keyword {keyword!r} in locale {args.locale} in {store.dir}")
     apply(record, {"status": args.status, "target_url": url}, "set-status", now, now)
     return {"updated": "keyword", "keyword": record}
+
+
+def set_publishing(store: Store, args, now: str) -> dict:
+    """The project's publishing mode, dated the day it last changed: the same mode again keeps its date. A malformed
+    stored value counts as unset and is replaced, so this command is also its fix."""
+    old = store.site.get("publishing")
+    previous = old["mode"] if is_publishing(old) else UNSET_PUBLISHING["mode"]
+    changed = previous != args.mode
+    if changed:
+        store.site["publishing"] = {"mode": args.mode, "set_at": now[:10]}
+    return {"publishing": store.publishing, "previous": previous, "changed": changed}
 
 
 def glossary_add(store: Store, args, now: str) -> dict:
@@ -1607,6 +1639,11 @@ def build_parser() -> argparse.ArgumentParser:
     mark.add_argument("--status", required=True, choices=STATUSES)
     mark.add_argument("--url", help="the page that targets it")
     mark.set_defaults(run=set_status, writes=True)
+
+    publish = commands.add_parser("set-publishing", parents=[common],
+                                  help="how AI-written posts go live: automatic once every gate passes, or review")
+    publish.add_argument("--mode", required=True, choices=PUBLISHING_MODES)
+    publish.set_defaults(run=set_publishing, writes=True)
 
     glossary = commands.add_parser("glossary", help="approved translations per locale")
     actions = glossary.add_subparsers(dest="action", required=True)

@@ -62,10 +62,9 @@ Decide each input from evidence, record it under *Assumptions*, and carry on (`$
    ```
    This finds broken links, redirects, duplicates, depth, orphans, canonical targets, the soft-404 probe and URLs blocked by robots.txt.
 4. **Rendering:**
-   1. Load the page in the built-in browser.
-   2. Save `document.documentElement.outerHTML` to a file.
-   3. Run `render_diff.py URL --rendered file.html > seo-work/technical/render.json`.
-   4. If the title, canonical or robots tags change after JS, or the content and links only appear after JS, the page needs SSR/SSG or pre-rendering (§1).
+   1. Render the page with headless Chrome: run `seo-audit` step 5's find and render commands in one Bash call, saving to `seo-work/technical/rendered.html`. They run unattended, so scheduled runs check rendering too. With no Chrome or Chromium installed, load the page in the built-in browser and save `document.documentElement.outerHTML` to that file. With neither, say rendering wasn't checked.
+   2. Run `render_diff.py URL --rendered seo-work/technical/rendered.html > seo-work/technical/render.json`.
+   3. If the title, canonical or robots tags change after JS, or the content and links only appear after JS, the page needs SSR/SSG or pre-rendering (§1).
 5. **Performance:** run `psi.py URL --strategy mobile > seo-work/technical/psi-<template>-mobile.json` per template, then the same with `desktop`.
    - Field `p75` is the truth. Lab opportunities explain why.
    - For INP, use the field number and find long tasks with DevTools in the built-in browser.
@@ -206,7 +205,7 @@ Read the existing files first and match their style. Show a diff, and write it p
   - Bing Webmaster Tools.
   - PSI/CrUX (free key).
   - Server logs.
-  - The built-in browser for rendering and DevTools performance traces.
+  - Headless Chrome for rendering (the built-in browser when Chrome isn't installed), and the built-in browser for DevTools performance traces.
 - **Screaming Frog** adds JS-rendered crawling at scale, crawl comparison, custom extraction (e.g. find every page missing a component), and its log file analyser. Justified for big or JS-heavy sites and recurring scheduled crawls (tools.md `## Screaming Frog`).
 - **Sitebulb / Lumar / Botify** add enterprise crawl scheduling and log pipelines. Only justified for very large sites (tools.md `## Other paid tools`).
 - **Semrush / Ahrefs site audits** duplicate the free crawler here. Use them only if the user already pays and wants the dashboards. Their unique value is off-site data, which this skill doesn't need.

@@ -34,7 +34,8 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | Languages and the source language | hreflang clusters; the visible language of the body (`translation_check.py`); earliest `datePublished` in each cluster; the language the user writes in | The source is `en` if it exists, else the language with the most posts |
 | Which posts to review | PR trigger: the changed content files. Scheduled: sitemap `lastmod` or `dateModified` newer than the last `seo-blog-review` entry in `SEO-WORKLOG.md` | First run: every post gets the scripted checks, and a sample is read in full (review §8) |
 | Target query per post per language | The research store's keyword for that locale whose `target_url` is that version (step 0); else GSC queries for that URL; else that version's own title and H1. **Never** a translation of the source keyword | That version's H1 |
-| Human review evidence per version | A visible "reviewed by" line; front-matter or CMS fields (`reviewed_by`, `reviewed_at`); the repo history; the work log | **None found = unreviewed**, and say so. Who reviews each language: **ask, batched at the end** |
+| Human review evidence per version | A visible "reviewed by" line; front-matter or CMS fields (`reviewed_by`, `reviewed_at`, `review_state`); the repo history; the work log | **None found = unreviewed**, and say so. Who reviews each language: **ask, batched at the end** |
+| Publishing mode | `publishing` in the step 0 `status` output (research-store §2): `automatic` or `review` | No store, or `unset`: `review`. In `unset`, add the mode question to the end-of-run batch (`references/autonomy.md`) |
 | The translation pipeline | Search the repo for prompts, glossaries, translation scripts and CI jobs (`translate`, `target_lang`, `glossary`, Anthropic SDK calls) | Not found: write the fixes as a standalone style sheet, glossary and prompt (review §11). Where the pipeline lives: **ask, batched at the end** |
 | Register and market per language | The majority form of address in existing posts (вы/ты, თქვენ/შენ); hreflang region codes; currency and examples on the page | The majority form, flagged where it's mixed. Language-only codes (`ka`, `ru`) |
 | GSC, GA4 | A connector, or exports in `seo-work/` | Run without them; traffic columns `[needs data]`. **Ask, batched at the end** |
@@ -65,7 +66,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
      Cross-language return links then come from `translation_check.py` and a hand check of the sample.
 2. **Build the post inventory** `$W/posts.csv`: one row per language version with
    `cluster, lang, url, indexable, canonical, title, word_count, date_published, date_modified, reviewed_by,
-   reviewed_at, in_sitemap, hreflang_langs, sample`.
+   reviewed_at, review_state, in_sitemap, hreflang_langs, sample`.
    - Run the step-4 `translation_check.py` call on each source post first. Its `cluster` array gives each version's
      code, URL, indexability, canonical, `html_lang`, detected language, title, main-text words and hreflang.
    - Add the JSON-LD dates (`datePublished`, `dateModified`) from `page_audit.py URL --facts`, run on every
@@ -124,8 +125,9 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
    - **Spot-checks** cover only the spot-check list in review §8.
    - **Source posts:** grade each sampled source-language post for helpfulness, non-commodity value, facts and
      byline. Delegate to the `seo-content-reviewer` agent, one per post.
-   - **Record this pass as `llm_reviewed`, never as human-reviewed.** Google staff advise a native speaker's
-     review (review §1, row 9). An LLM pass doesn't replace it.
+   - **Record this pass as `llm_reviewed` (`review_state: llm_reviewed`), never as human-reviewed.** Google staff
+     advise a native speaker's review (review §1, row 9). An LLM pass doesn't replace it, though in `automatic` mode
+     the owner accepts it for indexing (Checks).
 6. **Site-level policy and risk checks** (review §1–3):
    - the unreviewed share per language;
    - publishing velocity per language (posts per week from `date_published`);
@@ -162,11 +164,16 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
      exact diff to the prompt, glossary or QA script, and the metric the next batch should move.
    - Level 1: the diffs in the report, and the report says level 2 would open them as a PR. Level 2: a branch and PR
      with the pipeline changes. Level 3: merged once CI passes (references/autonomy.md).
-10. **Corrections to existing posts ship per autonomy level, after the language reviewer signs them off:**
+10. **Corrections to existing posts ship per autonomy level and the publishing mode:**
     - Write them as changes to the content files: in `$W/corrections/` at level 1, on a branch with a PR at level 2.
-    - Level 3 merges the PR, and level 4 publishes through an authorised CMS connector, only once the language's
-      reviewer has signed off each corrected version (`reviewed_by`, `reviewed_at`), because an unreviewed fix
-      recreates the problem it fixes. Until then the correction stays in its open PR or file, and the report says so.
+    - Level 3 merges the PR, and level 4 publishes through an authorised CMS connector, as the publishing mode
+      allows, because an unreviewed fix recreates the problem it fixes:
+      - `review` or `unset`: only once the language's reviewer has signed off each corrected version
+        (`reviewed_by`, `reviewed_at`).
+      - `automatic`: once each corrected version's step 4 checks and step 5 pass leave no P0 or P1, recorded as
+        `review_state: llm_reviewed`.
+
+      Until then the correction stays in its open PR or file, and the report says so.
     - Noindexing, or removing from hreflang, a version that earns clicks is a business decision: **ask, batched at
       the end**, with a recommendation.
 11. **Write back to the store** (skip when the project has none):
@@ -192,6 +199,13 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 | P2 | Broken hreflang return links or sets that disagree within a cluster (P1 when on ≥ 25% of posts, as in `triage.py`) · a noindexed version still in hreflang or the sitemap · metadata (title, description, OG, alt, schema strings) untranslated or unchecked · AI or translator leftovers in the body · near-identical localisation (no local examples, units or wording) · register mixed within a post · locale conventions wrong across a language · internal links to other-language versions when an in-language one exists · a source post with nothing original (P1 when that's most of the blog) |
 | P3 | No "how this was made" note where readers would expect one · AI images without IPTC `trainedAlgorithmicMedia` · no per-language RSS · `og:locale` or `inLanguage` missing or wrong · flags in the language switcher |
 
+**Unreviewed follows the publishing mode** (Inputs). In `review` mode, a version is reviewed only with a named human
+sign-off (`reviewed_by`, `reviewed_at`). In `automatic` mode, a version recorded `review_state: llm_reviewed` that
+passes `seo-blog-builder`'s gates counts as reviewed too: the owner chose to index those. So in `automatic` mode an
+indexable `llm_reviewed` version that passes those gates raises no P0 or P1 under the unreviewed rows. One that fails
+a gate, or has no review record at all, still does. The scorecard reports human and `llm_reviewed` evidence
+separately in either mode.
+
 **Per language version**
 - **Language and script:** the body is in the declared language and script (Mkhedruli for `ka`, Cyrillic for `ru`),
   with no side-by-side text and no translated-boilerplate-only pages (review §1, rows 15 and 17).
@@ -212,7 +226,8 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 - **Leftovers and tells:** review §10. Leftovers are always fixed. Tells are readability edits, not a penalty.
 
 **Per site**
-- **The unreviewed share per language.** The fix is human review, or `noindex` until reviewed. Never a robots.txt
+- **The unreviewed share per language.** The fix is the review the publishing mode asks for, or `noindex` until it is
+  done: human review in `review` mode, the LLM review pass and the gates in `automatic` mode. Never a robots.txt
   disallow, and never disallow combined with noindex (review §1, row 7; google-rules §1).
 - **Velocity and scale** against review effort: many posts × many languages with no review evidence is the scaled
   content abuse pattern (review §2).
@@ -232,7 +247,7 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 
 **What paid adds (never required):**
 - **A native-speaker reviewer per language**, in-house or paid. This is the one input Google staff point to
-  (review §1, row 9), and the only thing that turns `llm_reviewed` into reviewed. Spend here before any tool.
+  (review §1, row 9), and the only thing that turns `llm_reviewed` into human-reviewed. Spend here before any tool.
   Rates: `[needs data]`.
 - **DataForSEO SERP Standard:** confirm a target query's SERP per locale for about $0.0006 per keyword-locale (the
   B9 pipeline in `seo-automation`; `references/paid-tools-automation.md`).
@@ -245,9 +260,9 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 - `$W/scorecard.md`:
   ```
   # Blog review: <site>, <date>
-  Languages: en (source), ka, ru · Posts per language · Autonomy level · Batch: full / changed since <date>
+  Languages: en (source), ka, ru · Posts per language · Autonomy level · Publishing mode · Batch: full / changed since <date>
   ## Scorecard
-  | Lang | Indexable | Human-review evidence | Sampled full/spot | MQM per 1k words (median / worst) | Critical | Top 3 error classes | Tech issues | Leftovers / tell density | Verdict |
+  | Lang | Indexable | Review evidence (human / llm_reviewed / none) | Sampled full/spot | MQM per 1k words (median / worst) | Critical | Top 3 error classes | Tech issues | Leftovers / tell density | Verdict |
   ## Policy & risk: unreviewed share, velocity, bylines, disclosure [measured]/[Google doc]
   ## P0–P3 fix list: URL · lang · issue · evidence · fix · where it is fixed (template, pipeline or post)
   ## Translation pipeline fixes: error class → change → evidence → metric to watch next batch
@@ -255,13 +270,14 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
   ## Requests (batched, each with a recommendation)
   ## Not verified [needs data]
   ```
-  Per-language verdicts: **index**; **fix, then keep indexed**; or **noindex until a native reviewer signs off**.
+  Per-language verdicts: **index**; **fix, then keep indexed**; or **noindex until reviewed**: until a native reviewer
+  signs off in `review` mode, or until the version passes the gates as `llm_reviewed` in `automatic` mode.
   Thresholds are in review §5 [heuristic].
 - `$W/posts.csv` (inventory and sample), `$W/errors.jsonl` (one line per error), `$W/triage.json`,
   `$W/translation-pipeline-fixes.md`, `$W/glossary-additions.csv` (`term, lang, approved, rejected_variants,
   example_url`).
 - Corrections in `$W/corrections/` at level 1, a PR at level 2, merged at level 3 or published through the CMS
-  connector at level 4 once the language's reviewer signs them off.
+  connector at level 4 once the publishing mode allows (step 10).
 - **Assumptions:**
   - the source language;
   - the blog URL patterns;
@@ -276,7 +292,8 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
   - who reviews each language;
   - where the pipeline lives, if it wasn't found;
   - GSC access;
-  - noindex or merge decisions for versions that earn clicks.
+  - noindex or merge decisions for versions that earn clicks;
+  - the publishing mode, while it is unset: one question with a recommendation (`references/autonomy.md`).
 
 ## Pitfalls & myths
 - **"Google penalises AI content."** It judges quality and purpose, not the tool (review §1, rows 1 and 22).
@@ -285,7 +302,8 @@ Decide each input from evidence, record the choice under *Assumptions*, and carr
 - **"Block auto-translations in robots.txt."** That advice was removed on 2025-06-11. Use noindex instead, and never
   disallow a page you noindex.
 - **"Claude reviewed its own translation, so it's reviewed."** An LLM pass is not the native-speaker review Google
-  staff describe. Keep the two labels separate.
+  staff describe. Keep the two labels separate, also in `automatic` mode, where the owner indexes `llm_reviewed`
+  versions.
 - **"Translate it back to English to check."** Round-trip translation doesn't measure quality (review §4).
 - **"hreflang fixes duplicates between languages."** It only swaps in the right version. A body that is really
   translated is what makes versions distinct.

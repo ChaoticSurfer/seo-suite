@@ -1,13 +1,17 @@
-"""Audit profile picker: size from sitemaps and the crawl, the free default, budgets per size, request words and the
-option, the CLI contract (exit codes, JSON out, injection) and drift against profiles.md, tools.md and plugin.json.
+"""Audit profile picker: size from sitemaps and the crawl, the free default, budgets per size, request words with their
+negations and the option, options never configured, the CLI contract (exit codes, JSON out, injection), drift against
+profiles.md, tools.md and plugin.json, and seo-audit step 5's headless Chrome renderer.
 Run: python3 -m unittest discover -s tests"""
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
+import time
 import unittest
 from unittest import mock
 
@@ -132,6 +136,18 @@ class PickTest(unittest.TestCase):
                     profile, chosen_by, _, questions = self.pick(request, budget=budget)
                     self.assertEqual((profile, chosen_by, questions), ("full-free", "request", []))
 
+    def test_a_refused_vendor_or_paid_phrase_is_no_paid_request(self):
+        for request, chosen_by in (("don't use Semrush", "default"), ("do not use Ahrefs", "default"),
+                                   ("audit it without Ahrefs", "default"), ("we can't use paid tools", "default"),
+                                   ("never use paid data", "request")):
+            with self.subTest(request=request):
+                profile, picked_by, _, questions = self.pick(request)
+                self.assertEqual((profile, picked_by, questions), ("full-free", chosen_by, []))
+
+    def test_a_refused_vendor_leaves_the_budgets_to_decide(self):
+        self.assertEqual(self.pick("don't use Semrush", budget=budgets(dataforseo_monthly_usd=25))[:2],
+                         ("paid-small", "budgets"))
+
     def test_paid_search_campaigns_are_not_a_request_for_paid_tools(self):
         request = "we run it with paid search campaigns"
         self.assertEqual(self.pick(request, budget=budgets(dataforseo_monthly_usd=25))[:2], ("paid-small", "budgets"))
@@ -194,16 +210,34 @@ class PhraseTest(unittest.TestCase):
     def test_phrases(self):
         cases = {"Any quick wins?": set(), "unpaid tools are fine": set(), "Free only. Don’t spend": {"free"},
                  "  QUICK\n   Check  please": {"quick"}, "a spot-check of /pricing": {"quick"},
-                 "no paid tools": {"free", "paid"}, "a thorough audit": {"full"}, "audit it thoroughly": {"full"},
-                 "I don't want paid tools": {"free", "paid"}, "I do not want paid tools": {"free", "paid"},
-                 "never use paid tools": {"free", "paid"}, "avoid paid tools": {"free", "paid"},
-                 "skip paid tools": {"free", "paid"}, "no need for paid tools": {"free", "paid"},
-                 "free tools, not paid tools": {"free", "paid"}, "use free tools": {"free"},
+                 "no paid tools": {"free"}, "a thorough audit": {"full"}, "audit it thoroughly": {"full"},
+                 "I don't want paid tools": {"free"}, "I do not want paid tools": {"free"},
+                 "never use paid tools": {"free"}, "avoid paid tools": {"free"},
+                 "skip paid tools": {"free"}, "no need for paid tools": {"free"},
+                 "free tools, not paid tools": {"free"}, "use free tools": {"free"},
                  "a free audit please": {"free"}, "the free stack is enough": {"free"}, "no paid-for tools": {"free"},
                  "we run it with paid search campaigns": set(), "Do a quick SEO audit of example.com": {"quick"},
                  "quick review of the homepage": {"quick"}, "audit our quick checkout flow": set(),
                  "quick checks please": {"quick"}, "spot-checks of /pricing": {"quick"}, "a quick check-up": {"quick"},
                  "use Semrush": {"paid"}, "use Ahrefs and DataForSEO": {"paid"}, "use SE Ranking": {"paid"}}
+        for text, intents in cases.items():
+            with self.subTest(text=text):
+                self.assertEqual(ap.request_intents(text), frozenset(intents))
+
+    def test_a_negated_paid_phrase_is_ignored(self):
+        cases = {"don't use Semrush": set(), "Don’t use Semrush": set(), "dont use semrush": set(),
+                 "do not use DataForSEO": set(), "without Ahrefs": set(), "never use paid data": {"free"},
+                 "we can't use paid tools": set(), "we won't use SE Ranking": set(),
+                 "we cannot use paid tools": set(), "We cannot use Semrush": set(),
+                 "we cant use paid tools": set(), "we wont use Semrush": set(), "we shouldnt use paid tools": set(),
+                 # overlapping paid phrases ("use paid" + "paid tools") share the first one's window
+                 "I don't want to use paid tools": set(), "no need to use paid tools": set(),
+                 # a clause break ends the negation, and so do three other words in between
+                 "No problem, use paid tools": {"paid"}, "Don't skimp: use paid tools": {"paid"},
+                 "don't use Semrush, use DataForSEO": {"paid"}, "use paid tools but not Semrush": {"paid"},
+                 "no one here minds if we use paid tools": {"paid"},
+                 # only paid phrases are checked: a negated depth or free phrase still counts
+                 "not a deep dive, just a quick look": {"full", "quick"}, "don't stick to free tools": {"free"}}
         for text, intents in cases.items():
             with self.subTest(text=text):
                 self.assertEqual(ap.request_intents(text), frozenset(intents))
@@ -281,6 +315,27 @@ class CliTest(unittest.TestCase):
         self.assertEqual((out["profile"], out["chosen_by"], out["questions"]), ("full-free", "request", []))
         self.assertIn("dataforseo_monthly_usd 25 not used: the request asks for free tools", out["reasons"])
 
+    def test_options_never_configured_pick_exactly_as_the_defaults(self):
+        # a fresh install: no CLAUDE_PLUGIN_OPTION_* variable at all, or the empty ones a hook might pass on
+        defaults = {"AUDIT_PROFILE": "auto", **{key.upper(): "0" for key in ap.REPORTED_BUDGETS}}
+        empty = dict.fromkeys(defaults, "")
+        args = ("--sitemap", self.sitemap(5400), "--connected", "dfs-mcp")
+        outputs = {name: json.loads(self.run_picker(*args, options=options).stdout)
+                   for name, options in (("absent", None), ("defaults", defaults), ("empty", empty))}
+        absent = outputs["absent"]
+        self.assertEqual((absent["profile"], absent["chosen_by"], absent["audit_profile_option"], absent["budgets"],
+                          absent["options_exported"]), ("full-free", "default", "auto", ZEROS, False))
+        self.assertTrue(absent["reasons"][1].endswith(" (none exported to Bash: defaults)"), absent["reasons"])
+        for name in ("defaults", "empty"):
+            with self.subTest(options=name):
+                out = outputs[name]
+                self.assertTrue(out["options_exported"])
+                self.assertEqual(out["reasons"][1] + " (none exported to Bash: defaults)", absent["reasons"][1])
+                for key in JSON_KEYS:
+                    if key not in ("options_exported", "reasons"):
+                        self.assertEqual(out[key], absent[key], key)
+                self.assertEqual(out["reasons"][2:], absent["reasons"][2:])
+
     def test_missing_sitemap_file_fails_loudly(self):
         proc = self.run_picker("--sitemap", os.path.join(self.tmp, "missing.json"))
         self.assertNotEqual(proc.returncode, 0)
@@ -307,6 +362,21 @@ class DriftTest(unittest.TestCase):
                 row = re.search(rf"^\| {intent} \| (.+) \|$", section, re.M)
                 self.assertIsNotNone(row, f"profiles.md §5 has no {intent} row")
                 self.assertEqual(re.findall(r"`([^`]+)`", row.group(1)), list(phrases))
+
+    def test_profiles_md_negation_row_is_the_picker_table(self):
+        section = self.read("references", "profiles.md").split("## 5. Request words and option values")[1]
+        row = re.search(r"^\| negation \| (.+) \|$", section.split("\n## ")[0], re.M)
+        self.assertIsNotNone(row, "profiles.md §5 has no negation row")
+        self.assertEqual(re.findall(r"`([^`]+)`", row.group(1)), [*ap.NEGATIONS, "*" + ap.NEGATION_SUFFIX])
+        self.assertIn(f"{ap.NEGATION_WINDOW_WORDS} words", section)
+
+    def test_plugin_json_defaults_are_what_absent_options_read_as(self):
+        config = json.loads(self.read(".claude-plugin", "plugin.json"))["userConfig"]
+        self.assertEqual(ap.read_profile_option({}), config["audit_profile"]["default"])
+        read = cg.read_options({})
+        for key in cg.OPTION_DEFAULTS:
+            with self.subTest(option=key):
+                self.assertEqual(read[key], config[key]["default"])
 
     def test_beginner_guide_phrase_is_quick(self):
         phrases = re.findall(r'"([^"]+)" → \*\*seo-audit\*\*', self.read("references", "guide-beginner.md"))
@@ -336,6 +406,139 @@ class DriftTest(unittest.TestCase):
             for vendor in vendors:
                 with self.subTest(vendor=vendor):
                     self.assertIsNotNone(cg.VENDORS[vendor][1])
+
+
+SHELLS = [shell for shell in ("bash", "zsh") if shutil.which(shell)]  # the Bash tool runs the user's shell
+# Its content arrives after the load event, as a single-page app's fetched data does
+JS_PAGE = """<!doctype html><html lang="en"><head><title>Raw title</title></head><body><div id="app"></div>
+<script>setTimeout(function () { document.title = "Rendered title"; document.getElementById("app").innerHTML =
+"<h1>Hello from JS</h1><p>" + "word ".repeat(200) + "</p>"; }, 1500);</script></body></html>"""
+
+
+class RenderStepTest(unittest.TestCase):
+    """seo-audit step 5's commands, run as written: find Chrome or Chromium, then render or skip with a note."""
+
+    @staticmethod
+    def read_step():
+        with open(os.path.join(ROOT, "skills", "seo-audit", "SKILL.md"), encoding="utf-8") as fh:
+            return fh.read().split("\n5. **JavaScript sites.**")[1].split("\n6. **")[0]
+
+    @classmethod
+    def setUpClass(cls):
+        cls.blocks = [textwrap.dedent(block) for block in re.findall(r"```bash\n(.*?)\n *```", cls.read_step(), re.S)]
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp)
+        os.mkdir(os.path.join(self.tmp, "seo-work"))
+
+    def run_block(self, shell, index, env, url="https://example.com/"):
+        script = self.blocks[index].replace("<template>", "home").replace("URL", shlex.quote(url))
+        return subprocess.run([shell, "-c", script + '\necho "found=$CHROME"'], cwd=self.tmp,
+                              env={**env, "TMPDIR": self.tmp}, capture_output=True, text=True, timeout=60)
+
+    def stub_chrome(self, body='echo "<html><body><h1>stub</h1></body></html>"'):
+        """A Chrome stand-in that records its arguments, and whether its --user-data-dir existed while it ran."""
+        path = os.path.join(self.tmp, "chrome-stub")
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write('#!/bin/sh\nprintf "%s\\n" "$@" > "$0.args"\n'
+                     'for a; do case "$a" in --user-data-dir=*) [ -d "${a#*=}" ] && echo yes > "$0.profile";; esac; done\n'
+                     + body + "\n")
+        os.chmod(path, 0o755)
+        return path
+
+    def test_the_step_finds_chrome_then_renders(self):
+        self.assertEqual(len(self.blocks), 3, "step 5 needs a find block, a render block and the render_diff block")
+        self.assertIn("render_diff.py", self.blocks[2])
+
+    def test_chrome_given_in_the_environment_is_used(self):
+        stub = self.stub_chrome()
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                found = self.run_block(shell, 0, {**os.environ, "CHROME": stub})
+                self.assertEqual(found.stdout.strip(), f"found={stub}", found.stderr)
+
+    def test_a_chromium_on_the_path_is_found(self):
+        bin_dir = os.path.join(self.tmp, "bin")
+        os.mkdir(bin_dir)
+        shutil.copy(self.stub_chrome(), os.path.join(bin_dir, "chromium"))
+        env = {k: v for k, v in os.environ.items() if k != "CHROME"}
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                found = self.run_block(shell, 0, {**env, "PATH": bin_dir + os.pathsep + env["PATH"]})
+                path = found.stdout.strip().removeprefix("found=")
+                self.assertTrue(path and os.access(path, os.X_OK), found.stdout + found.stderr)  # or the installed app
+
+    def test_render_runs_headless_with_a_timeout_and_a_fresh_profile(self):
+        stub = self.stub_chrome()
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                proc = self.run_block(shell, 1, {**os.environ, "CHROME": stub})
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                with open(os.path.join(self.tmp, "seo-work", "rendered-home.html"), encoding="utf-8") as fh:
+                    self.assertIn("<h1>stub</h1>", fh.read())
+                with open(stub + ".args", encoding="utf-8") as fh:
+                    args = fh.read().split("\n")[:-1]
+                self.assertEqual(args[-2:], ["--dump-dom", "https://example.com/"])
+                self.assertIn("--headless", args)
+                for flag in ("--virtual-time-budget", "--timeout"):  # settle scripts; cap real time
+                    self.assertTrue(any(re.fullmatch(flag + r"=\d+", arg) for arg in args), args)
+                profile = next(arg for arg in args if arg.startswith("--user-data-dir="))
+                self.assertTrue(os.path.exists(stub + ".profile"), "the profile didn't exist while Chrome ran")
+                self.assertFalse(os.path.exists(profile.split("=", 1)[1]), "the profile is left behind")
+                os.remove(stub + ".profile")
+
+    def test_a_page_that_never_settles_is_killed_at_the_cap(self):
+        stub = self.stub_chrome(body="exec sleep 30")
+        cap = "' 60 \"$CHROME\""
+        self.assertIn(cap, self.blocks[1], "the render block caps Chrome at 60 seconds of real time")
+        self.blocks = [self.blocks[0], self.blocks[1].replace(cap, "' 1 \"$CHROME\""), self.blocks[2]]
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                started = time.monotonic()
+                proc = self.run_block(shell, 1, {**os.environ, "CHROME": stub})
+                self.assertLess(time.monotonic() - started, 15, "Chrome was not killed at the cap")
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertEqual(os.path.getsize(os.path.join(self.tmp, "seo-work", "rendered-home.html")), 0)
+
+    def test_the_find_and_render_blocks_run_in_one_bash_call(self):
+        step = self.read_step()
+        self.assertIn("one Bash call", step, "a variable set in one Bash call is gone in the next")
+        bin_dir = os.path.join(self.tmp, "bin")
+        os.mkdir(bin_dir)
+        shutil.copy(self.stub_chrome(), os.path.join(bin_dir, "chromium"))
+        env = {k: v for k, v in os.environ.items() if k != "CHROME"}
+        self.blocks = [self.blocks[0] + "\n" + self.blocks[1]]
+        proc = self.run_block(SHELLS[0], 0, {**env, "PATH": bin_dir + os.pathsep + env["PATH"]})
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertGreater(os.path.getsize(os.path.join(self.tmp, "seo-work", "rendered-home.html")), 0)
+
+    def test_no_chrome_skips_with_a_note_and_writes_nothing(self):
+        for shell in SHELLS:
+            with self.subTest(shell=shell):
+                proc = self.run_block(shell, 1, {**os.environ, "CHROME": ""})
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertIn("JavaScript rendering not checked", proc.stdout)
+                self.assertEqual(os.listdir(os.path.join(self.tmp, "seo-work")), [])
+
+    def test_installed_chrome_renders_javascript_for_render_diff(self):
+        env = {k: v for k, v in os.environ.items() if k != "CHROME"}
+        chrome = self.run_block(SHELLS[0], 0, env).stdout.strip().removeprefix("found=")
+        if not chrome:
+            self.skipTest("no Chrome or Chromium installed")
+        page = os.path.join(self.tmp, "page.html")
+        with open(page, "w", encoding="utf-8") as fh:
+            fh.write(JS_PAGE)
+        proc = self.run_block(SHELLS[0], 1, {**env, "CHROME": chrome}, url="file://" + page)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        rendered = os.path.join(self.tmp, "seo-work", "rendered-home.html")
+        diff = subprocess.run([sys.executable, os.path.join(ROOT, "scripts", "render_diff.py"), "--raw", page,
+                               "--rendered", rendered, "--base-url", "https://example.com/"],
+                              capture_output=True, text=True, timeout=30)
+        self.assertEqual(diff.returncode, 0, diff.stderr)
+        report = json.loads(diff.stdout)
+        self.assertEqual((report["rendered"]["title"], report["rendered"]["h1"]), ("Rendered title", ["Hello from JS"]))
+        self.assertIn("title changes after JavaScript", report["warnings"])
 
 
 if __name__ == "__main__":

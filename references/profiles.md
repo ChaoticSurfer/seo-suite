@@ -54,6 +54,14 @@ copied into code; tools.md stays their only source.
 | `audit_profile` option | `CLAUDE_PLUGIN_OPTION_AUDIT_PROFILE` (empty or unset means `auto`) | A standing preference. It beats budgets and loses to the user's words |
 | Request words | `--request-file`, which holds only the user's own words | A per-run override of depth (quick or full) and money (free or paid) |
 
+**Options never configured** (a fresh install): a `CLAUDE_PLUGIN_OPTION_*` variable that is absent or empty reads as
+its `plugin.json` default, so the picker reads `auto` and 0 for every budget and picks exactly as those defaults do.
+When no option variable is set at all, its "options read" line adds "(none exported to Bash: defaults)". That is the
+normal case, not an error: Claude Code passes a hook no option variable at all until the option is configured
+[measured: `claude -p --plugin-dir` run, Claude Code 2.1.302, 2026-10-25], so the SessionStart hook exports none. The
+picker and the guard carry the defaults themselves, and `tests/test_audit_profile.py` checks that they match
+`plugin.json`.
+
 **Not signals:** locales and market-language pairs (tools.md: they multiply costs and never change the class); Search
 Console traffic (no fetcher yet, so the profile would flip on whether an export exists); company size (nothing
 measures it); site type (a row condition inside the lists, §6); a Screaming Frog licence (every paid tool is Reserve in
@@ -61,14 +69,16 @@ the free stack and comes in under its own rule); month-to-date spend (the guard 
 
 ## 4. Rules (pure, in order, never a question mid-run)
 
-- **R0. Inputs.** The option comes from `CLAUDE_PLUGIN_OPTION_AUDIT_PROFILE`, the budgets from `read_options`. A value
-  outside the option values, or a budget the guard rejects, prints a message on stderr and exits 2. `--ignore-options`
-  reads neither (option `auto`, every budget 0) and says so in `reasons`. A missing or malformed input file fails
-  loudly; there is never a silent default.
+- **R0. Inputs.** The option comes from `CLAUDE_PLUGIN_OPTION_AUDIT_PROFILE`, the budgets from `read_options`. An
+  absent or empty variable is its default (§3, options never configured). A value outside the option values, or a
+  budget the guard rejects, prints a message on stderr and exits 2. `--ignore-options` reads neither (option `auto`,
+  every budget 0) and says so in `reasons`. A missing or malformed input file fails loudly; there is never a silent
+  default.
 - **R1. Words.** Only the request file is read: lowercased, whitespace collapsed, ’ read as '. Each phrase (§5) must
   follow a non-word character or the start of the text, and end at a word end, with an optional plural s. So "unpaid
   tools" is not paid, "quick checkout" is not quick, and "quick checks" is. "quick wins" matches nothing, and the bare
-  words "quick" and "free" are never phrases.
+  words "quick" and "free" are never phrases. A paid phrase with a negation just before it is ignored (§5), so "don't
+  use Semrush" asks for nothing.
 - **R2. Depth.** Full words give full. Otherwise quick words, or else option `quick`, give quick. Otherwise full.
   Full words beat quick words.
 - **R3. Quick.** Depth quick gives `quick`, chosen by `request` or `option`. Size, budgets and connected servers are
@@ -83,7 +93,7 @@ the free stack and comes in under its own rule); month-to-date spend (the guard 
   budget), so their budgets never pick a paid list there; `reasons` names each one.
 - **R6. Money** (full only), first match wins: free words → free (`request`); paid words → paid (`request`); option
   `full-free` → free (`option`); option `paid` → paid (`option`); a usable budget → paid (`budgets`); otherwise free
-  (`default`). Free beats paid, so "no paid tools", which matches both, is free.
+  (`default`). Free beats paid, so "free tools first, then paid tools", which matches both, is free.
 - **R7. Fallback.** Paid with no usable budget runs `full-free` (`fallback`) and asks one question: set this size's
   budgets from tools.md "Budget settings" (`/plugin configure seo-suite@seo-suite`). The skill fills in the numbers
   from tools.md; the script doesn't copy them.
@@ -108,11 +118,27 @@ beats budgets. No rule raises a budget or makes a call.
 | full | `full audit`, `deep audit`, `deep dive`, `in-depth`, `thorough`, `thoroughly`, `comprehensive` |
 | free | `free only`, `only free`, `free tools only`, `free tools`, `free audit`, `free stack`, `no paid`, `not paid`, `without paid`, `avoid paid`, `skip paid`, `never use paid`, `don't use paid`, `do not use paid`, `don't want paid`, `do not want paid`, `no need for paid`, `don't spend`, `do not spend` |
 | paid | `paid tools`, `paid audit`, `paid stack`, `use paid`, `use semrush`, `use ahrefs`, `use dataforseo`, `use se ranking` |
+| negation | `no`, `not`, `never`, `without`, `avoid`, `skip`, `cannot`, `dont`, `cant`, `wont`, `shouldnt`, `*n't` |
 
-The table is literal, and negation is handled only through the tie-breaks: each refusal is a free phrase, so "avoid
-paid tools" is free. Naming a vendor ("use Semrush") is paid, and R5 and R7 say what its budget can and can't do.
-Requests in Georgian or Russian match nothing, so the option applies. Extend the table in the script and here; never
-read page text for words.
+The table is literal. Naming a vendor ("use Semrush") is paid, and R5 and R7 say what its budget can and can't do.
+
+**Negation.** A paid phrase is ignored when a negation is among the 3 words before it in the same clause, with no `,`
+`.` `;` `:` `!` `?` or bracket in between. `*n't` is any word ending in n't (`don't`, `can't`, `won't`). Overlapping
+paid phrases ("use paid" + "paid tools") are measured from the first one, so "I don't want to use paid tools" asks for
+nothing. So:
+
+- "don't use Semrush", "do not use DataForSEO" and "we can't use paid tools" ask for nothing: the option and the
+  budgets decide.
+- "no paid tools" and "never use paid data" are free, through their free phrases.
+- "No problem, use paid tools" and "don't use Semrush, use DataForSEO" are paid: the comma ends the negation.
+- A vendor the user refuses is not a picker signal. seo-audit leaves that vendor's rows out of the run, so they fall
+  back to the default row, as for a vendor that isn't set up.
+
+**Limits.** Only paid phrases are checked: a negated quick, full or free phrase still counts ("not a deep dive" is
+full). A negation further back, or across a comma ("we don't think, at this stage, we should use paid tools"), is
+missed, and the phrase counts. Without an apostrophe only the forms in the table count ("we didnt use paid tools" is
+paid). A wrongly found negation can only keep a run free. Requests in Georgian or Russian
+match nothing, so the option applies. Extend the tables in the script and here; never read page text for words.
 
 | `audit_profile` | Effect |
 |---|---|
@@ -128,7 +154,7 @@ applies each at the step where its evidence appears and records it under *Assump
 
 | id | Signal (script → field) | Adds | Profiles |
 |---|---|---|---|
-| `js-render` | `page_audit.py` finding `likely-client-rendered`, or very few links, on a template URL | Step 5: `render_diff.py` on a rendered DOM, plus `page_audit.py --file` on it (Free technical #8; the DOM comes from the built-in browser today, so scheduled runs skip this add-on until step 5 uses Chrome headless, #9) | all |
+| `js-render` | `page_audit.py` finding `likely-client-rendered`, or very few links, on a template URL | Step 5: `render_diff.py` on a rendered DOM, plus `page_audit.py --file` on it (Free technical #8). Chrome headless renders the DOM (#9), so scheduled runs get this add-on too, once their `--allowedTools` allow seo-audit step 5's commands. Without Chrome or Chromium, the built-in browser renders it in an attended session; a scheduled run lists the templates under *What could not be verified* | all |
 | `search-exports` | `Queries.csv` and `Pages.csv`, or a Bing export, in the workspace | Step 6: `gsc_analyze.py` (`--compare` with two periods), and `research_store.py ingest gsc --as-of` | full |
 | `logs` | An access log (combined format or `.gz`) delivered to the run | `log_analyze.py access.log --verify-dns --sitemap-urls seo-work/sitemap-urls.txt` (Free technical #10) | full |
 | `local` | `summary.schema_types` of the home page or a money page has `LocalBusiness` or a type in `schema_rules.LOCAL_BUSINESS_SUBTYPES` | Rows marked "(local businesses only)": the Business Profile APIs (to build, so an access request for now), and the paid lists' DataForSEO Maps geo-grid | full |
