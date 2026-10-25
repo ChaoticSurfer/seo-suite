@@ -1,0 +1,12 @@
+{
+  "/sitemap.xml": {"file": "sitemap.xml", "type": "application/xml"},
+  "/blog": {"file": "index.html"},
+  "/blog?page=2": {"file": "index-page-2.html"},
+  "/blog?page=9999": {"file": "index-page-empty.html"},
+  "/blog/post-a": {"file": "post-a.html"},
+  "/blog/post-b": {"file": "post-b.html"},
+  "/blog/Post_C": {"file": "post-c.html"},
+  "/blog/category/empty": {"file": "category-empty.html"},
+  "/blog/tag/one": {"file": "tag-one.html"},
+  "/tours/kazbegi": {"file": "money-page.html"}
+}

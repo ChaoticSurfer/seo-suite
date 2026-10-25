@@ -1,0 +1,15 @@
+{
+  "/robots.txt": {"file": "robots.txt", "type": "text/plain"},
+  "/sitemap.xml": {"file": "sitemap-index.xml", "type": "application/xml"},
+  "/sitemaps/en.xml": {"file": "sitemap-en.xml", "type": "application/xml"},
+  "/blog": {"file": "index.html"},
+  "/blog?page=2": {"file": "index-page-2.html"},
+  "/blog/post-a": {"file": "post-a.html"},
+  "/blog/post-b": {"file": "post-b.html"},
+  "/blog/post-c": {"file": "post-c.html"},
+  "/blog/category/mountains": {"file": "category-mountains.html"},
+  "/authors/jane": {"file": "author-jane.html"},
+  "/blog/feed.xml": {"file": "feed.xml", "type": "application/rss+xml"},
+  "/tours/kazbegi": {"file": "money-page.html"},
+  "/indexnow-key.txt": {"file": "indexnow-key.txt", "type": "text/plain"}
+}

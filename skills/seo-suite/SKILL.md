@@ -64,6 +64,7 @@ including the autonomy levels the user sets once and the actions that are always
 | Content audit, briefs, writing/refreshing, E-E-A-T, cannibalisation, decay | `seo-content` |
 | Write blog posts / a content calendar from keywords | `seo-blog-builder` |
 | Review AI-written or translated blog posts | `seo-blog-review` |
+| Set up or fix the blog itself: index, pagination, post template, sitemap, feed, IndexNow | `seo-blog-system` |
 | Keyword research, intent, clustering, topical map | `seo-keywords` |
 | Structured data / rich results | `seo-schema` |
 | AI Overviews, ChatGPT/Perplexity/Claude citations, AI crawlers, llms.txt | `seo-ai-search` |

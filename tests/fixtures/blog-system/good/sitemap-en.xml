@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+<url><loc>https://example.com/blog</loc></url>
+<url><loc>https://example.com/blog/post-a</loc><lastmod>2026-10-10T08:00:00.000Z</lastmod>
+<xhtml:link rel="alternate" hreflang="en" href="https://example.com/blog/post-a"/>
+<xhtml:link rel="alternate" hreflang="ka" href="https://example.com/ka/blog/post-a"/></url>
+<url><loc>https://example.com/ka/blog/post-a</loc><lastmod>2026-10-12T08:00:00.000Z</lastmod>
+<xhtml:link rel="alternate" hreflang="en" href="https://example.com/blog/post-a"/>
+<xhtml:link rel="alternate" hreflang="ka" href="https://example.com/ka/blog/post-a"/></url>
+<url><loc>https://example.com/blog/post-b</loc><lastmod>2026-10-05</lastmod></url>
+<url><loc>https://example.com/blog/post-c</loc><lastmod>2026-09-20T05:00:00+00:00</lastmod></url>
+</urlset>

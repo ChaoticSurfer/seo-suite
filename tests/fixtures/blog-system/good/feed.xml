@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+<channel>
+<title>Example Tours blog</title>
+<link>https://example.com/blog</link>
+<description>Guides from Example Tours</description>
+<item><title>Kazbegi in October: what to pack</title><link>https://example.com/blog/post-a</link><pubDate>Thu, 01 Oct 2026 05:00:00 GMT</pubDate></item>
+<item><title>Wine harvest in Kakheti</title><link>https://example.com/blog/post-b</link><pubDate>Mon, 05 Oct 2026 05:00:00 GMT</pubDate></item>
+<item><title>Tbilisi sulphur baths</title><link>https://example.com/blog/post-c</link><pubDate>Sun, 20 Sep 2026 05:00:00 GMT</pubDate></item>
+</channel>
+</rss>
