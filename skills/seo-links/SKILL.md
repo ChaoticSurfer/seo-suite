@@ -118,7 +118,7 @@ Pick 2–3 tactics that suit the business. Outreach is always gated at every aut
   - Offer your page as the replacement.
 - **Partners, suppliers, customers, associations, local chambers, universities, events you sponsor.** Real relationships.
 - **Expert commentary.** Journalist-request platforms. Answers must be genuinely expert.
-- **Guest contributions.** Only genuine editorial pieces on relevant sites. Links in them should be `rel=nofollow` or `sponsored` when there is any exchange (google-rules §4).
+- **Guest contributions.** Only genuine editorial pieces on relevant sites. Links in them should be `rel=nofollow` or `sponsored` when there is any exchange (google-rules §4). For guest-post and link-insertion emails to blogs and media sites, use `${CLAUDE_PLUGIN_ROOT}/skills/seo-links/outreach-templates.md` (EN and KA).
 - Run independent prospect searches in parallel with `seo-serp-researcher` agents, one batch of footprints each.
 
 ### D. Toxic links and disavow
