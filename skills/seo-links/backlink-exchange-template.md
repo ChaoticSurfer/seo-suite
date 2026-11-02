@@ -1,4 +1,4 @@
-# Outreach templates: guest post and link insertion
+# Backlink exchange template: guest post and link insertion
 
 `seo-links` reads this file in part C when it writes outreach to blogs and media sites that publish guest posts or
 add links to existing articles. The owner of a client site supplied the wording (2026-11-02); keep its structure and
