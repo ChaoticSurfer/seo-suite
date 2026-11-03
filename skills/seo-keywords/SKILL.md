@@ -113,13 +113,44 @@ Autocomplete proves a query is typed, **not how often**. Count completions witho
 
 **Brand vs non-brand:** report them separately. Branded queries are not an SEO opportunity measure.
 
-**Prioritisation (heuristic, not a Google metric):**
-- `priority = demand (1–5) + business_fit (1–5) + winnability (1–5) − effort (1–5)`.
-- **Demand:** from the evidence ladder.
-- **Business fit:** how close it is to the conversion.
-- **Winnability:** your existing position, whether the top 10 has weak or forum results, your topical authority. Never an invented KD number.
-- **Effort:** a new page vs a refresh.
-- State the scores' inputs in the CSV so they can be audited.
+**Prioritisation: one formula in two steps (heuristic, not a Google metric):**
+
+1. **Automatic score, every cluster.** `research_store.py next-topics --page-type article|booking` scores what can be
+   measured, with a reason for every point (research-store §7):
+   `automatic = intent_fit (0–3) + demand (0–4) + serp_gap (−2–3) − cannibalisation (0–3)`.
+   - `--page-type` is the page you would build: `article` for a blog post or guide, `booking` for a page that sells
+     (tour, service, product, category). Score a cluster both ways when unsure; the SERP shows which page type wins
+     (see Intent fit above).
+   - Demand follows the evidence ladder. Winnability is in `serp_gap` (weak forum results, AI Overview and, for
+     booking pages, a top 10 that is half or more marketplace listings such as OTAs) and in `cannibalisation`. Never an
+     invented KD number.
+2. **Final score, shortlist only** (the top 50–100 automatic scores per locale). Add what a script can't know:
+   `priority = automatic + business_fit (0–3) + season (0–1) − effort (0–2)`.
+   - **business_fit:** 3 the searcher can buy what the site sells, on this page · 2 close to buying (comparing,
+     planning) · 1 informational that can lead to a sale · **0 not what the business sells: drop it** with
+     `set-status --status skip`, whatever its other scores.
+   - **season:** 1 when demand peaks 2–4 months from now (Google Trends, that locale), the time a new page needs to be
+     indexed and climb; otherwise 0.
+   - **effort:** 0 refresh an existing page · 1 new page from material the site already has · 2 new page that needs
+     new facts, photos, data or an expert.
+   - Ties go to higher-value conversions (a larger order or booking).
+   - Write every input and its reason into the CSV, so the order can be audited.
+
+**Tour and travel operators (the formula applied):**
+
+| business_fit | Example searches | Page |
+|---|---|---|
+| 3 | "private kazbegi tour from tbilisi", "tbilisi airport transfer", «экскурсия в казбеги с русским гидом» | Tour or service page (`booking`) |
+| 2 | "tbilisi to kazbegi how to get there", "kakheti day trip itinerary" | Guide that links to the tour (`article`) |
+| 1 | "gergeti trinity church history", "kazbegi weather in march" | Article with a tour link |
+| 0 | Packages with flights or hotels you don't sell ("tour package from india"), visas, jobs, a same-name place elsewhere | Drop |
+
+- **Marketplace wall:** when OTAs (GetYourGuide, Viator, Tripadvisor, Klook) fill page 1, the booking score drops. Aim
+  for the long tail they don't cover: private, from a named city, a guide's language, a vehicle size.
+- **Season:** publish 2–4 months before the peak: winter mountain roads and ski in September–October, wine harvest in
+  June–July, summer hikes in March–April.
+- **Ties:** a multi-day tour beats a half-day one; a tour you can run every day beats one with rare dates.
+- Compare demand only within one language. A thin Hebrew or Arabic SERP can beat a bigger English one.
 
 **Locale:** run separate research per country and language. Volumes, intent and SERPs differ (google-rules §6).
 
@@ -148,7 +179,7 @@ run's report.
 ```
 cluster, keyword, is_head_term, intent, serp_page_type, serp_features, demand_evidence, gsc_impressions,
 volume, volume_source, current_url, current_position, target_url, action(new|refresh|merge|none),
-demand, business_fit, winnability, effort, priority, notes
+page_type, automatic, business_fit, season, effort, priority, notes
 ```
 Plus `seo-work/topical-map.md`:
 - pillar → clusters tree, with the target URL per cluster and internal links planned (cluster ↔ pillar, sibling ↔ sibling where SERPs overlap 2–3);

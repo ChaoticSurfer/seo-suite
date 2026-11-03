@@ -103,13 +103,26 @@ INTENT_SOURCE_RANK = {STORE_INTENT_GUESS: 0, KEYWORD_IDEAS_INTENT: 1, "serp": 2}
 # impressions inferred it.
 DECLARED_CLUSTER_TARGETS = ("input", "set-status")
 GSC_INFERRED_TARGET = "gsc"
-# next-topics heuristic: page types a blog post or guide competes with, forum hosts that signal a beatable SERP
-ARTICLE_TYPES = {"guide/article", "listicle", "news", "forum/ugc"}
+# next-topics heuristic, per page type to build (--page-type): the SERP page types it competes with and the keyword
+# intents it serves. "booking" is a page that sells: a tour, service, product or category page.
+PAGE_FIT = {
+    "article": {"serp_types": {"guide/article", "listicle", "news", "forum/ugc"},
+                "serp_label": "articles, listicles, news or forum threads",
+                "intent": {"informational": 3, "commercial": 2, "unclear": 1, "transactional": 0, "navigational": 0}},
+    "booking": {"serp_types": {"product", "service/landing", "category", "local"},
+                "serp_label": "product, service, category or local pages",
+                "intent": {"transactional": 3, "local": 3, "commercial": 2, "unclear": 1, "informational": 0,
+                           "navigational": 0}},
+}
 MIN_TYPED_RESULTS = 5
-INTENT_FIT = {"informational": 3, "commercial": 2, "unclear": 1, "transactional": 0, "navigational": 0}
 UGC_HOSTS = ("reddit.com", "quora.com", "stackexchange.com", "stackoverflow.com")
-HEURISTIC = ("priority = intent_fit (0..3) + demand (0..4) + serp_gap (-1..3) - cannibalisation (0..3). "
-             "[heuristic, not a Google metric: scored for an article page; read the reasons, not only the order]")
+# booking pages: a top 10 that is mostly marketplace listings (OTAs for tours, big retailers for products) is hard to
+# break into; matched on any label of the host, so country domains and subdomains count (de.getyourguide.com)
+BOOKING_MARKETPLACE_NAMES = {"getyourguide", "viator", "tripadvisor", "klook", "civitatis", "tourradar", "tripster",
+                             "sputnik8", "booking", "expedia", "airbnb", "amazon", "ebay", "etsy"}
+HEURISTIC = ("priority = intent_fit (0..3) + demand (0..4) + serp_gap (-2..3) - cannibalisation (0..3). "
+             "[heuristic, not a Google metric: scored for the page type '{page_type}'; read the reasons, not only "
+             "the order]")
 MISSING = object()
 
 
@@ -208,6 +221,10 @@ def volume_number(volume) -> float:
 def is_ugc_host(url: str) -> bool:
     host = registrable_host(url)
     return any(host == name or host.endswith("." + name) for name in UGC_HOSTS)
+
+
+def is_marketplace_host(url: str) -> bool:
+    return any(label in BOOKING_MARKETPLACE_NAMES for label in registrable_host(url).split("."))
 
 
 def has_personal_data(keyword: str) -> bool:
@@ -687,7 +704,7 @@ class Store:
         self.derive_clusters()
         context = scoring_context(self)
         for cluster in self.clusters.values():
-            cluster["priority"] = score_cluster(self, cluster, context)["priority"]
+            cluster["priority"] = score_cluster(self, cluster, context, "article")["priority"]
         for row in self.inventory.values():
             row["cluster_id"] = ";".join(context["targets"].get(url_key(row["url"]), []))
         for key, cluster_ids in post_clusters(self).items():
@@ -1283,17 +1300,18 @@ def scoring_context(store: Store) -> dict:
     return {"targets": targets, "live_pages": live, "live": {url_key(r["url"]) for rows in live.values() for r in rows}}
 
 
-def score_intent_fit(head: dict | None, serp: dict | None, reasons: list[str]) -> int:
+def score_intent_fit(head: dict | None, serp: dict | None, page_type: str, reasons: list[str]) -> int:
+    fit = PAGE_FIT[page_type]
     types = [r["type"] for r in serp["results"] if r["type"]] if serp else []
     if len(types) >= MIN_TYPED_RESULTS:
-        articles = sum(t in ARTICLE_TYPES for t in types)
-        score = int(3 * articles / len(types) + 0.5)
-        reasons.append(f"intent fit {score}/3: {articles} of {len(types)} typed top results are articles, listicles, "
-                       f"news or forum threads [measured: SERP {serp['fetched_at'][:10]}]")
+        matching = sum(t in fit["serp_types"] for t in types)
+        score = int(3 * matching / len(types) + 0.5)
+        reasons.append(f"intent fit {score}/3: {matching} of {len(types)} typed top results are {fit['serp_label']} "
+                       f"[measured: SERP {serp['fetched_at'][:10]}]")
         return score
     intent = (head or {}).get("intent") or "unclear"
     source = ((head or {}).get("provenance", {}).get("intent") or {}).get("source", "none")
-    score = INTENT_FIT.get(intent, 1)
+    score = fit["intent"].get(intent, 1)
     reasons.append(f"intent fit {score}/3: head keyword intent '{intent}' (from {source}); no typed SERP to confirm "
                    "the page type [heuristic]")
     return score
@@ -1324,7 +1342,7 @@ def score_demand(records: list[dict], reasons: list[str]) -> int:
     return 0
 
 
-def score_serp_gap(serp: dict | None, reasons: list[str]) -> int:
+def score_serp_gap(serp: dict | None, page_type: str, reasons: list[str]) -> int:
     if not serp:
         reasons.append("SERP gap 0: no SERP stored for the head keyword [needs data]")
         return 0
@@ -1335,6 +1353,11 @@ def score_serp_gap(serp: dict | None, reasons: list[str]) -> int:
     if "ai_overview" in (serp["features"] or []):  # None: the fetch didn't record features
         score -= 1
         reasons.append("SERP gap -1: an AI Overview is shown, so organic clicks are likely lower [heuristic]")
+    marketplaces = [r["url"] for r in serp["results"] if is_marketplace_host(r["url"])]
+    if page_type == "booking" and serp["results"] and 2 * len(marketplaces) >= len(serp["results"]):
+        score -= 1
+        reasons.append(f"SERP gap -1: {len(marketplaces)} of the top {len(serp['results'])} are marketplace listings "
+                       "(OTAs, big retailers), hard to outrank for a booking page [heuristic]")
     if serp["paa"]:
         reasons.append(f"{len(serp['paa'])} People Also Ask questions to answer (not scored)")
     return score
@@ -1375,15 +1398,15 @@ def score_cannibalisation(store: Store, cluster: dict, records: list[dict], serp
     return min(risk, 3)
 
 
-def score_cluster(store: Store, cluster: dict, context: dict) -> dict:
-    """The next-topics priority [heuristic, not a Google metric], with the reason for every point."""
+def score_cluster(store: Store, cluster: dict, context: dict, page_type: str) -> dict:
+    """The next-topics priority for one page type [heuristic, not a Google metric], with the reason for every point."""
     locale, head = cluster["locale"], cluster["head_keyword"]
     records = [store.keywords[(locale, k)] for k in cluster["keywords"] if (locale, k) in store.keywords]
     serp = store.serp(locale, head)
     reasons: list[str] = []
-    scores = {"intent_fit": score_intent_fit(store.keywords.get((locale, head)), serp, reasons),
+    scores = {"intent_fit": score_intent_fit(store.keywords.get((locale, head)), serp, page_type, reasons),
               "demand": score_demand(records, reasons),
-              "serp_gap": score_serp_gap(serp, reasons),
+              "serp_gap": score_serp_gap(serp, page_type, reasons),
               "cannibalisation": score_cannibalisation(store, cluster, records, serp, context, reasons)}
     return {"priority": scores["intent_fit"] + scores["demand"] + scores["serp_gap"] - scores["cannibalisation"],
             "scores": scores, "reasons": reasons, "paa": (serp or {}).get("paa") or [],
@@ -1488,7 +1511,7 @@ def next_topics(store: Store, args, now: str) -> dict:
               and url_key(cluster["target_url"]) in context["live"]):
             excluded["live_target"] += 1  # a declared target that is live: a refresh, not a new topic
         else:
-            score = score_cluster(store, cluster, context)
+            score = score_cluster(store, cluster, context, args.page_type)
             slug = slugs[cluster["cluster_id"]]
             topics.append({
                 **{k: cluster[k] for k in ("cluster_id", "locale", "head_keyword", "keywords", "role", "status",
@@ -1501,7 +1524,8 @@ def next_topics(store: Store, args, now: str) -> dict:
             })
     topics.sort(key=lambda t: (-t["priority"], -t["evidence"]["gsc_impressions"], -t["evidence"]["volume"],
                                -len(t["keywords"]), t["cluster_id"]))
-    return {"heuristic": HEURISTIC, "locale": locale, "candidates": len(topics), "topics": topics[:args.limit],
+    return {"heuristic": HEURISTIC.format(page_type=args.page_type), "page_type": args.page_type, "locale": locale,
+            "candidates": len(topics), "topics": topics[:args.limit],
             "excluded": dict(sorted(excluded.items())), "covered_by_posts": covered}
 
 
@@ -1644,6 +1668,9 @@ def build_parser() -> argparse.ArgumentParser:
     topics = commands.add_parser("next-topics", parents=[common], help="clusters to write next, with reasons")
     topics.add_argument("--locale", type=locale_code)
     topics.add_argument("--limit", type=positive_int, default=10)
+    topics.add_argument("--page-type", choices=sorted(PAGE_FIT), default="article",
+                        help="the page you would build: article (blog post, guide) or booking (tour, service, "
+                             "product, category)")
     topics.set_defaults(run=next_topics, writes=False)
 
     mark = commands.add_parser("set-status", parents=[common], help="move a cluster or keyword along the pipeline")

@@ -1272,12 +1272,33 @@ class NextTopicsTest(StoreCase):
     def test_cannibalisation_counts_competing_pages_and_titles(self):
         store = self.load(self.dir)
         cluster = next(c for c in store.clusters.values() if c["head_keyword"] == "english tutor")
-        score = rs.score_cluster(store, cluster, rs.scoring_context(store))
+        score = rs.score_cluster(store, cluster, rs.scoring_context(store), "article")
         # two of our URLs get impressions (−2), /blog/find-a-tutor/ has the head in its title (−1) and the target is a
         # live page GSC inferred (−1, refresh it), capped at 3; the SERP's www.example.com/tutors/ is the target itself
         self.assertEqual(score["scores"], {"intent_fit": 1, "demand": 4, "serp_gap": -1, "cannibalisation": 3})
         self.assertEqual(score["priority"], 1)
         self.assertEqual(store.clusters[cluster["cluster_id"]]["priority"], 1)  # saved with the store
+
+    def test_booking_page_type_scores_selling_intent(self):
+        report = self.cli("next-topics", "--locale", "en", "--page-type", "booking")
+        self.assertEqual(report["page_type"], "booking")
+        self.assertIn("page type 'booking'", report["heuristic"])
+        topics = {t["head_keyword"]: t for t in report["topics"]}
+        # transactional with no typed SERP: 3 for a booking page, 0 for an article (test above)
+        self.assertEqual(topics["english tutor near me"]["scores"]["intent_fit"], 3)
+        # 8 of 10 typed results are service/landing pages; the forum-heavy guide SERP has none
+        self.assertEqual(topics["english tutor"]["scores"]["intent_fit"], 2)
+        self.assertEqual(topics["how to become an english tutor"]["scores"]["intent_fit"], 0)
+        self.assertEqual(report["topics"][0]["head_keyword"], "english tutor near me")
+
+    def test_a_marketplace_top_10_lowers_the_booking_serp_gap(self):
+        hosts = ["www.getyourguide.com/tbilisi", "de.viator.com/kazbegi", "www.tripadvisor.co.uk/x", "www.klook.com/y",
+                 "www.booking.com/z", *[f"operator{i}.test/" for i in range(5)]]
+        serp = {"results": [{"url": u, "type": "product"} for u in urls(*hosts)], "features": [], "paa": []}
+        reasons = []
+        self.assertEqual(rs.score_serp_gap(serp, "booking", reasons), -1)
+        self.assertTrue(any("5 of the top 10 are marketplace listings" in r for r in reasons), reasons)
+        self.assertEqual(rs.score_serp_gap(serp, "article", []), 0)
 
 
 class SetStatusTest(StoreCase):

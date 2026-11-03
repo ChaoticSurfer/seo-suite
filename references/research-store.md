@@ -195,7 +195,7 @@ Locale codes are stored lower-case: `en`, `ka`, `ru`, `ru-ge`. A URL's locale is
 | `ingest volumes FILE --locale LOC --source NAME` | A keyword/volume[/difficulty] export from Semrush, Ahrefs, DataForSEO or Keyword Planner |
 | `ingest posts FILE [--locale LOC]` | Existing and queued posts, so `next-topics` never proposes their topics again: a posts export (CSV, TSV or JSON; a Supabase table export works as it is), or a locale translation file of entries keyed by slug |
 | `status` | The `publishing` mode, datasets, their age per locale, `stale` and `missing` lists, `gaps` per locale |
-| `next-topics [--locale LOC] [--limit N]` | Clusters without a published target, best first, with every reason (§7). `N` is 1 or more |
+| `next-topics [--locale LOC] [--limit N] [--page-type article\|booking]` | Clusters without a published target, best first, with every reason (§7), scored for the page you would build (default `article`). `N` is 1 or more |
 | `set-status (--cluster ID or --keyword KW --locale LOC) --status S [--url URL]` | Moves a cluster or keyword along the pipeline |
 | `set-publishing --mode automatic or review` | Records how AI-written posts go live (§2, site.json: publishing), on the user's word only. Prints the mode, the `previous` one and whether it `changed` |
 | `glossary add --locale LOC --term T --translation X [--do-not-translate] [--note N]` | Adds or updates a term |
@@ -361,14 +361,17 @@ naming the cluster and the missing keyword or cluster: restore it from git histo
 
 ## 7. next-topics priority [heuristic]
 
-`priority = intent_fit (0..3) + demand (0..4) + serp_gap (-1..3) − cannibalisation (0..3)`. This is a heuristic, not a
-Google metric, and it is scored for an article or blog page. Every point comes with a reason string and an evidence tag.
+`priority = intent_fit (0..3) + demand (0..4) + serp_gap (-2..3) − cannibalisation (0..3)`. This is a heuristic, not a
+Google metric. It is scored for the page you would build, `--page-type`: `article` (blog post or guide, the default)
+or `booking` (a page that sells: tour, service, product, category). Every point comes with a reason string and an
+evidence tag. This is step 1 of the keyword priority; `seo-keywords` adds business fit, season and effort for the
+shortlist. The `priority` saved in `clusters.json` is the `article` score.
 
 | Part | Scored from |
 |---|---|
-| **intent_fit** | With 5 or more typed results in the head keyword's SERP: the share that are guides, listicles, news or forum threads, × 3. Otherwise the head's intent: informational 3, commercial 2, unclear 1, transactional or navigational 0 |
+| **intent_fit** | With 5 or more typed results in the head keyword's SERP: the share that match the page type, × 3. `article`: guides, listicles, news or forum threads. `booking`: product, service/landing, category or local pages. Otherwise the head's intent. `article`: informational 3, commercial 2, unclear 1, transactional or navigational 0. `booking`: transactional or local 3, commercial 2, unclear 1, informational or navigational 0 |
 | **demand** | The evidence ladder from `seo-keywords`: GSC impressions ≥ 10 on any keyword 4 · a vendor volume 3 · suggested by 2+ engines 2 · one engine 1 · nothing 0 |
-| **serp_gap** | Forum or UGC results in the head's top 10 (type `forum/ugc`, or reddit, quora, stackexchange, stackoverflow), up to 3. −1 when an AI Overview is shown. PAA questions are listed, not scored |
+| **serp_gap** | Forum or UGC results in the head's top 10 (type `forum/ugc`, or reddit, quora, stackexchange, stackoverflow), up to 3. −1 when an AI Overview is shown. `booking` only: −1 when half or more of the top results are marketplace listings (any host label in `BOOKING_MARKETPLACE_NAMES`: GetYourGuide, Viator, Tripadvisor, Klook, Civitatis, TourRadar, Tripster, Sputnik8, Booking, Expedia, Airbnb, Amazon, eBay, Etsy). PAA questions are listed, not scored |
 | **cannibalisation** | −2 when 2+ of the site's pages compete for the cluster's queries in GSC, or −1 for one such page that isn't the target (`demand.gsc_pages`, §2: never a home page, nor a page under 10 impressions, under 10% of the query's or below position 20) · −1 when another cluster targets the same URL · −1 when the site already ranks in the head's top 10 with another URL (any of its own hosts) · −1 "refresh URL rather than add a page" when the target is a live page that GSC inferred (`target_source: gsc`) · −1 when a live page's title contains the head keyword. Capped at 3 |
 
 - **Left out**, each counted in `excluded`:
